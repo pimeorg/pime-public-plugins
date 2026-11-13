@@ -40,20 +40,20 @@ constexpr uint32_t kMaxSyllables = 8;
 constexpr uint32_t kMaxEntries = 32768;
 constexpr uint32_t kDictBytes = 1024 * 1024;
 constexpr uint32_t kMaxCandidates = 32;
-constexpr uint32_t kBeam = 12;
-constexpr uint32_t kEdgesPerSpan = 8;
+constexpr uint32_t kBeam = 16;
+constexpr uint32_t kEdgesPerSpan = 24;
 constexpr uint32_t kPathBytes = 96;
 
 /* Scoring is a small unigram model over the dictionary. Frequencies are
  * counts, so each word contributes log2(freq); subtracting a corpus-scale
  * constant per word turns that into a log probability, which makes comparing
- * "one compound word" against "two single characters" meaningful. The word
- * bonus grows with the number of syllables so a three-syllable phrase has to
- * beat three independent characters, not one. */
+ * "one compound word" against "two single characters" meaningful. Cohesion
+ * grows with the number of raw letters a word consumes: an abbreviation like
+ * "dd" must reach 等等 rather than the two very frequent characters 的+的. */
 constexpr int32_t kContextLog = 26500;
 constexpr int32_t kAbbrevCost = 300;   /* per omitted letter */
 constexpr int32_t kFuzzyCost = 2000;   /* per fuzzy initial/final */
-constexpr int32_t kWordBonus = 1500;   /* compound-word cohesion per extra syllable */
+constexpr int32_t kWordBonus = 9000;   /* compound-word cohesion per extra letter */
 constexpr int32_t kScoreBase = 500000;
 
 const char kParseId[] = "pime-pinyin-parse";

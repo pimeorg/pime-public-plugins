@@ -1,0 +1,128 @@
+# Curated pinyin supplement for common chat/daily phrases.
+# Format: <space separated syllables>\t<word>\t<frequency>
+# Merged into pinyin.dict by tools/pinyin_merge (highest frequency wins).
+# Keep the frequencies in the same order of magnitude as the base corpus;
+# they only need to beat character-by-character compositions for full pinyin
+# and make the phrase reachable for initials.
+
+# greetings and daily chat
+wan an	晚安	120000
+zao an	早安	60000
+zao shang hao	早上好	90000
+zhong wu hao	中午好	40000
+xia wu hao	下午好	40000
+wan shang hao	晚上好	60000
+zai jian	再见	150000
+bai bai	拜拜	80000
+ni hao ma	你好吗	80000
+wo hen hao	我很好	60000
+chi le ma	吃了吗	80000
+zai gan ma	在干嘛	120000
+gan ma ne	干嘛呢	60000
+zen me le	怎么了	120000
+zen me ban	怎么办	120000
+shen me shi hou	什么时候	100000
+zai na li	在哪里	100000
+gan shen me	干什么	90000
+duo shao qian	多少钱	120000
+ke yi ma	可以吗	120000
+hao bu hao	好不好	60000
+xing bu xing	行不行	50000
+dui bu dui	对不对	50000
+yao bu yao	要不要	70000
+you mei you	有没有	90000
+hui bu hui	会不会	60000
+neng bu neng	能不能	60000
+ke bu ke yi	可不可以	50000
+xiang bu xiang	想不想	40000
+ni shi shui	你是谁	80000
+wo zai mang	我在忙	50000
+wo xiang ni	我想你	150000
+wo xiang ni le	我想你了	60000
+wo ai ni	我爱你	200000
+wo xi huan ni	我喜欢你	120000
+xie xie ni	谢谢你	150000
+bu ke qi	不客气	120000
+dui bu qi	对不起	200000
+mei guan xi	没关系	150000
+mei wen ti	没问题	150000
+hao de	好的	80000
+hao ba	好吧	50000
+xing ba	行吧	40000
+suan le	算了	80000
+zhi dao le	知道了	120000
+ming bai le	明白了	80000
+xin ku le	辛苦了	80000
+jia you	加油	120000
+bao zhong	保重	60000
+zhao gu hao zi ji	照顾好自己	50000
+you kong ma	有空吗	50000
+zai ma	在吗	30000
+shui le ma	睡了吗	60000
+dao jia le ma	到家了吗	50000
+chi fan le ma	吃饭了吗	70000
+ni zai gan ma	你在干嘛	100000
+wo zai chi fan	我在吃饭	50000
+jin tian tian qi bu cuo	今天天气不错	50000
+ming tian jian	明天见	60000
+hao jiu bu jian	好久不见	50000
+huan ying guang lin	欢迎光临	40000
+qing duo guan zhao	请多关照	30000
+ma fan ni le	麻烦你了	40000
+bu yong xie	不用谢	50000
+bie ke qi	别客气	40000
+ying gai de	应该的	40000
+ni shuo shen me	你说什么	60000
+shen me yi si	什么意思	100000
+zen me hui shi	怎么回事	90000
+
+# holiday and good wishes
+sheng ri kuai le	生日快乐	100000
+xin nian kuai le	新年快乐	100000
+chun jie kuai le	春节快乐	60000
+zhong qiu kuai le	中秋快乐	50000
+gong xi fa cai	恭喜发财	80000
+gong xi gong xi	恭喜恭喜	30000
+yi lu shun feng	一路顺风	80000
+yi lu ping an	一路平安	50000
+zhu yi an quan	注意安全	90000
+duo he re shui	多喝热水	80000
+wan shi ru yi	万事如意	40000
+xin xiang shi cheng	心想事成	40000
+shen ti jian kang	身体健康	50000
+tian tian kai xin	天天开心	50000
+gong zuo shun li	工作顺利	50000
+xue ye you cheng	学业有成	30000
+qian cheng si jin	前程似锦	30000
+da ji da li	大吉大利	30000
+
+# colors and everyday nouns
+nv hai	女孩	40000
+nan hai	男孩	30000
+lv se	绿色	80000
+lan se	蓝色	60000
+hong se	红色	80000
+huang se	黄色	50000
+hei se	黑色	70000
+bai se	白色	70000
+zi se	紫色	40000
+fen se	粉色	40000
+
+# places
+tian an men	天安门	80000
+chang cheng	长城	60000
+gu gong	故宫	50000
+shang hai	上海	100000
+guang zhou	广州	60000
+shen zhen	深圳	70000
+cheng du	成都	50000
+wu han	武汉	45000
+tian jin	天津	35000
+chong qing	重庆	40000
+nan jing	南京	40000
+xi an	西安	45000
+hang zhou	杭州	45000
+su zhou	苏州	40000
+zheng zhou	郑州	35000
+chang sha	长沙	40000
+qing dao	青岛	40000

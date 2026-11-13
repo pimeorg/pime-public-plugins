@@ -177,6 +177,7 @@ bai	摆	9063
 bai	佰	2759
 bai	柏	607
 bai	掰	576
+bai bai	拜拜	80000
 bai cai	白菜	5787
 bai chu	摆出	5115
 bai du	百度	59324
@@ -193,7 +194,7 @@ bai nian	拜年	9156
 bai piao	白嫖	8886
 bai ren	白人	16324
 bai ren	拜仁	14158
-bai se	白色	28580
+bai se	白色	70000
 bai tian	白天	26502
 bai tian	百天	25177
 bai tuo	拜托	18667
@@ -382,6 +383,7 @@ bao zheng	保证	132935
 bao zheng jin	保证金	6494
 bao zheng le	保证了	9668
 bao zhi	报纸	10243
+bao zhong	保重	60000
 bao zhu	保住	6550
 bao zhuang	包装	29259
 bao zi	包子	6208
@@ -800,6 +802,7 @@ bie	瘪	1074
 bie ba	别把	5059
 bie de	别的	98907
 bie kan	别看	10598
+bie ke qi	别客气	40000
 bie ren	别人	190918
 bie ren de	别人的	50183
 bie ren shuo	别人说	6123
@@ -1087,6 +1090,7 @@ bu ke bi mian	不可避免	11599
 bu ke fou ren	不可否认	9966
 bu ke huo que	不可或缺	6522
 bu ke neng	不可能	89421
+bu ke qi	不客气	120000
 bu ke si yi	不可思议	7442
 bu ke yi	不可以	21920
 bu ken	不肯	10089
@@ -1272,6 +1276,7 @@ bu yong dan xin	不用担心	22815
 bu yong duo shuo	不用多说	6654
 bu yong shuo	不用说	5862
 bu yong shuo le	不用说了	6776
+bu yong xie	不用谢	50000
 bu yong zai	不用再	7052
 bu yuan	不远	13872
 bu yuan	不愿	5074
@@ -1562,7 +1567,7 @@ chang an	长按	12993
 chang bi sai	场比赛	16479
 chang chang	常常	38035
 chang chang hui	常常会	5153
-chang cheng	长城	14723
+chang cheng	长城	60000
 chang da	长达	14033
 chang dao	倡导	5680
 chang de	唱的	18096
@@ -1593,7 +1598,7 @@ chang pian	长篇	5551
 chang pian gong si	唱片公司	5043
 chang qi	长期	92900
 chang ren	常人	7765
-chang sha	长沙	8836
+chang sha	长沙	40000
 chang shang	厂商	37055
 chang shang	场上	9847
 chang shi	尝试	76142
@@ -1712,7 +1717,7 @@ cheng ben di	成本低	5602
 cheng dan	承担	35099
 cheng de shang	称得上	9668
 cheng du	程度	79870
-cheng du	成都	29519
+cheng du	成都	50000
 cheng fa	惩罚	14086
 cheng fen	成分	45662
 cheng gong	成功	148786
@@ -1806,6 +1811,7 @@ chi diao	吃掉	8704
 chi dong xi	吃东西	7567
 chi du	尺度	12425
 chi fan	吃饭	51154
+chi fan le ma	吃饭了吗	70000
 chi gu	持股	6365
 chi gua qun zhong	吃瓜群众	5247
 chi guo	吃过	10017
@@ -1816,6 +1822,7 @@ chi ji	吃鸡	4989
 chi jiu	持久	8117
 chi kui	吃亏	8186
 chi le	吃了	41944
+chi le ma	吃了吗	80000
 chi li	吃力	6572
 chi ping	持平	4961
 chi qi lai	吃起来	8236
@@ -1861,7 +1868,7 @@ chong jing	憧憬	5181
 chong man	充满	26649
 chong man le	充满了	22809
 chong qi	重启	7775
-chong qing	重庆	16871
+chong qing	重庆	40000
 chong sheng	重生	6798
 chong shi	重试	8264
 chong su	重塑	5096
@@ -2123,6 +2130,7 @@ chun	椿	542
 chun cui	纯粹	49336
 chun cui shi	纯粹是	7351
 chun jie	春节	7410
+chun jie kuai le	春节快乐	60000
 chun jing	纯净	5790
 chun qiu	春秋	9285
 chun shu	纯属	8271
@@ -2378,6 +2386,7 @@ da hui	大会	7750
 da huo	大伙	9803
 da ji	打击	29601
 da ji chu	打基础	5391
+da ji da li	大吉大利	30000
 da jia	大家	501339
 da jia	打架	16337
 da jia dou	大家都	91584
@@ -2760,6 +2769,7 @@ dao dan	导弹	7275
 dao di	到底	77260
 dao di shi	到底是	32741
 dao hang	导航	10930
+dao jia le ma	到家了吗	50000
 dao ju	道具	25472
 dao lai	到来	19725
 dao le	到了	195672
@@ -3447,8 +3457,8 @@ dui bi	对比	137893
 dui bi du	对比度	4952
 dui bi yi xia	对比一下	10893
 dui biao	对标	10598
-dui bu dui	对不对	11941
-dui bu qi	对不起	25020
+dui bu dui	对不对	50000
+dui bu qi	对不起	200000
 dui ce	对策	4924
 dui chen	对称	9831
 dui chen xing	对称性	5721
@@ -3551,6 +3561,7 @@ duo ge	多个	71853
 duo guan	夺冠	14805
 duo hao	多好	9938
 duo hao	多号	9441
+duo he re shui	多喝热水	80000
 duo jia	多家	7709
 duo jiu	多久	20840
 duo kan	多看	16764
@@ -3571,7 +3582,7 @@ duo shao	多少	157650
 duo shao ci	多少次	6886
 duo shao ge	多少个	5674
 duo shao nian	多少年	5203
-duo shao qian	多少钱	16548
+duo shao qian	多少钱	120000
 duo shao ren	多少人	13078
 duo shi	多是	10506
 duo shu	多数	31758
@@ -4089,6 +4100,7 @@ fen qi	分期	6567
 fen qi	分歧	5537
 fen qu	分区	9640
 fen san	分散	17279
+fen se	粉色	40000
 fen shou	分手	12416
 fen shu	分数	69328
 fen shu xian	分数线	12576
@@ -4387,6 +4399,7 @@ gan lan qiu	橄榄球	5291
 gan lan you	橄榄油	6377
 gan le	干了	16293
 gan ma	干嘛	18341
+gan ma ne	干嘛呢	60000
 gan mao	感冒	11954
 gan qing	感情	59710
 gan ran	感染	31252
@@ -4394,7 +4407,7 @@ gan rao	干扰	21252
 gan sha	干啥	7903
 gan shang	赶上	10635
 gan she	干涉	8761
-gan shen me	干什么	10422
+gan shen me	干什么	90000
 gan shou	感受	114660
 gan shou dao	感受到	46127
 gan shou dao le	感受到了	9043
@@ -4842,6 +4855,8 @@ gong tong	共同	40559
 gong tong dian	共同点	7222
 gong wu yuan	公务员	34455
 gong xi	恭喜	7235
+gong xi fa cai	恭喜发财	80000
+gong xi gong xi	恭喜恭喜	30000
 gong xi ni	恭喜你	9109
 gong xian	贡献	38233
 gong xian le	贡献了	5464
@@ -4883,6 +4898,7 @@ gong zuo shi	工作室	25685
 gong zuo shi	工作时	6487
 gong zuo shi	工作是	5309
 gong zuo shi jian	工作时间	7322
+gong zuo shun li	工作顺利	50000
 gong zuo zhe	工作者	5128
 gong zuo zhong	工作中	17364
 gou	够	38107
@@ -4943,6 +4959,7 @@ gu er	孤儿	6321
 gu fen	股份	17383
 gu ge	谷歌	30659
 gu ge	骨骼	7730
+gu gong	故宫	50000
 gu hua	固话	4967
 gu ji	估计	103265
 gu ji	古迹	7875
@@ -5117,7 +5134,7 @@ guang yi	广义	6242
 guang ying	光影	7414
 guang yuan	光源	7919
 guang zhao	光照	6267
-guang zhou	广州	25855
+guang zhou	广州	60000
 guang zi	光子	11609
 gui	贵	30037
 gui	规	9112
@@ -5428,7 +5445,7 @@ hang ye de	行业的	29984
 hang ye li	行业里	6607
 hang ye nei	行业内	11932
 hang ye zhong	行业中	4999
-hang zhou	杭州	20281
+hang zhou	杭州	45000
 hao	好	6391074
 hao	号	36961
 hao	豪	2631
@@ -5442,9 +5459,9 @@ hao	蚝	559
 hao	嚎	559
 hao	镐	513
 hao a	好啊	5668
-hao ba	好吧	39024
+hao ba	好吧	50000
 hao bi	好比	9131
-hao bu hao	好不好	22115
+hao bu hao	好不好	60000
 hao bu rong yi	好不容易	16560
 hao bu you yu	毫不犹豫	5740
 hao che	好车	4908
@@ -5454,7 +5471,7 @@ hao chi de	好吃的	12048
 hao chu	好处	51301
 hao chu shi	好处是	12318
 hao dai	好歹	18762
-hao de	好的	167638
+hao de	好的	80000
 hao dian	好点	8619
 hao dong xi	好东西	7523
 hao duo	好多	55016
@@ -5478,6 +5495,7 @@ hao ji tian	好几天	5677
 hao jia huo	好家伙	7514
 hao jin	耗尽	5055
 hao jiu	好久	12014
+hao jiu bu jian	好久不见	50000
 hao kan	好看	59792
 hao la	好啦	7571
 hao lai wu	好莱坞	19298
@@ -5613,7 +5631,7 @@ hei hei	嘿嘿	11596
 hei ke	黑客	6911
 hei ke ji	黑科技	8227
 hei ren	黑人	19807
-hei se	黑色	31723
+hei se	黑色	70000
 hei ye	黑夜	5172
 hen	很	270090
 hen	恨	33761
@@ -5762,7 +5780,7 @@ hong li	红利	11160
 hong li	宏利	10602
 hong li	弘历	10044
 hong lou meng	红楼梦	8177
-hong se	红色	32326
+hong se	红色	80000
 hong shui	洪水	5137
 hong xian	红线	5859
 hou	后	871256
@@ -5981,6 +5999,7 @@ huan yan zhi	换言之	9015
 huan yi ge	换一个	9872
 huan ying	欢迎	88149
 huan ying da jia	欢迎大家	10833
+huan ying guang lin	欢迎光临	40000
 huan you	患有	7571
 huan yuan	还原	22194
 huan zhe	患者	108468
@@ -6007,7 +6026,7 @@ huang jia	皇家	4980
 huang jin	黄金	45018
 huang jin shi dai	黄金时代	5420
 huang ma	黄码	19499
-huang se	黄色	16322
+huang se	黄色	50000
 huang shang	皇上	11587
 huang yan	谎言	8673
 huang you	黄油	8936
@@ -6039,7 +6058,7 @@ hui bi	回避	20413
 hui bi	会比	9118
 hui bian	会变	6330
 hui bian de	会变得	7235
-hui bu hui	会不会	53138
+hui bu hui	会不会	60000
 hui chan sheng	会产生	19854
 hui che	回车	9250
 hui chen	灰尘	6503
@@ -6583,7 +6602,7 @@ jia xiang	假象	5202
 jia yi	加以	12692
 jia yi ge	加一个	6522
 jia yong	家用	14023
-jia you	加油	28831
+jia you	加油	120000
 jia yu	驾驭	6632
 jia zai	加载	8164
 jia zhang	家长	57895
@@ -7163,6 +7182,7 @@ jin si	近似	11747
 jin tian	今天	190827
 jin tian de	今天的	32709
 jin tian shi	今天是	6679
+jin tian tian qi bu cuo	今天天气不错	50000
 jin tian wo men	今天我们	6676
 jin tou	尽头	5244
 jin wan	今晚	11112
@@ -7938,7 +7958,7 @@ ke ban yin xiang	刻板印象	5869
 ke ben	课本	21186
 ke bi	可比	14961
 ke bi xing	可比性	5175
-ke bu ke yi	可不可以	5272
+ke bu ke yi	可不可以	50000
 ke bu shi	可不是	14165
 ke can kao	可参考	6651
 ke cheng	课程	182817
@@ -8057,6 +8077,7 @@ ke yi kan kan	可以看看	30040
 ke yi ken ding	可以肯定	5652
 ke yi li jie	可以理解	14384
 ke yi li yong	可以利用	9294
+ke yi ma	可以吗	120000
 ke yi mai	可以买	11392
 ke yi mai dao	可以买到	4967
 ke yi man zu	可以满足	7137
@@ -8376,7 +8397,7 @@ lan mu	栏目	5718
 lan pian	烂片	5919
 lan qiu	篮球	25158
 lan ren	懒人	5382
-lan se	蓝色	25403
+lan se	蓝色	60000
 lan wang	篮网	5049
 lan xia	拦下	5263
 lan ya	蓝牙	5040
@@ -9056,6 +9077,7 @@ lv	屡	639
 lv	驴	622
 lv	氯	609
 lv	缕	593
+lv se	绿色	80000
 lve	略	3339
 lve	掠	2060
 lve	畧	663
@@ -9075,6 +9097,7 @@ ma ci	马刺	7275
 ma de	妈的	5156
 ma ding	马丁	15510
 ma fan	麻烦	42698
+ma fan ni le	麻烦你了	40000
 ma ke	马克	14942
 ma la song	马拉松	5005
 ma lai xi ya	马来西亚	5250
@@ -9246,7 +9269,7 @@ mei ge yue	每个月	37200
 mei gong	美工	6424
 mei gu	美股	13282
 mei guan	没关	10839
-mei guan xi	没关系	24567
+mei guan xi	没关系	150000
 mei gui	玫瑰	11891
 mei gui	美规	11296
 mei guo	美国	325718
@@ -9305,7 +9328,7 @@ mei ting guo	没听过	5011
 mei ting shuo guo	没听说过	5015
 mei tuan	美团	17355
 mei wei	美味	6811
-mei wen ti	没问题	33375
+mei wen ti	没问题	150000
 mei xiang dao	没想到	59848
 mei xue	美学	11426
 mei yi	每一	8264
@@ -9501,7 +9524,7 @@ ming	铭	2068
 ming	冥	1339
 ming	茗	541
 ming bai	明白	55883
-ming bai le	明白了	15006
+ming bai le	明白了	80000
 ming chao	明朝	16460
 ming cheng	名称	30414
 ming ci	名词	22539
@@ -9530,6 +9553,7 @@ ming sheng	名声	15037
 ming shi	名师	6095
 ming ti	命题	13279
 ming tian	明天	31987
+ming tian jian	明天见	60000
 ming tou	名头	6324
 ming wei	名为	17769
 ming wen	明文	5721
@@ -9852,10 +9876,10 @@ nan fang	南方	25648
 nan fang	男方	8063
 nan guai	难怪	6154
 nan guo	难过	12409
-nan hai	男孩	20030
+nan hai	男孩	30000
 nan hai zi	男孩子	8541
 nan ji	南极	5065
-nan jing	南京	21025
+nan jing	南京	40000
 nan mian	难免	14705
 nan mian hui	难免会	6296
 nan peng you	男朋友	20517
@@ -9933,7 +9957,7 @@ neng	能	736398
 neng ba	能把	27626
 neng bang zhu	能帮助	6986
 neng bei	能被	7828
-neng bu neng	能不能	75577
+neng bu neng	能不能	60000
 neng cheng wei	能成为	7178
 neng chi	能吃	5903
 neng cong	能从	9781
@@ -10003,6 +10027,7 @@ ni hai neng	你还能	4895
 ni hai shi	你还是	7903
 ni hai yao	你还要	5674
 ni hao	你好	76730
+ni hao ma	你好吗	80000
 ni hui	你会	69903
 ni hui fa xian	你会发现	41856
 ni hui jue de	你会觉得	6537
@@ -10045,9 +10070,11 @@ ni ru guo	你如果	12789
 ni shi	你是	65193
 ni shi bu shi	你是不是	13524
 ni shi fou	你是否	10409
+ni shi shui	你是谁	80000
 ni shuo	你说	58250
 ni shuo de	你说的	16221
 ni shuo ni	你说你	9288
+ni shuo shen me	你说什么	60000
 ni suo	你所	12403
 ni tian	逆天	5445
 ni wei shen me	你为什么	6767
@@ -10083,6 +10110,7 @@ ni you	你又	8490
 ni you mei you	你有没有	6519
 ni zai	你在	54482
 ni zai	你再	8901
+ni zai gan ma	你在干嘛	100000
 ni zen me	你怎么	16969
 ni zhe	你这	16639
 ni zhe ge	你这个	14394
@@ -10230,6 +10258,7 @@ nuo	娜	959
 nuo ji ya	诺基亚	8465
 nuo wei	挪威	5749
 nv	女	3654
+nv hai	女孩	40000
 nve	虐	2664
 nve	疟	1729
 o	哦	165984
@@ -10820,6 +10849,7 @@ qian	倩	512
 qian bao	钱包	10390
 qian bei	前辈	22740
 qian chang	前场	7338
+qian cheng si jin	前程似锦	30000
 qian de	前的	24121
 qian ding	签订	9351
 qian duan	前端	25685
@@ -11003,8 +11033,10 @@ qing dai	请带	5533
 qing dai	清代	5256
 qing dai	青黛	4980
 qing dan	清单	11621
+qing dao	青岛	40000
 qing dao	请到	10952
 qing du	轻度	7209
+qing duo guan zhao	请多关照	30000
 qing gan	情感	63067
 qing ge	情歌	5552
 qing hua	清华	22683
@@ -11857,7 +11889,7 @@ shang ge	上个	8751
 shang ge yue	上个月	7247
 shang gu	上古	5960
 shang guo	上过	8695
-shang hai	上海	57547
+shang hai	上海	100000
 shang hai	伤害	6471
 shang hai de	上海的	10513
 shang hai hua	上海话	5285
@@ -12080,12 +12112,12 @@ shen me qing kuang	什么情况	6773
 shen me ren	什么人	6371
 shen me shi	什么是	54812
 shen me shi	什么事	7438
-shen me shi hou	什么时候	31993
+shen me shi hou	什么时候	100000
 shen me shi qing	什么事情	5081
 shen me wen ti	什么问题	5018
 shen me yang	什么样	8177
 shen me yang de	什么样的	41341
-shen me yi si	什么意思	6183
+shen me yi si	什么意思	100000
 shen mei	审美	34697
 shen mi	神秘	19013
 shen miao	神庙	5595
@@ -12110,7 +12142,7 @@ shen shou	深受	7800
 shen shou	伸手	6314
 shen su	申诉	5451
 shen ti	身体	159955
-shen ti jian kang	身体健康	8544
+shen ti jian kang	身体健康	50000
 shen ti su zhi	身体素质	10874
 shen tou	渗透	6462
 shen wei	身为	19732
@@ -12121,7 +12153,7 @@ shen ying	身影	12789
 shen yuan	深渊	6921
 shen zang	肾脏	5605
 shen zao	深造	5190
-shen zhen	深圳	42016
+shen zhen	深圳	70000
 shen zhi	甚至	487796
 shen zhi	深知	6986
 shen zhi bi	甚至比	7897
@@ -12198,6 +12230,7 @@ sheng qian	省钱	13383
 sheng qian	生前	8509
 sheng ren	胜任	7919
 sheng ri	生日	9034
+sheng ri kuai le	生日快乐	100000
 sheng si	生死	9037
 sheng tai	生态	20065
 sheng tai xi tong	生态系统	5589
@@ -12919,6 +12952,7 @@ shui jing	水晶	6195
 shui jun	水军	10227
 shui lai	谁来	5944
 shui le	睡了	6842
+shui le ma	睡了吗	60000
 shui liu	水流	6472
 shui mian	睡眠	23839
 shui mian	水面	5309
@@ -13161,7 +13195,7 @@ su yang	素养	5156
 su yang	苏扬	4898
 su zao	塑造	32612
 su zhi	素质	23402
-su zhou	苏州	10830
+su zhou	苏州	40000
 su zhu	宿主	4933
 suan	算	69664
 suan	酸	10799
@@ -13175,7 +13209,7 @@ suan chu	算出	5988
 suan de	算的	5319
 suan de shang	算得上	5643
 suan fa	算法	95522
-suan le	算了	20278
+suan le	算了	80000
 suan li	算力	4958
 suan nai	酸奶	10469
 suan shang	算上	10977
@@ -13681,6 +13715,7 @@ tian	田	7086
 tian	甜	6944
 tian	添	6596
 tian	恬	547
+tian an men	天安门	80000
 tian bu	填补	5231
 tian cai	天才	31921
 tian chao	天朝	6016
@@ -13690,7 +13725,7 @@ tian fu	天赋	44202
 tian hou	天后	8789
 tian hua ban	天花板	15672
 tian jia	添加	53044
-tian jin	天津	14180
+tian jin	天津	35000
 tian kong	天空	17367
 tian mao	天猫	14394
 tian nei	天内	5812
@@ -13703,6 +13738,7 @@ tian shi	天使	13766
 tian tang	天堂	11458
 tian ti	天体	9294
 tian tian	天天	71708
+tian tian kai xin	天天开心	50000
 tian wen	天文	6497
 tian wen xue	天文学	5649
 tian xia	天下	33981
@@ -14149,6 +14185,7 @@ wan	豌	548
 wan	皖	543
 wan	惋	530
 wan	蔓	528
+wan an	晚安	120000
 wan bao	晚报	5438
 wan bi	完毕	10893
 wan bi	万笔	10348
@@ -14202,6 +14239,8 @@ wan ren	万人	25836
 wan ru	宛如	5385
 wan shan	完善	35074
 wan shang	晚上	98266
+wan shang hao	晚上好	60000
+wan shi ru yi	万事如意	40000
 wan shou ji	玩手机	8955
 wan shua	玩耍	6917
 wan wan	万万	9407
@@ -14518,7 +14557,7 @@ wo	涡	6282
 wo	蜗	3678
 wo	挝	728
 wo ai	我爱	7379
-wo ai ni	我爱你	5953
+wo ai ni	我爱你	200000
 wo ba	我把	34637
 wo ba	握把	32056
 wo ba ma	我爸妈	7891
@@ -14587,6 +14626,7 @@ wo hai zai	我还在	7118
 wo hao xiang	我好像	6302
 wo he	我和	37661
 wo hen	我很	12861
+wo hen hao	我很好	60000
 wo hen xi huan	我很喜欢	12240
 wo huai yi	我怀疑	5194
 wo hui	我会	91148
@@ -14700,11 +14740,14 @@ wo tui jian	我推荐	17728
 wo wan	我玩	6468
 wo wen	我问	12441
 wo xi huan	我喜欢	31868
+wo xi huan ni	我喜欢你	120000
 wo xi wang	我希望	20677
 wo xian	我先	13452
 wo xian	我县	12779
 wo xian zai	我现在	56985
 wo xiang	我想	126099
+wo xiang ni	我想你	150000
+wo xiang ni le	我想你了	60000
 wo xiang shuo	我想说	21116
 wo xiang xin	我相信	45690
 wo xiang yao	我想要	6236
@@ -14746,6 +14789,8 @@ wo you yi ge	我有一个	5508
 wo yuan yi	我愿意	6534
 wo zai	我在	148010
 wo zai	我再	15524
+wo zai chi fan	我在吃饭	50000
+wo zai mang	我在忙	50000
 wo zai zhe li	我在这里	9163
 wo zen me	我怎么	7473
 wo zhe	我这	16818
@@ -14827,7 +14872,7 @@ wu gong	武功	11612
 wu guan	无关	37269
 wu guan	五官	8063
 wu guo	无果	5319
-wu han	武汉	22256
+wu han	武汉	45000
 wu hua ba men	五花八门	6462
 wu hui	误会	7875
 wu jia	物价	8107
@@ -14941,7 +14986,7 @@ xi	徙	543
 xi	蟋	535
 xi	栖	525
 xi ai	喜爱	24570
-xi an	西安	22126
+xi an	西安	45000
 xi an shi	西安市	20410
 xi bai	洗白	8892
 xi ban ya	西班牙	23305
@@ -15090,6 +15135,7 @@ xia tian	夏天	37093
 xia tu	下图	38741
 xia wen	下文	8842
 xia wu	下午	43605
+xia wu hao	下午好	40000
 xia xian	下线	10290
 xia xing	吓醒	5395
 xia yi bu	下一步	15552
@@ -15263,6 +15309,7 @@ xiang bi yu	相比于	22778
 xiang bi zhi xia	相比之下	18322
 xiang biao da de	想表达的	5429
 xiang bu dao	想不到	8349
+xiang bu xiang	想不想	40000
 xiang cai	香菜	6132
 xiang cha	相差	11756
 xiang cheng wei	想成为	6176
@@ -15582,7 +15629,7 @@ xie xia lai	写下来	5812
 xie xie	谢谢	39956
 xie xie	写写	5564
 xie xie da jia	谢谢大家	11678
-xie xie ni	谢谢你	6519
+xie xie ni	谢谢你	150000
 xie xin	写信	5467
 xie xing	谐星	6183
 xie xu	些许	10962
@@ -15633,6 +15680,7 @@ xin jian	新建	7696
 xin jiang	新疆	13480
 xin jing	心境	6996
 xin ku	辛苦	23481
+xin ku le	辛苦了	80000
 xin kuan	新款	7709
 xin lang	新郎	6421
 xin le	信了	5253
@@ -15648,6 +15696,7 @@ xin mei ti	新媒体	8387
 xin mu zhong	心目中	11794
 xin neng yuan	新能源	8914
 xin nian	新年	15323
+xin nian kuai le	新年快乐	100000
 xin pian	芯片	27142
 xin pin	新品	7454
 xin qi	新奇	5181
@@ -15676,6 +15725,7 @@ xin xi wang liu he	新希望六和	12079
 xin xi wang ru ye	新希望乳业	12079
 xin xian	新鲜	21248
 xin xiang	心想	12001
+xin xiang shi cheng	心想事成	40000
 xin xie	新鞋	5658
 xin xin	信心	18900
 xin xin ku ku	辛辛苦苦	7875
@@ -15710,9 +15760,10 @@ xing	腥	771
 xing	省	600
 xing	猩	558
 xing	邢	546
+xing ba	行吧	40000
 xing ba ke	星巴克	13552
 xing bie	性别	15264
-xing bu xing	行不行	5806
+xing bu xing	行不行	50000
 xing ce	行测	6129
 xing cheng	行程	150883
 xing cheng	形成	11059
@@ -15963,6 +16014,7 @@ xue xue	学学	6968
 xue ya	血压	5743
 xue ye	学业	24432
 xue ye	血液	9504
+xue ye you cheng	学业有成	30000
 xue yi	学医	6073
 xue ying yu	学英语	9721
 xue yuan	学院	61522
@@ -16193,7 +16245,7 @@ yao bu	要不	22884
 yao bu	腰部	9759
 yao bu ran	要不然	14723
 yao bu shi	要不是	12491
-yao bu yao	要不要	27955
+yao bu yao	要不要	70000
 yao cong	要从	11580
 yao da	要大	5162
 yao da dao	要达到	5975
@@ -16732,7 +16784,9 @@ yi liu	一流	16871
 yi lou	一楼	7652
 yi lou	遗漏	4936
 yi lu	一路	35915
+yi lu ping an	一路平安	50000
 yi lu shang	一路上	6914
+yi lu shun feng	一路顺风	80000
 yi lun	一轮	13549
 yi mei	一枚	14711
 yi mei jin	亿美金	5357
@@ -17118,6 +17172,7 @@ ying er	婴儿	15166
 ying fu	应付	11998
 ying gai	应该	278239
 ying gai bu hui	应该不会	7847
+ying gai de	应该的	40000
 ying gai hai shi	应该还是	5099
 ying gai hui	应该会	15267
 ying gai jiu shi	应该就是	10475
@@ -17373,6 +17428,7 @@ you ke neng	有可能	65466
 you ke neng hui	有可能会	6110
 you ke yi	又可以	9125
 you kong	有空	13650
+you kong ma	有空吗	50000
 you ku	优酷	9646
 you lai le	又来了	6308
 you le	有了	148811
@@ -17385,7 +17441,7 @@ you liang ge	有两个	44409
 you liang zhong	有两种	21459
 you lun	邮轮	6195
 you mei	有没	5021
-you mei you	有没有	100744
+you mei you	有没有	90000
 you mei you	又没有	10672
 you ming de	有名的	8133
 you ming que	有明确	4996
@@ -17898,6 +17954,7 @@ zai du	再度	10305
 zai du	在读	9752
 zai duo	再多	20834
 zai fa guo	在法国	5476
+zai gan ma	在干嘛	120000
 zai ge ge	在各个	6054
 zai ge zhong	在各种	7439
 zai gong si	在公司	11153
@@ -17918,7 +17975,7 @@ zai jia	在家	39093
 zai jia	再加	9171
 zai jia li	在家里	18573
 zai jia shang	再加上	66292
-zai jian	再见	8908
+zai jian	再见	150000
 zai jie he	再结合	5476
 zai jin nian	在今年	6870
 zai jin tian	在今天	7432
@@ -17933,6 +17990,7 @@ zai lai kan	再来看	7426
 zai lai kan kan	再来看看	6421
 zai li mian	在里面	22979
 zai lu shang	在路上	9097
+zai ma	在吗	30000
 zai mai	再买	5140
 zai mei ge	在每个	5988
 zai mei guo	在美国	46459
@@ -17946,7 +18004,7 @@ zai na	在哪	20322
 zai na	在那	11985
 zai na er	在哪儿	6384
 zai na ge	在哪个	10776
-zai na li	在哪里	35360
+zai na li	在哪里	100000
 zai na li	在那里	21606
 zai nan	灾难	12654
 zai nei	在内	22071
@@ -18082,6 +18140,7 @@ zao	藻	670
 zao	凿	653
 zao	躁	537
 zao	蚤	509
+zao an	早安	60000
 zao can	早餐	13241
 zao chen	早晨	7640
 zao cheng	造成	133971
@@ -18101,6 +18160,7 @@ zao qi	早起	69045
 zao qi	早期	7718
 zao ri	早日	9172
 zao shang	早上	38390
+zao shang hao	早上好	90000
 zao sheng	噪声	8086
 zao shou	遭受	11649
 zao wan	早晚	7520
@@ -18136,14 +18196,15 @@ zen	怎	2245
 zen	谮	1215
 zen	譖	941
 zen me	怎么	240869
-zen me ban	怎么办	54253
+zen me ban	怎么办	120000
 zen me ban ne	怎么办呢	8415
 zen me chu li	怎么处理	5121
 zen me hui	怎么会	12638
+zen me hui shi	怎么回事	90000
 zen me jiu	怎么就	8400
 zen me kan	怎么看	11141
 zen me ke neng	怎么可能	19333
-zen me le	怎么了	9002
+zen me le	怎么了	120000
 zen me neng	怎么能	16347
 zen me qu	怎么去	7442
 zen me shuo	怎么说	12752
@@ -18338,6 +18399,7 @@ zhao de	找的	9806
 zhao ge	找个	32392
 zhao gong zuo	找工作	41125
 zhao gu	照顾	26210
+zhao gu hao zi ji	照顾好自己	50000
 zhao guo	找过	9184
 zhao huan	召唤	10770
 zhao hui	找回	5985
@@ -18818,6 +18880,7 @@ zheng zheng	整整	14890
 zheng zhi	政治	84265
 zheng zhi jia	政治家	5049
 zheng zhi zheng que	政治正确	7957
+zheng zhou	郑州	35000
 zheng zhuang	症状	51885
 zheng zong	正宗	8233
 zhi	只	184613
@@ -18882,7 +18945,7 @@ zhi dao	知道	196442
 zhi dao	指导	118161
 zhi dao	直到	39614
 zhi dao	执导	6484
-zhi dao le	知道了	20881
+zhi dao le	知道了	120000
 zhi dao ni	知道你	7187
 zhi dao ta	知道他	5407
 zhi dao xia	指导下	6340
@@ -19190,6 +19253,7 @@ zhong mei you	中没有	5486
 zhong nian	中年	7068
 zhong nian ren	中年人	5774
 zhong qi	中期	16366
+zhong qiu kuai le	中秋快乐	50000
 zhong qu	中区	7461
 zhong ren	众人	20671
 zhong shang	重伤	5077
@@ -19207,6 +19271,7 @@ zhong tu	中途	13621
 zhong wen	中文	57525
 zhong wen ban	中文版	7322
 zhong wu	中午	25955
+zhong wu hao	中午好	40000
 zhong xiao qi ye	中小企业	6296
 zhong xin	中心	48321
 zhong xin	重心	17480
@@ -19364,6 +19429,7 @@ zhu yi	注意	138091
 zhu yi	主意	14130
 zhu yi	主义	5259
 zhu yi	逐一	5071
+zhu yi an quan	注意安全	90000
 zhu yi dao	注意到	23261
 zhu yi li	注意力	20143
 zhu yi shi xiang	注意事项	13763
@@ -19612,7 +19678,7 @@ zi ran shi	自然是	21418
 zi ran ye jiu	自然也就	5263
 zi ren wei	自认为	8820
 zi ru	自如	4999
-zi se	紫色	7624
+zi se	紫色	40000
 zi sha	自杀	25952
 zi shen	自身	85650
 zi shen	资深	11639

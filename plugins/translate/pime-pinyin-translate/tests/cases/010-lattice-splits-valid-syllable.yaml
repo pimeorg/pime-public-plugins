@@ -1,4 +1,5 @@
 name: lattice-keeps-initial-split
+settings: { max_candidates: 12 }
 event: { type: text, text: ysh }
 workspace:
   plugin/pime-pinyin-parse/raw: ysh

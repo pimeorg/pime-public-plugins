@@ -1,0 +1,11 @@
+name: abbrev-ranks-word-above-chars
+event: { type: text, text: dd }
+workspace:
+  plugin/pime-pinyin-parse/raw: dd
+  plugin/pime-pinyin-parse/syllables: [d, d]
+# “的的”是两个字频极高的单字拼出来的，但常见的叠词“等等”应当排在它前面。
+# 这条用例守住“少用词、长词优先”的内聚权重，防止调参时退化成单字堆叠。
+expect:
+  handled: true
+  first_candidate: { text: 等等, source: dict }
+  candidates_include: [到底]

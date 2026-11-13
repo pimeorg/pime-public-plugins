@@ -10,6 +10,7 @@
 | `luabundle` | 多 Lua 源合并为单 `plugin.lua` |
 | `fetch_data` | 按 `assets.lock` / `models.lock` 下载并校验 sha256 |
 | `pinyin_dictgen` | rime-wanxiang → `data/pinyin/pinyin.dict`（音节分隔、去声调、按词频裁剪） |
+| `pinyin_merge` | 把 `data/pinyin/extra.txt` 的常用短语并入 `pinyin.dict`（校验音节表与汉字数，补充表权威） |
 
 示例：
 
@@ -17,6 +18,8 @@
 python tools/check_plugins
 python tools/chainc chains/pinyin/default.yaml --check
 python tools/chainc chains/pinyin/default.yaml -o build/pinyin.cbor
+python tools/pinyin_merge --base data/pinyin/pinyin.dict \
+    --extra data/pinyin/extra.txt --out data/pinyin/pinyin.dict
 python tools/fetch_data --check
 ```
 

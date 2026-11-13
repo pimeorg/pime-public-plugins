@@ -35,13 +35,32 @@ python -I tools/pinyin_dictgen \
     --out data/pinyin/pinyin.dict
 ```
 
-然后同步到插件资产：
+## 常用短语补充
+
+裁剪后的 20k 条词表会漏掉一批聊天里高频、但在通用语料里排名靠后的短语
+（`晚安`、`生日快乐`、`天安门`、`女孩`、`绿色` 等）。这些词不写死在代码里，
+而是放在 `data/pinyin/extra.txt`，由 `tools/pinyin_merge` 合并：
+
+```sh
+python -I tools/pinyin_merge \
+    --base data/pinyin/pinyin.dict \
+    --extra data/pinyin/extra.txt \
+    --out data/pinyin/pinyin.dict
+```
+
+补充表与基础词表同格式。规则：
+
+- `(读音, 词)` 唯一；补充表是权威值，可提高、也可下调已有词频（例如避免
+  `女孩` 压过 `你好`）。
+- 每个音节必须存在于 parse 插件的 413 音节表，音节数必须等于汉字数。
+- 输出按 `(首字母, 读音, -词频)` 排序，保证翻译插件按首字母建连续桶。
+
+合并是幂等的，当前产物 20,066 行 / 434 KB。然后同步到插件资产：
 
 ```sh
 cp data/pinyin/pinyin.dict \
    plugins/translate/pime-pinyin-translate/assets/pinyin.dict
 ```
 
-当前产物约 20k 行 / 430 KB。若需要更大词表，增大 `--singles` / `--words`，
-并同时提高插件的 `kDictBytes` / `kMaxEntries`（`src/plugin.cpp`）与 manifest
-的 `memory_mb`。
+若需要更大词表，增大 `--singles` / `--words`，并同时提高插件的
+`kDictBytes` / `kMaxEntries`（`src/plugin.cpp`）与 manifest 的 `memory_mb`。

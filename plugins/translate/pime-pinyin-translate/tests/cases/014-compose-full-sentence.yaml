@@ -1,0 +1,11 @@
+name: compose-full-sentence
+event: { type: text, text: woshizhongguoren }
+workspace:
+  plugin/pime-pinyin-parse/raw: woshizhongguoren
+  plugin/pime-pinyin-parse/syllables: [wo, shi, zhong, guo, ren]
+# 词典里没有“我是中国人”整句；候选由“我是”+“中国人”两个词拼出，
+# 覆盖多词组合路径（source 标记为 compose）。
+expect:
+  handled: true
+  first_candidate: { text: 我是中国人, source: compose }
+  candidates_include: [我是中国人]
