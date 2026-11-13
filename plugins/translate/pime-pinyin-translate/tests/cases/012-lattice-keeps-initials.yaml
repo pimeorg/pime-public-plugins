@@ -1,0 +1,9 @@
+name: lattice-keeps-three-initials
+event: { type: text, text: deg }
+workspace:
+  plugin/pime-pinyin-parse/raw: deg
+  plugin/pime-pinyin-parse/syllables: [de, g]
+# de 是完整音节，但网格仍保留 d+e+g 的简拼解释，“第二个”可见。
+expect:
+  handled: true
+  candidates_include: [第二个]

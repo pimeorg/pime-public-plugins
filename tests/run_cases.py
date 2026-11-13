@@ -12,6 +12,7 @@ Each case (tests/cases/*.yaml) describes one call:
       handled: true
       commands: [ ... ]              # exact list, each an exact map
       workspace: [ { k: ..., v: ... } ]
+      first_candidate: { text: ... }   # or candidates_include: [ ... ]
       state: { ... }
 
 The simulator is built by CMake (`pime_sim` target) from the plugin's own
@@ -101,6 +102,13 @@ def compare(case: dict, output: dict) -> list[str]:
         first = candidates[0] if candidates else None
         if not subset(expect["first_candidate"], first):
             problems.append(f"first_candidate {first} != {expect['first_candidate']}")
+    if "candidates_include" in expect:
+        candidates = workspace.get("candidates") or []
+        texts = [entry.get("text") for entry in candidates
+                 if isinstance(entry, dict)]
+        for wanted in expect["candidates_include"]:
+            if wanted not in texts:
+                problems.append(f"candidates {texts} do not include {wanted}")
 
     if "state" in expect:
         if not subset(expect["state"], output.get("state") or {}):

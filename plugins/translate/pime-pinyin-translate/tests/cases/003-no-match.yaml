@@ -1,7 +1,8 @@
 name: no-match-passes
-event: { type: text, text: zzzz }
+event: { type: text, text: iiii }
 workspace:
-  plugin/pime-pinyin-parse/raw: zzzz
+  plugin/pime-pinyin-parse/raw: iiii
+# 没有音节以 i 开头，整条输入无法被任何词典条目覆盖。
 expect:
   handled: false
   workspace:

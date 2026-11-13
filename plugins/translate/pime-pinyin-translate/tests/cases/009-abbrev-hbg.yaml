@@ -1,0 +1,9 @@
+name: abbreviation-keeps-long-phrase
+event: { type: text, text: hbg }
+workspace:
+  plugin/pime-pinyin-parse/raw: hbg
+  plugin/pime-pinyin-parse/syllables: [h, b, g]
+# 三字母简拼必须让三音节整词“还不够”进入束搜索，而不是被高频单字挤掉。
+expect:
+  handled: true
+  first_candidate: { text: 还不够, source: dict }

@@ -1,0 +1,10 @@
+name: lattice-keeps-initial-split
+event: { type: text, text: ysh }
+workspace:
+  plugin/pime-pinyin-parse/raw: ysh
+  plugin/pime-pinyin-parse/syllables: [y, sh]
+# 贪婪切分会把 sh 当成一个音节；网格同时保留 y+s+h，因此“有时候”可见。
+expect:
+  handled: true
+  first_candidate: { text: 也是 }
+  candidates_include: [有时候]

@@ -1,18 +1,24 @@
 /*
- * pime-pinyin-translate: syllable lattice -> scored candidates.
+ * pime-pinyin-translate: raw-letter lattice -> scored candidates.
  *
- * Input segments come from plugin/pime-pinyin-parse/syllables. A segment is
- * either a complete syllable ("ni"), a partial tail ("zh"), or an abbreviation
- * ("w" for wo/wei/wu). Dictionary keys are space separated syllables, so one
- * entry can match several segments:
+ * The parser still publishes a display segmentation, but translation does not
+ * trust it: every position of the raw letters is a node, and a dictionary
+ * entry may cover a run of letters if each of its syllables is a prefix of
+ * the chunk taken from that run. This handles all three input styles without
+ * having to commit to one segmentation first:
  *
- *   wo shi   -> 我是      (full or abbreviated w/s)
- *   ni hao   -> 你好
+ *   wo shi   -> 我是      (full syllables)
+ *   w s      -> 我是      (initials)
+ *   w sh     -> 我是      (mixed partial syllables)
+ *   hai bu gou -> 还不够  (or h b g)
  *
- * Matching also accepts fuzzy spellings (zh/z, ch/c, sh/s, n/l, an/ang,
- * en/eng, in/ing) when settings.fuzzy is on. Candidates are produced by a
- * bounded beam search over the segment lattice, so combinations of one- and
- * two-syllable words compose into sentences ("w s m" -> 我是吗).
+ * It also keeps valid alternative segmentations alive: "xian" can reach 先
+ * (xian) and 西安 (xi an), "ysh" can reach 也是 (y/s/h or y/sh) and 有时候.
+ *
+ * Matching accepts fuzzy spellings (zh/z, ch/c, sh/s, n/l, an/ang, en/eng,
+ * in/ing, ian/iang, uan/uang, ü/u) when settings.fuzzy is on. Candidates are
+ * produced by a bounded beam search over the lattice, so combinations of one-
+ * and multi-syllable words compose into sentences ("w s m" -> 我是吗).
  *
  * State: none. Output: plugin/pime-pinyin-translate/candidates.
  */
@@ -29,23 +35,25 @@ using namespace pimeplug;
 namespace {
 
 constexpr uint32_t kScratchBytes = 16384;
-constexpr uint32_t kMaxSegments = 16;
-constexpr uint32_t kMaxSegmentBytes = 8;
+constexpr uint32_t kMaxInputBytes = 64;
+constexpr uint32_t kMaxSyllables = 8;
 constexpr uint32_t kMaxEntries = 32768;
 constexpr uint32_t kDictBytes = 1024 * 1024;
 constexpr uint32_t kMaxCandidates = 32;
-constexpr uint32_t kBeam = 8;
-constexpr uint32_t kMaxEdges = 24;
+constexpr uint32_t kBeam = 12;
+constexpr uint32_t kEdgesPerSpan = 8;
 constexpr uint32_t kPathBytes = 96;
 
 /* Scoring is a small unigram model over the dictionary. Frequencies are
  * counts, so each word contributes log2(freq); subtracting a corpus-scale
  * constant per word turns that into a log probability, which makes comparing
- * "one compound word" against "two single characters" meaningful. */
+ * "one compound word" against "two single characters" meaningful. The word
+ * bonus grows with the number of syllables so a three-syllable phrase has to
+ * beat three independent characters, not one. */
 constexpr int32_t kContextLog = 26500;
 constexpr int32_t kAbbrevCost = 300;   /* per omitted letter */
 constexpr int32_t kFuzzyCost = 2000;   /* per fuzzy initial/final */
-constexpr int32_t kWordBonus = 2500;   /* compound-word cohesion */
+constexpr int32_t kWordBonus = 1500;   /* compound-word cohesion per extra syllable */
 constexpr int32_t kScoreBase = 500000;
 
 const char kParseId[] = "pime-pinyin-parse";
@@ -64,7 +72,6 @@ struct Entry {
     uint32_t text_len;
     uint32_t score;
     uint8_t syllables;
-    uint8_t first_syllable_len;
     uint8_t bucket;
 };
 
@@ -72,14 +79,13 @@ Entry g_entries[kMaxEntries];
 uint32_t g_entry_count = 0;
 uint32_t g_bucket_begin[28];
 
-struct Segment {
-    const char* text;
-    uint32_t len;
-};
+char g_input[kMaxInputBytes];
+uint32_t g_input_len = 0;
 
-Segment g_segments[kMaxSegments];
-uint32_t g_segment_count = 0;
-
+/* Edges are bucketed by the number of syllables they cover. Keeping a
+ * separate bucket per span length stops a crowd of high-frequency single
+ * characters from pruning longer phrases (hbg -> hai bu gou) before the beam
+ * ever sees them. */
 struct Edge {
     const char* text;
     uint32_t text_len;
@@ -87,8 +93,8 @@ struct Edge {
     uint8_t next;
 };
 
-Edge g_edges[kMaxSegments][kMaxEdges];
-uint32_t g_edge_count[kMaxSegments];
+Edge g_edges[kMaxInputBytes][kMaxSyllables + 1][kEdgesPerSpan];
+uint32_t g_edge_count[kMaxInputBytes][kMaxSyllables + 1];
 
 struct Path {
     char text[kPathBytes];
@@ -97,8 +103,8 @@ struct Path {
     uint8_t words;
 };
 
-Path g_beam[kMaxSegments + 1][kBeam];
-uint32_t g_beam_count[kMaxSegments + 1];
+Path g_beam[kMaxInputBytes + 1][kBeam];
+uint32_t g_beam_count[kMaxInputBytes + 1];
 
 struct Candidate {
     char text[kPathBytes];
@@ -146,15 +152,10 @@ bool load_dict() {
         if (e.key_len == 0 || e.text_len == 0 || e.text_len + 1 > kPathBytes)
             return;
         uint8_t syllables = 1;
-        uint8_t first_len = 0;
         for (uint32_t i = 0; i < e.key_len; ++i) {
-            if (e.key[i] == ' ') {
-                if (first_len == 0) first_len = static_cast<uint8_t>(i);
-                ++syllables;
-            }
+            if (e.key[i] == ' ') ++syllables;
         }
-        if (first_len == 0) first_len = static_cast<uint8_t>(e.key_len);
-        if (syllables == 0 || syllables > kMaxSegments) return;
+        if (syllables == 0 || syllables > kMaxSyllables) return;
         counts[bucket_of(e.key[0])]++;
     });
     uint32_t total = 0;
@@ -171,15 +172,10 @@ bool load_dict() {
         if (e.key_len == 0 || e.text_len == 0 || e.text_len + 1 > kPathBytes)
             return;
         uint8_t syllables = 1;
-        uint8_t first_len = 0;
         for (uint32_t i = 0; i < e.key_len; ++i) {
-            if (e.key[i] == ' ') {
-                if (first_len == 0) first_len = static_cast<uint8_t>(i);
-                ++syllables;
-            }
+            if (e.key[i] == ' ') ++syllables;
         }
-        if (first_len == 0) first_len = static_cast<uint8_t>(e.key_len);
-        if (syllables == 0 || syllables > kMaxSegments) return;
+        if (syllables == 0 || syllables > kMaxSyllables) return;
         const uint8_t bucket = bucket_of(e.key[0]);
         if (cursor[bucket] >= g_bucket_begin[bucket + 1]) return;
         Entry& slot = g_entries[cursor[bucket]++];
@@ -189,7 +185,6 @@ bool load_dict() {
         slot.text_len = e.text_len;
         slot.score = log2_score(e.freq);
         slot.syllables = syllables;
-        slot.first_syllable_len = first_len;
         slot.bucket = bucket;
     });
     g_entry_count = total;
@@ -252,19 +247,18 @@ uint32_t canonical(const char* text, uint32_t len, char* out) {
     return o;
 }
 
-bool match_syllable(const char* segment, uint32_t segment_len,
-                    const char* syllable, uint32_t syllable_len,
-                    int32_t* cost) {
-    if (segment_len == 0) return false;
-    if (segment_len <= syllable_len &&
-        Frame::equal(segment, segment_len, syllable, segment_len)) {
-        *cost = static_cast<int32_t>(syllable_len - segment_len) * kAbbrevCost;
+bool match_chunk(const char* chunk, uint32_t chunk_len,
+                 const char* syllable, uint32_t syllable_len,
+                 int32_t* cost) {
+    if (chunk_len == 0 || chunk_len > syllable_len) return false;
+    if (Frame::equal(chunk, chunk_len, syllable, chunk_len)) {
+        *cost = static_cast<int32_t>(syllable_len - chunk_len) * kAbbrevCost;
         return true;
     }
     if (!g_fuzzy) return false;
     char left[16];
     char right[16];
-    const uint32_t left_len = canonical(segment, segment_len, left);
+    const uint32_t left_len = canonical(chunk, chunk_len, left);
     const uint32_t right_len = canonical(syllable, syllable_len, right);
     if (left_len == 0 || left_len > right_len) return false;
     if (!Frame::equal(left, left_len, right, left_len)) return false;
@@ -273,63 +267,87 @@ bool match_syllable(const char* segment, uint32_t segment_len,
     return true;
 }
 
-void insert_edge(uint32_t position, const Entry& entry, int32_t score) {
-    uint32_t count = g_edge_count[position];
+void insert_edge(uint32_t position, uint32_t syllables, const Entry& entry,
+                 uint32_t next, int32_t score) {
+    Edge* edges = g_edges[position][syllables];
+    uint32_t& count = g_edge_count[position][syllables];
+    for (uint32_t i = 0; i < count; ++i) {
+        if (edges[i].next == next && edges[i].text == entry.text &&
+            edges[i].text_len == entry.text_len) {
+            if (score <= edges[i].score) return;
+            edges[i].score = score;
+            while (i > 0 && edges[i - 1].score < edges[i].score) {
+                Edge swap = edges[i - 1];
+                edges[i - 1] = edges[i];
+                edges[i] = swap;
+                --i;
+            }
+            return;
+        }
+    }
     uint32_t slot = count;
-    while (slot > 0 && g_edges[position][slot - 1].score < score) --slot;
-    if (count == kMaxEdges && slot >= kMaxEdges) return;
-    const uint32_t last = count < kMaxEdges ? count : kMaxEdges - 1;
-    for (uint32_t i = last; i > slot; --i) g_edges[position][i] = g_edges[position][i - 1];
-    g_edges[position][slot].text = entry.text;
-    g_edges[position][slot].text_len = entry.text_len;
-    g_edges[position][slot].score = score;
-    g_edges[position][slot].next = static_cast<uint8_t>(position + entry.syllables);
-    if (count < kMaxEdges) ++g_edge_count[position];
+    while (slot > 0 && edges[slot - 1].score < score) --slot;
+    if (count == kEdgesPerSpan && slot >= kEdgesPerSpan) return;
+    const uint32_t last = count < kEdgesPerSpan ? count : kEdgesPerSpan - 1;
+    for (uint32_t i = last; i > slot; --i) edges[i] = edges[i - 1];
+    edges[slot].text = entry.text;
+    edges[slot].text_len = entry.text_len;
+    edges[slot].score = score;
+    edges[slot].next = static_cast<uint8_t>(next);
+    if (count < kEdgesPerSpan) ++count;
+}
+
+void add_edge(uint32_t position, const Entry& entry, uint32_t next,
+              int32_t cost) {
+    int32_t score = static_cast<int32_t>(entry.score) - kContextLog - cost;
+    /* Cohesion grows with the number of raw letters the word covers. A word
+     * that consumes "zh" as one partial syllable is preferred over two words
+     * that split it into z+h, while a three-syllable phrase still beats three
+     * single characters. */
+    score += kWordBonus * static_cast<int32_t>(next - position - 1);
+    insert_edge(position, entry.syllables, entry, next, score);
+}
+
+/* Try every way this entry can cover the raw letters from `start`: each
+ * syllable consumes between one letter (initial) and its full spelling. */
+void align(const Entry& entry, uint32_t start, uint32_t syllable,
+           uint32_t key_pos, uint32_t pos, int32_t cost) {
+    if (syllable == entry.syllables) {
+        add_edge(start, entry, pos, cost);
+        return;
+    }
+    const uint32_t remaining = g_input_len - pos;
+    if (remaining < entry.syllables - syllable) return;
+
+    uint32_t key_end = key_pos;
+    while (key_end < entry.key_len && entry.key[key_end] != ' ') ++key_end;
+    const uint32_t syllable_len = key_end - key_pos;
+    if (syllable_len == 0) return;
+    const uint32_t max_k = syllable_len < remaining ? syllable_len : remaining;
+    const uint32_t next_key =
+        key_end < entry.key_len ? key_end + 1 : entry.key_len;
+    for (uint32_t k = 1; k <= max_k; ++k) {
+        int32_t chunk_cost = 0;
+        if (!match_chunk(g_input + pos, k, entry.key + key_pos, syllable_len,
+                         &chunk_cost))
+            continue;
+        align(entry, start, syllable + 1, next_key, pos + k,
+              cost + chunk_cost);
+    }
 }
 
 void build_edges(uint32_t position) {
-    g_edge_count[position] = 0;
-    const Segment& segment = g_segments[position];
-    if (segment.len == 0) return;
-
-    const uint8_t bucket = bucket_of(segment.text[0]);
+    for (uint32_t m = 0; m <= kMaxSyllables; ++m)
+        g_edge_count[position][m] = 0;
+    const uint8_t bucket = bucket_of(g_input[position]);
     const uint32_t begin = g_bucket_begin[bucket];
     const uint32_t end = g_bucket_begin[bucket + 1];
-    const uint32_t remaining = g_segment_count - position;
+    const uint32_t remaining = g_input_len - position;
 
     for (uint32_t index = begin; index < end; ++index) {
         const Entry& entry = g_entries[index];
         if (entry.syllables > remaining) continue;
-
-        /* The first syllable is checked here so the common mismatch exits
-         * before walking the rest of the key. */
-        int32_t total_cost = 0;
-        int32_t cost = 0;
-        if (!match_syllable(segment.text, segment.len, entry.key,
-                            entry.first_syllable_len, &cost))
-            continue;
-        total_cost += cost;
-
-        uint32_t cursor = entry.first_syllable_len + 1;
-        bool matched = true;
-        for (uint32_t j = 1; j < entry.syllables && matched; ++j) {
-            const uint32_t start = cursor;
-            while (cursor < entry.key_len && entry.key[cursor] != ' ') ++cursor;
-            const Segment& next = g_segments[position + j];
-            if (!match_syllable(next.text, next.len, entry.key + start,
-                                cursor - start, &cost)) {
-                matched = false;
-                break;
-            }
-            total_cost += cost;
-            if (cursor < entry.key_len) ++cursor;
-        }
-        if (!matched) continue;
-
-        int32_t score = static_cast<int32_t>(entry.score) - kContextLog -
-                        total_cost;
-        if (entry.syllables >= 2) score += kWordBonus;
-        insert_edge(position, entry, score);
+        align(entry, position, 0, 0, position, 0);
     }
 }
 
@@ -366,62 +384,65 @@ void insert_path(uint32_t position, const Path& path, int32_t score) {
 }
 
 void compose() {
-    for (uint32_t i = 0; i <= kMaxSegments; ++i) g_beam_count[i] = 0;
+    for (uint32_t i = 0; i <= kMaxInputBytes; ++i) g_beam_count[i] = 0;
     g_beam[0][0].len = 0;
     g_beam[0][0].score = 0;
     g_beam[0][0].words = 0;
     g_beam_count[0] = 1;
 
-    for (uint32_t i = 0; i < g_segment_count; ++i) {
+    for (uint32_t i = 0; i < g_input_len; ++i) {
         if (g_beam_count[i] == 0) continue;
         build_edges(i);
         for (uint32_t p = 0; p < g_beam_count[i]; ++p) {
             const Path& base = g_beam[i][p];
-            for (uint32_t e = 0; e < g_edge_count[i]; ++e) {
-                const Edge& edge = g_edges[i][e];
-                if (base.len + edge.text_len >= kPathBytes) continue;
-                Path next;
-                for (uint32_t k = 0; k < base.len; ++k) next.text[k] = base.text[k];
-                for (uint32_t k = 0; k < edge.text_len; ++k)
-                    next.text[base.len + k] = edge.text[k];
-                next.len = base.len + edge.text_len;
-                next.words = static_cast<uint8_t>(base.words + 1);
-                insert_path(edge.next, next, base.score + edge.score);
+            for (uint32_t m = 1; m <= kMaxSyllables; ++m) {
+                if (i + m > g_input_len) break;
+                for (uint32_t e = 0; e < g_edge_count[i][m]; ++e) {
+                    const Edge& edge = g_edges[i][m][e];
+                    if (base.len + edge.text_len >= kPathBytes) continue;
+                    Path next;
+                    for (uint32_t k = 0; k < base.len; ++k)
+                        next.text[k] = base.text[k];
+                    for (uint32_t k = 0; k < edge.text_len; ++k)
+                        next.text[base.len + k] = edge.text[k];
+                    next.len = base.len + edge.text_len;
+                    next.words = static_cast<uint8_t>(base.words + 1);
+                    insert_path(edge.next, next, base.score + edge.score);
+                }
             }
         }
     }
 }
 
-uint32_t read_segments(const Frame& frame) {
-    g_segment_count = 0;
-    WorkspaceKey key = full_key(kParseId, "syllables");
-    ArrayView array = ArrayView::of(frame.workspace_value(key.text));
-    if (array.valid) {
-        for (uint64_t i = 0; i < array.count && g_segment_count < kMaxSegments;
-             ++i) {
-            const char* text = nullptr;
-            uint32_t len = 0;
-            if (!span_text(array.at(i), &text, &len) || len == 0) continue;
-            if (len > kMaxSegmentBytes) len = kMaxSegmentBytes;
-            g_segments[g_segment_count].text = text;
-            g_segments[g_segment_count].len = len;
-            ++g_segment_count;
-        }
-    }
-    if (g_segment_count > 0) return g_segment_count;
+void append_letter(char c) {
+    if (g_input_len >= kMaxInputBytes) return;
+    if (c >= 'A' && c <= 'Z') c = static_cast<char>(c - 'A' + 'a');
+    if (c >= 'a' && c <= 'z') g_input[g_input_len++] = c;
+}
 
-    /* No parser output: treat the raw letters as one (possibly partial)
-     * syllable so prefix queries still work in isolation. */
+uint32_t read_input(const Frame& frame) {
+    g_input_len = 0;
+
     WorkspaceKey raw = full_key(kParseId, "raw");
     const char* text = nullptr;
     uint32_t len = 0;
-    if (!span_text(frame.workspace_value(raw.text), &text, &len) || len == 0)
-        return 0;
-    if (len > kMaxSegmentBytes) len = kMaxSegmentBytes;
-    g_segments[0].text = text;
-    g_segments[0].len = len;
-    g_segment_count = 1;
-    return 1;
+    if (span_text(frame.workspace_value(raw.text), &text, &len)) {
+        for (uint32_t i = 0; i < len; ++i) append_letter(text[i]);
+        if (g_input_len > 0) return g_input_len;
+    }
+
+    /* No raw buffer (standalone use): reconstruct it from the syllables. */
+    WorkspaceKey key = full_key(kParseId, "syllables");
+    ArrayView array = ArrayView::of(frame.workspace_value(key.text));
+    if (array.valid) {
+        for (uint64_t i = 0; i < array.count; ++i) {
+            const char* part = nullptr;
+            uint32_t part_len = 0;
+            if (!span_text(array.at(i), &part, &part_len)) continue;
+            for (uint32_t k = 0; k < part_len; ++k) append_letter(part[k]);
+        }
+    }
+    return g_input_len;
 }
 
 }  // namespace
@@ -432,6 +453,7 @@ PIME_EXPORT pime_status pime_init(const uint8_t* config, uint32_t len) {
     g_dict_loaded = false;
     g_dict_len = 0;
     g_entry_count = 0;
+    g_input_len = 0;
     g_fuzzy = true;
     g_max_candidates = 8;
     if (!config || !len) return PIME_OK;
@@ -458,13 +480,13 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
 
     Candidate candidates[kMaxCandidates];
     uint32_t count = 0;
-    if (read_segments(frame) > 0) {
+    if (read_input(frame) > 0) {
         compose();
         const uint32_t limit =
             g_max_candidates < kMaxCandidates ? g_max_candidates : kMaxCandidates;
-        for (uint32_t i = 0; i < g_beam_count[g_segment_count] && count < limit;
+        for (uint32_t i = 0; i < g_beam_count[g_input_len] && count < limit;
              ++i) {
-            const Path& path = g_beam[g_segment_count][i];
+            const Path& path = g_beam[g_input_len][i];
             int64_t score = static_cast<int64_t>(path.score) + kScoreBase;
             if (score < 0) score = 0;
             Candidate& candidate = candidates[count++];
@@ -522,6 +544,7 @@ PIME_EXPORT void pime_shutdown(void) {
     g_dict_loaded = false;
     g_dict_len = 0;
     g_entry_count = 0;
+    g_input_len = 0;
 }
 
 PIME_EXPORT uint32_t pime_scratch_ptr(void) {

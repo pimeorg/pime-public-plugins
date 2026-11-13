@@ -1,0 +1,10 @@
+name: lattice-keeps-alternative-boundary
+event: { type: text, text: xian }
+workspace:
+  plugin/pime-pinyin-parse/raw: xian
+  plugin/pime-pinyin-parse/syllables: [xian]
+# xian 既是完整音节（先），也能切成 xi+an（西安）；两种解释都保留。
+expect:
+  handled: true
+  first_candidate: { text: 想 }
+  candidates_include: [西安]
