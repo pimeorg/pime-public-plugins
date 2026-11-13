@@ -1,6 +1,6 @@
 # pime-public-plugin 进度
 
-更新：2026-11-13
+更新：2026-11-13（拼音能力增强）
 
 ## 环境与需求
 
@@ -92,6 +92,42 @@ format 需要它定位候选），但 **`state` 写空且不发 `set_composition
 三个 parse 插件（全拼/五笔/仓颉）与双拼 preprocess 同步修改，并新增
 `005-candidate-commit`、`006-space-commit`、`007-backspace-to-empty` 用例。
 
+### 拼音能力增强（2026-11-13）
+
+用户在 Android 实测后提出：插件能力不够强，参考 WeaveText，让 `ws` 能拼出
+“我是”。此前 parse 把 `ws` 切成 `["w","s"]`，translate 直接把音节拼成键
+`"ws"` 做前缀查表，词典里没有这个键，于是没有任何候选。WeaveText 的做法是
+在音节图上做束搜索，并支持简拼边；本轮按这个思路在插件链内实现，不引入 Rust
+或新的运行时。
+
+设计：
+
+1. **词表格式改为音节分隔**：`wo shi\t我是\t225509`。翻译插件不需要再分词，
+   一个条目可以覆盖多个输入段。`tools/pinyin_dictgen` 从 rime-wanxiang 的
+   `zi.dict.yaml` / `jichu.dict.yaml` 生成去声调、ü→v、通过 413 音节表校验的
+   紧凑词表（4k 单字 + 16k 词语，约 430 KB），来源与 CC BY 4.0 署名见
+   `data/pinyin/SOURCES.md`。
+2. **parse 半音节**：完整音节最长匹配后，若剩余整串是某音节前缀（`zh`、`h`），
+   保持为一段；否则按单字母切（`ws` → `w`,`s`）。translate 把前缀段按缺字母数
+   罚分匹配任意音节。
+3. **translate 音节网格 + 束搜索**：段网格上，词典条目覆盖连续音节；匹配支持
+   完整、前缀、单字母简拼、模糊音（`zh/z`、`ch/c`、`sh/s`、`n/l`、`an/ang`、
+   `en/eng`、`in/ing`、`ian/iang`、`uan/uang`、`ü/u`）。束宽 8，每个位置最多
+   24 条边；分数 = `log2(词频) - 语料归一化常数 + 多音节内聚奖励 - 简拼/模糊
+   罚分`。归一化让“一个整词”与“两个单字”可比，避免单字词频之和总是压过词典词。
+4. **加载索引**：词表加载时按首字母建连续桶并缓存 `Entry`（键、词、词频分、
+   音节数、首音节长度），按键路径只扫相关桶；`g_dict` 扩到 1 MB。
+5. **freestanding wasm 内存助手**：新代码触发 clang 生成 `memset/memcpy` 调用，
+   `-nostdlib` 下变成 `env` 未定义导入，WAMR 加载时警告、首次按键返回
+   `CORRUPT`。新增 `shared/cpp/include/pimeplug/memory.hpp`，在 `__wasm32__` 下
+   提供弱定义；native 构建仍链接 libc，不受影响。
+
+实测（MuMu 12 / Android 15 / x86_64）：
+
+- `ws` → 候选 `我是 我说 晚上 为啥 无数`，首位“我是”；点击后搜索框提交“我是”。
+- `woshi` → 首位“我是”；`nh` → 首位“你好”。
+- 首次加载 20k 词表无 WAMR 警告；按键链路正常。
+
 ### 链与测试
 
 | 内容 | 位置 |
@@ -163,4 +199,8 @@ format 需要它定位候选），但 **`state` 写空且不发 `set_composition
 - 仓颉只有 parse，没有 translate（首批未列）。
 - 在线语音（`net.wss`）插件未列入首批，`chains/speech/online.yaml` 以离线识别兜底。
 - native 插件与 iOS/HarmonyOS 平台专用打包未展开。
-- 许可证待定。
+- 拼音只有词频 + 内聚奖励，没有真正的 n-gram 上下文 LM；长句歧义排序不如
+  WeaveText 的 gram 模型。
+- 拼音词表为 20k 条紧凑规模；五笔/仓颉仍是 starter 规模。
+- 仓库许可证待定；拼音词表数据来源的 CC BY 4.0 署名见
+  `data/pinyin/SOURCES.md`。

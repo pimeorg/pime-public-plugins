@@ -9,6 +9,7 @@
 | `chainc` | chain YAML → core CBOR；`--lock` 写 `<chain>.lock.yaml`，`--check` 校验 |
 | `luabundle` | 多 Lua 源合并为单 `plugin.lua` |
 | `fetch_data` | 按 `assets.lock` / `models.lock` 下载并校验 sha256 |
+| `pinyin_dictgen` | rime-wanxiang → `data/pinyin/pinyin.dict`（音节分隔、去声调、按词频裁剪） |
 
 示例：
 

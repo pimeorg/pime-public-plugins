@@ -1,0 +1,9 @@
+name: abbreviation-splits-per-letter
+event: { type: text, text: ws }
+expect:
+  handled: true
+  workspace:
+    - { k: raw, v: ws }
+    - { k: syllables, v: [w, s] }
+  commands:
+    - { type: set_composition, text: ws, cursor: 2 }

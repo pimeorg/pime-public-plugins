@@ -1,0 +1,10 @@
+name: fuzzy-disabled
+settings: { fuzzy: false }
+event: { type: text, text: zongguo }
+workspace:
+  plugin/pime-pinyin-parse/raw: zongguo
+  plugin/pime-pinyin-parse/syllables: [zong, guo]
+# 关闭模糊音后不再接受 zong→zhong，首候选变为“总过”。
+expect:
+  handled: true
+  first_candidate: { text: 总过, source: compose }

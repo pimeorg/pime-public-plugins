@@ -1,0 +1,11 @@
+name: beam-composes-sentence
+event: { type: text, text: wsm }
+workspace:
+  plugin/pime-pinyin-parse/raw: wsm
+  plugin/pime-pinyin-parse/syllables: [w, s, m]
+# 词典有“为什么”整词；第二候选是走 lattice 合成的“我什么”。
+expect:
+  handled: true
+  workspace:
+    - { k: candidates, v: [{ text: 为什么, source: dict },
+                           { text: 我什么, source: compose }] }

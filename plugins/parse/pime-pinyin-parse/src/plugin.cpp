@@ -71,6 +71,21 @@ bool is_syllable(const char* text, uint32_t len) {
     return false;
 }
 
+bool is_syllable_prefix(const char* text, uint32_t len) {
+    if (len == 0 || len > 6) return false;
+    uint32_t i = 0;
+    while (kSyllables[i]) {
+        while (kSyllables[i] == ' ') ++i;
+        const uint32_t start = i;
+        while (kSyllables[i] && kSyllables[i] != ' ') ++i;
+        const uint32_t token_len = i - start;
+        if (token_len >= len &&
+            Frame::equal(kSyllables + start, len, text, len))
+            return true;
+    }
+    return false;
+}
+
 struct Segment {
     uint32_t start;
     uint32_t end;
@@ -94,7 +109,12 @@ uint32_t segment(const char* buffer, uint32_t len, Segment* out,
                 break;
             }
         }
-        if (best == 0) best = 1;
+        if (best == 0) {
+            /* A trailing incomplete syllable ("zh", "h") stays one segment;
+             * translate treats it as a prefix of any matching syllable. */
+            const uint32_t rest = len - i;
+            best = (rest <= 6 && is_syllable_prefix(buffer + i, rest)) ? rest : 1;
+        }
         out[count].start = i;
         out[count].end = i + best;
         ++count;

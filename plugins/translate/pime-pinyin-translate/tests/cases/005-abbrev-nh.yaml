@@ -1,0 +1,9 @@
+name: abbreviation-prefers-compound
+event: { type: text, text: nh }
+workspace:
+  plugin/pime-pinyin-parse/raw: nh
+  plugin/pime-pinyin-parse/syllables: [n, h]
+# 单字组合“你和”并不比词典词“你好”更可信；词级内聚奖励让“你好”排第一。
+expect:
+  handled: true
+  first_candidate: { text: 你好, source: dict }

@@ -1,0 +1,158 @@
+#!/usr/bin/env python3
+"""Build the compact pinyin dictionary shipped with pime-pinyin-translate.
+
+Source: rime-wanxiang (https://github.com/amzxyz/rime_wanxiang), data files
+`zi.dict.yaml` (single characters) and `jichu.dict.yaml` (words). Both are
+distributed under CC BY 4.0; see data/pinyin/SOURCES.md.
+
+The output format is the plugin's dictionary format with syllable-separated
+keys so the translator can match full pinyin, abbreviated initials and fuzzy
+spellings without re-segmenting the key:
+
+    wo shi<TAB>我是<TAB>225509
+
+Tone marks are stripped (tone is not part of the lookup key), `ü` becomes
+`v`, and entries whose syllables are not in the parser's syllable table are
+dropped. The file is sorted by the first letter of the key so the plugin can
+build one contiguous bucket per starting letter at load time.
+
+    python tools/pinyin_dictgen --zi /path/zi.dict.yaml \
+        --jichu /path/jichu.dict.yaml --out data/pinyin/pinyin.dict
+"""
+
+from __future__ import annotations
+
+import argparse
+import io
+import re
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+
+# Precomposed pinyin vowels -> plain letters. Tone is dropped; ü maps to v to
+# match the syllable table used by pime-pinyin-parse.
+_TONES = {
+    "ā": "a", "á": "a", "ǎ": "a", "à": "a",
+    "ē": "e", "é": "e", "ě": "e", "è": "e",
+    "ī": "i", "í": "i", "ǐ": "i", "ì": "i",
+    "ō": "o", "ó": "o", "ǒ": "o", "ò": "o",
+    "ū": "u", "ú": "u", "ǔ": "u", "ù": "u",
+    "ǖ": "v", "ǘ": "v", "ǚ": "v", "ǜ": "v", "ü": "v",
+    "ń": "n", "ň": "n", "ǹ": "n", "ḿ": "m",
+    "ê": "e",
+}
+_TONE_TABLE = str.maketrans(_TONES)
+_HAN = re.compile(r"^[㐀-鿿豈-﫿]+$")
+
+
+def load_syllables(path: Path) -> set[str]:
+    """Read the syllable table out of the parse plugin source."""
+    text = path.read_text(encoding="utf-8")
+    start = text.index("kSyllables[]")
+    begin = text.index('"', start)
+    end = text.index(";", begin)
+    body = "".join(re.findall(r'"([^"]*)"', text[begin:end]))
+    return set(body.split())
+
+
+def plain(pinyin: str) -> list[str] | None:
+    """Tone-strip one rime pinyin field into a syllable list."""
+    value = pinyin.strip().translate(_TONE_TABLE).lower()
+    value = value.replace("u:", "v").replace("'", " ")
+    syllables = value.split()
+    if not syllables or len(syllables) > 8:
+        return None
+    return syllables
+
+
+def read_entries(path: Path):
+    """Yield (word, syllables, weight) from a rime dict.yaml body."""
+    in_body = False
+    with io.open(path, encoding="utf-8") as handle:
+        for line in handle:
+            line = line.rstrip("\n")
+            if not in_body:
+                if line.strip() == "...":
+                    in_body = True
+                continue
+            if not line or line[0] == "#":
+                continue
+            parts = line.split("\t")
+            if len(parts) != 3:
+                continue
+            word, pinyin, weight = parts
+            if not _HAN.match(word):
+                continue
+            try:
+                freq = int(weight)
+            except ValueError:
+                continue
+            syllables = plain(pinyin)
+            if syllables is None:
+                continue
+            yield word, syllables, freq
+
+
+def collect(path: Path, syllables: set[str], limit_chars: int) -> dict:
+    """Merge tone readings into (word, key) -> highest weight."""
+    out: dict[tuple[str, str], int] = {}
+    for word, parts, freq in read_entries(path):
+        if len(word) > limit_chars:
+            continue
+        if len(parts) != len(word):
+            continue
+        if any(part not in syllables for part in parts):
+            continue
+        key = " ".join(parts)
+        slot = (word, key)
+        if freq > out.get(slot, 0):
+            out[slot] = freq
+    return out
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--zi", required=True, type=Path)
+    parser.add_argument("--jichu", required=True, type=Path)
+    parser.add_argument("--out", required=True, type=Path)
+    parser.add_argument("--singles", type=int, default=4000)
+    parser.add_argument("--words", type=int, default=16000)
+    parser.add_argument("--max-word-chars", type=int, default=6)
+    parser.add_argument("--syllable-source", type=Path,
+                        default=ROOT / "plugins/parse/pime-pinyin-parse/src/plugin.cpp")
+    args = parser.parse_args()
+
+    syllables = load_syllables(args.syllable_source)
+    if not syllables:
+        print("pinyin_dictgen: empty syllable table", file=sys.stderr)
+        return 1
+
+    singles = collect(args.zi, syllables, limit_chars=1)
+    words = collect(args.jichu, syllables, limit_chars=args.max_word_chars)
+
+    picked = sorted(singles.items(), key=lambda item: -item[1])[:args.singles]
+    picked += sorted(words.items(), key=lambda item: -item[1])[:args.words]
+
+    # (key, word) -> weight, keeping the best of the two sources.
+    merged: dict[tuple[str, str], int] = {}
+    for (word, key), freq in picked:
+        slot = (key, word)
+        if freq > merged.get(slot, 0):
+            merged[slot] = freq
+
+    ordered = sorted(merged.items(), key=lambda item: (item[0][0][0], item[0][0], -item[1]))
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    with io.open(args.out, "w", encoding="utf-8", newline="\n") as handle:
+        handle.write("# Compact pinyin dictionary derived from rime-wanxiang.\n")
+        handle.write("# Source: https://github.com/amzxyz/rime_wanxiang (CC BY 4.0).\n")
+        handle.write("# Format: <space separated syllables>\\t<word>\\t<frequency>\n")
+        for (key, word), freq in ordered:
+            handle.write(f"{key}\t{word}\t{freq}\n")
+
+    print(f"pinyin_dictgen: {len(ordered)} entries -> {args.out}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

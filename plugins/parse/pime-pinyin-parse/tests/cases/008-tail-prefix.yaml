@@ -1,0 +1,9 @@
+name: trailing-partial-syllable-stays-whole
+event: { type: text, text: zh }
+expect:
+  handled: true
+  workspace:
+    - { k: raw, v: zh }
+    - { k: syllables, v: [zh] }
+  commands:
+    - { type: set_composition, text: zh, cursor: 2 }

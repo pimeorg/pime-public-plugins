@@ -1,0 +1,9 @@
+name: abbreviation-composes-wo-shi
+event: { type: text, text: ws }
+workspace:
+  plugin/pime-pinyin-parse/raw: ws
+  plugin/pime-pinyin-parse/syllables: [w, s]
+# 简拼：每个字母匹配任意以它开头的音节，词典键 "wo shi" 命中“我是”。
+expect:
+  handled: true
+  first_candidate: { text: 我是, source: dict }

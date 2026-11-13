@@ -1,83 +1,43 @@
 # TASK
 
-## 本次：落地骨架、工具与首批插件
+> 开工前检查：上一轮仍有 **1 项未勾** —— “CI 接入 NDK wasm32 工具链与真实包
+> 构建”。本轮未处理，先提醒；如需在 CI 中复现本轮产物，需要先补这项。
 
-> 上一轮 `工程结构设计` 已完成；`后续：骨架与工具` 的 8 项此前均未勾选，
-> 本轮直接接管并展开为下列清单（完成一项勾一项）。
+## 本次：增强拼音插件能力（简拼 / 整句 / 真实词表）
 
-### A 骨架
+环境：Windows 11 + MinGW-w64（native 用例）、Android NDK 28.2 clang/wasm-ld
+（wasm32）、MuMu 12 Android 15 x86_64（实测）。
 
-- [x] 顶层 `CMakeLists.txt`、`CMakePresets.json`
-- [x] `cmake/PimePluginSdk.cmake`：定位 core SDK、读取 ABI / core 版本
-- [x] `cmake/PimePlugins.cmake`：发现 `plugins/<role>/<id>`、统一构建/打包
-- [x] `cmake/PimePluginWasm.cmake` + `cmake/toolchains/wasm32-wamr.cmake`
-- [x] `.editorconfig`
+需求：用户提出“插件能力不够强，参考 WeaveText，把当前插件能力丰富下，比如
+`ws` 能够拼出我是”。
 
-### B 工具
+- [x] 词表生成器 `tools/pinyin_dictgen`：rime-wanxiang → 紧凑词表
+      （去声调、ü→v、音节表校验、词频裁剪、按首字母排序）
+- [x] `data/pinyin/pinyin.dict` 升级为 20k 条（4k 单字 + 16k 词语）
+- [x] `data/pinyin/SOURCES.md`：来源、提交、CC BY 4.0 署名、生成命令
+- [x] 同步词表到 `plugins/translate/pime-pinyin-translate/assets/pinyin.dict`
+- [x] parse：尾部半音节作为一段（`zh`/`h`），简拼按字母切段（`ws` → `w`,`s`）
+- [x] translate：音节级匹配（完整 / 前缀 / 简拼 / 模糊音）
+- [x] translate：首字母桶索引 + `Entry` 表，避免按键热路径线性扫全表
+- [x] translate：音节网格有界束搜索，支持整句合成
+- [x] translate：统一打分（log2 词频、语料归一化常数、多音节词内聚奖励）
+- [x] freestanding 内存助手 `shared/cpp/include/pimeplug/memory.hpp`
+- [x] 用例：`ws` → 我是、`nh` → 你好、`wsm` → 为什么/我什么、`zongguo` →
+      中国、关闭模糊音、半音节前缀、简拼切分
+- [x] native 用例全绿（`ctest --test-dir build/native`）
+- [x] `check_plugins` 0 error / 2 warning；全部链 `chainc --check` 通过；
+      `tests/conformance` ok
+- [x] wasm 包重建（translate/parse），确认无 `env` 的 memset/memcpy 导入
+- [x] Android 资产同步、APK 重建、MuMu 实测：`ws` 候选首位“我是”并提交成功；
+      `woshi` → 我是；`nh` → 你好
+- [x] 更新 README / CHANGELOG / PROGRESS / data 说明
 
-- [x] `tools/cbor.py`：确定性 CBOR 编解码（无第三方依赖）
-- [x] `tools/check_plugins`：目录/清单/包布局/源码禁用项/链引用校验 + 索引生成
-- [x] `tools/chainc`：chain YAML -> core CBOR；`--lock` / `--check`
-- [x] `tools/luabundle`：多 Lua 源合并为单 `plugin.lua`
-- [x] `tools/fetch_data`：按 lock 拉取资产/模型并校验 sha256
+## 遗留 / 已知限制
 
-### C 共享代码与数据
-
-- [x] `shared/cpp/include/pimeplug/`：`cbor.hpp` `utf8.hpp` `commands.hpp`
-      `workspace.hpp` `dict.hpp` `asset.hpp`（header-only，无 STL/异常）
-- [x] `shared/lua/`：`cbor.lua` `utf8.lua` `commands.lua`
-- [x] `data/`：拼音/五笔/仓颉词典规范源与 locks 说明
-
-### D 插件（18 个，role 目录 + 独立包）
-
-- [x] `preprocess/pime-keymap-default`（WASM）
-- [x] `preprocess/pime-shuangpin-standard`（WASM）
-- [x] `preprocess/pime-punctuation-zh`（Lua）
-- [x] `parse/pime-pinyin-parse`（WASM）
-- [x] `parse/pime-wubi-parse`（WASM）
-- [x] `parse/pime-cangjie-parse`（WASM）
-- [x] `translate/pime-pinyin-translate`（WASM）
-- [x] `translate/pime-wubi-translate`（WASM）
-- [x] `rank/pime-pinyin-rank`（WASM）
-- [x] `rank/pime-rank-default`（WASM）
-- [x] `format/pime-candidates-format`（WASM）
-- [x] `recognize/pime-handwriting-ncnn`（WASM + `ml.infer`）
-- [x] `recognize/pime-speech-ncnn`（WASM + `ml.infer`/`audio.*`）
-- [x] `learn/pime-learn-frequency`（Lua）
-- [x] `predict/pime-predict-context`（WASM）
-- [x] `service/pime-cloud-sync`（Lua）
-- [x] `service/pime-user-dict`（Lua）
-- [x] `service/pime-update`（Lua）
-- [x] 每个插件：manifest / README / CHANGELOG / CMakeLists / 源码 / 至少一个用例
-
-### E 链、测试、信任与文档
-
-- [x] `chains/`：pinyin default+shuangpin、wubi 86、handwriting offline、speech online、punctuation
-- [x] `chains/*.lock.yaml`（`chainc --lock`）
-- [x] `tests/host`：最小宿主（包加载 → 建代 → 事件 → 输出）
-- [x] `tests/conformance` + `tests/chains`：扫描与端到端
-- [x] `trust/roots.pem`、`trust/revoked.txt` 与签名说明
-- [x] `plugins/README.md` 索引
-- [x] 更新 `README.md`、`PROGRESS.md`、`docs/structure.md` 中与实现不一致处
-- [x] 全量校验：`check_plugins`、`chainc --check`、CMake configure、C++ 语法检查
-
-### F 本轮结果与限制
-
-- 全部 40 个单插件用例通过（`tests/run_cases.py`），`check_plugins` 0 error（2 条
-  模型占位警告），6 条链 `chainc --check` 通过。
-- 无 wasi-sdk：未产出 `.wasm`；`tests/host/main.cpp` 仅在能找到 `pime::core`
-  包时编译。
-- 手写/语音权重未入库，`hash` 为 `sha256:unfetched`。
-- 仓颉仅有 parse；在线语音首批未实现，`chains/speech/online.yaml` 以离线识别兜底。
-
-### G 真实 WASM 产物与联调（2026-11-13）
-
-- [x] wasm32 NDK 工具链（clang + wasm-ld，`--allow-undefined`，非 `-shared`）
-- [x] 全部 WASM 插件产出可加载包到 `build/wasm-ndk/package/`
-- [x] 修复 `AssetHandle` 截断 64 位句柄导致资产读 `STALE`
-- [x] 宿主（core + WAMR）加载五包、build/activate、`nihao` → `你好`
-- [x] 清单平台列表补充 `android-x64` / `ios-x64` / `harmony-x64`（x86_64 模拟器）
-- [x] 提交阶段契约：parse 在 candidate/space/enter 保留 workspace 码串、清空 `state`
-- [x] 组合串清空时 parse 补发 `set_composition("")`；keymap 不再吞控制键
-- [x] 新增提交/退格用例（005/006/007），全量 43 个用例通过
-- [ ] CI 接入 NDK wasm32 工具链与真实包构建
+- [ ] CI 接入 NDK wasm32 工具链与真实包构建（上一轮遗留）
+- 词表为 20k 条紧凑规模；更大词表需同时提高 `kDictBytes` / `kMaxEntries` 与
+  manifest `memory_mb`
+- 未实现真正的 n-gram 语言模型；整句排序使用词频 + 内聚奖励，长句歧义仍可能
+  不如带上下文的 LM
+- 首次按键会解析词表（约 430 KB，一次性）；后续按键走索引
+- 版本仍为 1.0.0（项目尚未发布首个发行版）

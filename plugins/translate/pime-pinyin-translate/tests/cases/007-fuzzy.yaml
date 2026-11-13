@@ -1,0 +1,9 @@
+name: fuzzy-final-matches
+event: { type: text, text: zongguo }
+workspace:
+  plugin/pime-pinyin-parse/raw: zongguo
+  plugin/pime-pinyin-parse/syllables: [zong, guo]
+# zong ~ zhong（zh/z 模糊），仍应给出“中国”。
+expect:
+  handled: true
+  first_candidate: { text: 中国, source: dict }

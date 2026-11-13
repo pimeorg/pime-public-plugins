@@ -7,14 +7,16 @@
 
 | 路径 | 内容 |
 |---|---|
-| `pinyin/pinyin.dict` | 全拼 starter 词表（`<pinyin>\t<word>\t<freq>`） |
+| `pinyin/pinyin.dict` | 全拼紧凑词表（`<音节 空格 音节>\t<word>\t<freq>`，20k 行） |
+| `pinyin/SOURCES.md` | 词表来源（rime-wanxiang，CC BY 4.0）、生成器与裁剪规则 |
 | `wubi/wubi.dict` | 五笔 86 starter 词表（`<code>\t<word>\t<freq>`） |
 | `cangjie/` | 仓颉码表（首批未提供，parse 只累积码串） |
 | `locks/` | 大文件来源与 sha256 的说明 |
 | `models/` | 模型分发说明（权重不入库） |
 
-starter 词表故意保持很小（几十行），用于跑通链路与用例；生产词表通过
-`assets.lock` / `models.lock` 分发，见 `locks/README.md`。
+拼音词表已是可用于实际输入的紧凑词表（常用单字 + 词语），不是几十行的占位
+数据；再大的词表仍通过 `assets.lock` / `models.lock` 分发，见
+`locks/README.md`。五笔/仓颉仍保持 starter 规模。
 
 ## 规则
 

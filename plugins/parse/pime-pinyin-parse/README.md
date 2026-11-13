@@ -13,6 +13,10 @@
 
 缓冲只保留 `[a-z']`，最多 64 字节；`'` 作为音节分隔符，不参与匹配。
 
+切分：先做完整音节最长匹配；某个位置无法成音节时，若剩余整串是某音节的前缀
+（`zh`、`h`），保持为一个“半音节”段，供 translate 做前缀匹配；否则按单字母切成
+简拼段（`ws` → `["w","s"]`）。
+
 ## Workspace
 
 写入（短键）：
@@ -20,7 +24,7 @@
 | 键 | 类型 | 说明 |
 |---|---|---|
 | `plugin/pime-pinyin-parse/raw` | text | 原始字母串 |
-| `plugin/pime-pinyin-parse/syllables` | array<text> | 最大匹配切分结果，如 `["ni","hao"]` |
+| `plugin/pime-pinyin-parse/syllables` | array<text> | 最大匹配切分结果，如 `["ni","hao"]`；尾部半音节为 `["zh"]`，简拼为 `["w","s"]` |
 
 读取：
 
