@@ -1,0 +1,15 @@
+api: 1
+id: online
+description: 语音链（首批以离线 pime-speech-ncnn 兜底，在线 net.wss 插件未列入首批）
+core: ">=1.0.0"
+
+plugins:
+  - { id: pime-speech-ncnn, role: recognize }
+  - { id: pime-candidates-format, role: format }
+  - { id: pime-learn-frequency, role: learn }
+
+workspace:
+  - { key: plugin/pime-speech-ncnn/candidates,
+      from: pime-speech-ncnn, to: [pime-candidates-format] }
+  - { key: plugin/pime-candidates-format/committed,
+      from: pime-candidates-format, to: [pime-learn-frequency] }

@@ -1,0 +1,7 @@
+name: suffix-nihao
+event: { type: text, text: n }
+context: { surrounding_before: "你好" }
+expect:
+  handled: false
+  workspace:
+    - { k: candidates, v: [{ text: 吗, score: 120, source: context }] }

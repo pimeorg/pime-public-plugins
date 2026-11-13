@@ -1,0 +1,10 @@
+name: escape-clears
+event: { type: key, keycode: 27, modifiers: 0, action: 0 }
+workspace:
+  plugin/pime-keymap-default/action: escape
+state: { buf: hqmdi }
+expect:
+  handled: true
+  state: { buf: "" }
+  commands:
+    - { type: hide_candidates }

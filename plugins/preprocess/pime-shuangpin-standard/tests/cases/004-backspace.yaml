@@ -1,0 +1,9 @@
+name: backspace-clears-half
+event: { type: key, keycode: 8, modifiers: 0, action: 0 }
+state: { half: n }
+workspace:
+  plugin/pime-keymap-default/action: backspace
+expect:
+  handled: true
+  workspace:
+    - { k: consumed, v: true }

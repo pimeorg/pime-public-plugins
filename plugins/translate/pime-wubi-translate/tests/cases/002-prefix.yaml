@@ -1,0 +1,7 @@
+name: code-prefix
+event: { type: text, text: wq }
+workspace:
+  plugin/pime-wubi-parse/code: wq
+expect:
+  handled: true
+  first_candidate: { text: 你, score: 28000 }

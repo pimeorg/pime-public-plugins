@@ -1,0 +1,6 @@
+name: collect-frame
+event: { type: audio.frame, pcm: !!binary "AQIDBA==" }
+expect:
+  handled: true
+  workspace:
+    - { k: candidates, v: [] }

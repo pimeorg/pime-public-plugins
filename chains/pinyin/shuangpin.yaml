@@ -1,0 +1,33 @@
+api: 1
+id: shuangpin
+description: 双拼链（两键成音节）
+core: ">=1.0.0"
+
+plugins:
+  - { id: pime-keymap-default, role: preprocess }
+  - { id: pime-shuangpin-standard, role: preprocess }
+  - { id: pime-pinyin-parse, role: parse }
+  - { id: pime-pinyin-translate, role: translate }
+  - { id: pime-pinyin-rank, role: rank }
+  - { id: pime-candidates-format, role: format }
+  - { id: pime-learn-frequency, role: learn }
+
+workspace:
+  - { key: plugin/pime-keymap-default/action,
+      from: pime-keymap-default,
+      to: [pime-shuangpin-standard, pime-pinyin-parse] }
+  - { key: plugin/pime-shuangpin-standard/consumed,
+      from: pime-shuangpin-standard, to: [pime-pinyin-parse] }
+  - { key: plugin/pime-shuangpin-standard/syllable,
+      from: pime-shuangpin-standard, to: [pime-pinyin-parse] }
+  - { key: plugin/pime-pinyin-parse/raw,
+      from: pime-pinyin-parse,
+      to: [pime-pinyin-translate, pime-candidates-format] }
+  - { key: plugin/pime-pinyin-parse/syllables,
+      from: pime-pinyin-parse, to: [pime-pinyin-translate] }
+  - { key: plugin/pime-pinyin-translate/candidates,
+      from: pime-pinyin-translate, to: [pime-pinyin-rank] }
+  - { key: plugin/pime-pinyin-rank/candidates,
+      from: pime-pinyin-rank, to: [pime-candidates-format] }
+  - { key: plugin/pime-candidates-format/committed,
+      from: pime-candidates-format, to: [pime-learn-frequency] }

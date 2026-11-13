@@ -1,0 +1,13 @@
+name: shows-page-of-candidates
+event: { type: text, text: ni }
+workspace:
+  plugin/pime-pinyin-parse/raw: ni
+  plugin/pime-pinyin-translate/candidates:
+    - { text: 你, score: 18000 }
+    - { text: 呢, score: 5500 }
+    - { text: 逆, score: 900 }
+context: { locale: zh-CN, page_size: 2 }
+expect:
+  handled: true
+  commands:
+    - { type: show_candidates, items: [{ text: 你 }, { text: 呢 }] }

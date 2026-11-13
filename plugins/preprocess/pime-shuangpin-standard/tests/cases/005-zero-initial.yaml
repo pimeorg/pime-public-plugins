@@ -1,0 +1,7 @@
+name: zero-initial-ang
+event: { type: text, text: h }
+state: { half: a }
+expect:
+  handled: true
+  workspace:
+    - { k: syllable, v: ang }

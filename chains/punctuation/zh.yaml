@@ -1,0 +1,8 @@
+api: 1
+id: zh
+description: 中文标点链
+core: ">=1.0.0"
+
+plugins:
+  - { id: pime-keymap-default, role: preprocess }
+  - { id: pime-punctuation-zh, role: preprocess }

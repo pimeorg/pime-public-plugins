@@ -1,0 +1,33 @@
+description: 语音识别：PCM 经 ml.infer 得到候选（离线）
+id: pime-speech-ncnn
+version: 1.0.0
+abi: { major: 1, minor: 0 }
+min_core: "1.0.0"
+state_schema: 1
+store_schema: 1
+runtime: wasm
+role: recognize
+platforms: [windows-x64, windows-arm64, macos-x64, macos-arm64,
+            linux-x64, linux-arm64, android-arm64, ios-arm64, harmony-arm64]
+entry: pime_process
+capabilities: [ml.infer, audio.capture, audio.opus, asset.read, workspace]
+requires: [ml.infer@1]
+assets: [labels.txt]
+models:
+  - id: speech
+    path: speech.ncnn
+    engine: ncnn
+    format: ncnn
+    hash: "sha256:unfetched"
+    input: [{ name: pcm, dtype: u8, shape: [1, 16000, 1, 1] }]
+    output: [{ name: ids, dtype: u32, shape: [1, 8] }]
+limits:
+  memory_mb: 32
+  instructions: 5000000
+  time_ms: 40
+  state_kb: 32
+  workspace_kb: 64
+  candidates_max: 8
+  scratch_bytes: 16384
+  max_frame_bytes: 65536
+budget: { sync_us: 300, async_ms: 120 }

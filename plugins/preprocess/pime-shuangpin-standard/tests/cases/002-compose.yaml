@@ -1,0 +1,8 @@
+name: two-keys-compose-syllable
+event: { type: text, text: i }
+state: { half: n }
+expect:
+  handled: true
+  workspace:
+    - { k: consumed, v: true }
+    - { k: syllable, v: ni }

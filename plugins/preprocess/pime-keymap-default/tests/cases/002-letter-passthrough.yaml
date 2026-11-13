@@ -1,0 +1,6 @@
+name: letter-passthrough
+event: { type: key, keycode: 78, modifiers: 0, action: 0, text: n }
+context: { locale: zh-CN, page_size: 5 }
+expect:
+  handled: false
+  workspace: []

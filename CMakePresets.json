@@ -1,0 +1,38 @@
+{
+    "version": 6,
+    "cmakeMinimumRequired": { "major": 3, "minor": 25, "patch": 0 },
+    "configurePresets": [
+        {
+            "name": "base",
+            "hidden": true,
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "cacheVariables": {
+                "PIME_CORE_DIR": "${sourceDir}/../pime-core"
+            }
+        },
+        {
+            "name": "native",
+            "inherits": "base",
+            "displayName": "Native: Lua packages + test host",
+            "cacheVariables": {
+                "PIME_BUILD_TESTS": "ON"
+            }
+        },
+        {
+            "name": "wasm",
+            "inherits": "base",
+            "displayName": "WASM (wasi-sdk)",
+            "toolchainFile": "${sourceDir}/cmake/toolchains/wasm32-wamr.cmake",
+            "cacheVariables": {
+                "WASI_SDK_PATH": "$env{WASI_SDK_PATH}"
+            }
+        }
+    ],
+    "buildPresets": [
+        { "name": "native", "configurePreset": "native" },
+        { "name": "wasm", "configurePreset": "wasm" }
+    ],
+    "testPresets": [
+        { "name": "native", "configurePreset": "native", "output": { "outputOnFailure": true } }
+    ]
+}

@@ -1,0 +1,7 @@
+name: append-letters
+event: { type: text, text: hq }
+expect:
+  handled: true
+  state: { buf: hq }
+  workspace:
+    - { k: code, v: hq }

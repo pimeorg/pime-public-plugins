@@ -1,0 +1,27 @@
+description: 学习：按提交记录词频，写入插件私有 KV
+id: pime-learn-frequency
+version: 1.0.0
+abi: { major: 1, minor: 0 }
+min_core: "1.0.0"
+state_schema: 1
+store_schema: 1
+runtime: lua
+role: learn
+platforms: [windows-x64, windows-arm64, macos-x64, macos-arm64,
+            linux-x64, linux-arm64, android-arm64, ios-arm64, harmony-arm64]
+entry: plugin.lua
+capabilities: [store.kv, workspace, timer]
+requires: []
+limits:
+  memory_mb: 8
+  instructions: 200000
+  time_ms: 5
+  state_kb: 8
+  workspace_kb: 16
+  store_mb: 4
+  candidates_max: 8
+  max_frame_bytes: 65536
+budget: { sync_us: 40, async_ms: 20 }
+settings:
+  - { key: enabled, type: bool, default: true }
+  - { key: flush_interval_ms, type: int, default: 30000, min: 1000, max: 600000 }

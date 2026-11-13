@@ -1,0 +1,13 @@
+build/
+dist/
+package/
+__pycache__/
+*.pyc
+*.wasm
+*.dll
+*.so
+*.dylib
+SIGNATURE
+
+# local agent state
+.claude/

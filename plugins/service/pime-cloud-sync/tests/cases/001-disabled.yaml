@@ -1,0 +1,5 @@
+name: disabled-by-default
+event: { type: sync.start }
+expect:
+  handled: false
+  commands: []

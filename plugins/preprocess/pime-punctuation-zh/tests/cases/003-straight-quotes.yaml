@@ -1,0 +1,6 @@
+name: straight-quotes
+event: { type: text, text: "\"" }
+settings: { quotes: straight }
+expect:
+  handled: false
+  commands: []

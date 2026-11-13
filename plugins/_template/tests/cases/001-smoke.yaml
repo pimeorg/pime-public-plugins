@@ -1,0 +1,4 @@
+name: smoke
+event: { type: text, text: a }
+expect:
+  handled: true

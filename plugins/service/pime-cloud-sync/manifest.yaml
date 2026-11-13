@@ -1,0 +1,31 @@
+description: 服务：词频表增量同步（HTTP，可关闭）
+id: pime-cloud-sync
+version: 1.0.0
+abi: { major: 1, minor: 0 }
+min_core: "1.0.0"
+state_schema: 1
+store_schema: 1
+runtime: lua
+role: service
+platforms: [windows-x64, windows-arm64, macos-x64, macos-arm64,
+            linux-x64, linux-arm64, android-arm64, ios-arm64, harmony-arm64]
+entry: plugin.lua
+capabilities: [net.http, store.kv, workspace, config.read, log]
+requires: []
+limits:
+  memory_mb: 16
+  instructions: 400000
+  time_ms: 20
+  state_kb: 8
+  workspace_kb: 32
+  store_mb: 8
+  net_concurrency: 1
+  net_streams: 1
+  net_bytes: 1048576
+  net_bandwidth_kbps: 256
+  max_frame_bytes: 65536
+budget: { sync_us: 100, async_ms: 5000 }
+settings:
+  - { key: enabled, type: bool, default: false }
+  - { key: endpoint, type: string, default: "https://sync.pime.dev/v1/freq" }
+  - { key: timeout_ms, type: int, default: 5000, min: 500, max: 60000 }

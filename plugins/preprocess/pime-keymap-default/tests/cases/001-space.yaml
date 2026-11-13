@@ -1,0 +1,7 @@
+name: space-selects
+event: { type: key, keycode: 32, modifiers: 0, action: 0 }
+context: { locale: zh-CN, page_size: 5 }
+expect:
+  handled: true
+  workspace:
+    - { k: action, v: space }

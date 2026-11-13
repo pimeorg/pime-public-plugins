@@ -1,0 +1,8 @@
+name: prefix-lists-words
+event: { type: text, text: zh }
+workspace:
+  plugin/pime-pinyin-parse/raw: zh
+# 前缀命中多条时按分数降序；第一条应为词频最高的“中国”。
+expect:
+  handled: true
+  first_candidate: { text: 中国, score: 7000, source: dict }

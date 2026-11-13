@@ -1,0 +1,113 @@
+#!/usr/bin/env python3
+"""Fetch large assets and models described by assets.lock / models.lock.
+
+Lock format (per plugin):
+
+    assets:
+      - { path: pinyin.dict, url: "https://...", sha256: "..." }
+    models:
+      - { path: model.ncnn, url: "https://...", sha256: "..." }
+
+    python tools/fetch_data            # verify, download what is missing
+    python tools/fetch_data --check    # verify only; fail when missing/mismatched
+
+Files land next to the lock file (assets/ or models/ inside the plugin).
+Nothing is committed: only the lock files are.
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import sys
+import urllib.request
+from pathlib import Path
+
+try:
+    import yaml
+except ImportError:  # pragma: no cover - environment guard
+    sys.exit("fetch_data: PyYAML is required (pip install pyyaml)")
+
+LOCK_NAMES = {"assets.lock": "assets", "models.lock": "models"}
+
+
+def sha256_of(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def load_lock(path: Path):
+    with path.open("r", encoding="utf-8") as handle:
+        return yaml.safe_load(handle) or {}
+
+
+def targets(root: Path):
+    for lock in sorted(root.glob("**/assets.lock")) + sorted(root.glob("**/models.lock")):
+        if "build" in lock.parts or "dist" in lock.parts:
+            continue
+        data = load_lock(lock)
+        default_key = LOCK_NAMES[lock.name]
+        entries = data.get(default_key) or data.get("files") or []
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            target = lock.parent / default_key / str(entry.get("path", ""))
+            yield lock, entry, target
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Fetch locked assets/models")
+    parser.add_argument("--root", default=str(Path(__file__).resolve().parents[1]))
+    parser.add_argument("--check", action="store_true")
+    args = parser.parse_args()
+
+    root = Path(args.root).resolve()
+    errors = 0
+    fetched = 0
+    for lock, entry, target in targets(root):
+        name = str(entry.get("path", ""))
+        expected = str(entry.get("sha256", "")).lower().replace("sha256:", "")
+        url = entry.get("url")
+        if not name or not expected:
+            print(f"error: {lock}: entry needs path and sha256")
+            errors += 1
+            continue
+        if target.exists():
+            actual = sha256_of(target)
+            if actual != expected:
+                print(f"error: {target} sha256 {actual} != {expected}")
+                errors += 1
+            continue
+        if args.check:
+            print(f"missing: {target}")
+            errors += 1
+            continue
+        if not url:
+            print(f"error: {lock}: {name} missing and no url")
+            errors += 1
+            continue
+        target.parent.mkdir(parents=True, exist_ok=True)
+        print(f"fetching {url} -> {target}")
+        try:
+            urllib.request.urlretrieve(str(url), target)
+        except Exception as exc:  # noqa: BLE001 - report and continue
+            print(f"error: download failed: {exc}")
+            errors += 1
+            continue
+        actual = sha256_of(target)
+        if actual != expected:
+            print(f"error: {target} sha256 {actual} != {expected}")
+            target.unlink(missing_ok=True)
+            errors += 1
+        else:
+            fetched += 1
+
+    print(f"fetched {fetched} file(s), {errors} error(s)")
+    return 0 if errors == 0 else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

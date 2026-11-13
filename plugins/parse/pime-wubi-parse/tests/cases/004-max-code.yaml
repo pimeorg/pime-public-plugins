@@ -1,0 +1,9 @@
+name: max-code-stops
+event: { type: text, text: g }
+state: { buf: wqvb }
+settings: { max_code: 4 }
+expect:
+  handled: false
+  state: { buf: wqvb }
+  workspace:
+    - { k: code, v: wqvb }

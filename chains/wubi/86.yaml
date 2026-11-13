@@ -1,0 +1,26 @@
+api: 1
+id: "86"
+description: 五笔 86 链
+core: ">=1.0.0"
+
+plugins:
+  - { id: pime-keymap-default, role: preprocess }
+  - { id: pime-wubi-parse, role: parse }
+  - { id: pime-wubi-translate, role: translate }
+  - { id: pime-rank-default, role: rank }
+  - { id: pime-candidates-format, role: format }
+  - { id: pime-learn-frequency, role: learn }
+
+workspace:
+  - { key: plugin/pime-keymap-default/action,
+      from: pime-keymap-default, to: [pime-wubi-parse] }
+  - { key: plugin/pime-wubi-parse/code,
+      from: pime-wubi-parse,
+      to: [pime-wubi-translate, pime-candidates-format] }
+  - { key: plugin/pime-wubi-translate/candidates,
+      from: pime-wubi-translate,
+      to: [pime-rank-default, pime-candidates-format] }
+  - { key: plugin/pime-rank-default/candidates,
+      from: pime-rank-default, to: [pime-candidates-format] }
+  - { key: plugin/pime-candidates-format/committed,
+      from: pime-candidates-format, to: [pime-learn-frequency] }

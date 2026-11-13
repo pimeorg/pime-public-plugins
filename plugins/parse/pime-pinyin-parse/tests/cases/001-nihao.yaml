@@ -1,0 +1,10 @@
+name: nihao-splits
+event: { type: text, text: nihao }
+context: { locale: zh-CN, page_size: 5 }
+expect:
+  handled: true
+  workspace:
+    - { k: raw, v: nihao }
+    - { k: syllables, v: [ni, hao] }
+  commands:
+    - { type: set_composition, text: nihao, cursor: 5 }

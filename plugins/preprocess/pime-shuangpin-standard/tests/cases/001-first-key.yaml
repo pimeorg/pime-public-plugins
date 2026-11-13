@@ -1,0 +1,7 @@
+name: first-key-stored
+event: { type: text, text: n }
+expect:
+  handled: true
+  state: { half: n }
+  workspace:
+    - { k: consumed, v: true }

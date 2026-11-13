@@ -1,0 +1,26 @@
+description: 预测：按光标前文本匹配短语表，产出下一词候选
+id: pime-predict-context
+version: 1.0.0
+abi: { major: 1, minor: 0 }
+min_core: "1.0.0"
+state_schema: 1
+store_schema: 1
+runtime: wasm
+role: predict
+platforms: [windows-x64, windows-arm64, macos-x64, macos-arm64,
+            linux-x64, linux-arm64, android-arm64, ios-arm64, harmony-arm64]
+entry: pime_process
+capabilities: [surrounding.read, workspace]
+requires: []
+limits:
+  memory_mb: 8
+  instructions: 500000
+  time_ms: 5
+  state_kb: 8
+  workspace_kb: 32
+  candidates_max: 8
+  scratch_bytes: 8192
+  max_frame_bytes: 65536
+budget: { sync_us: 40, async_ms: 20 }
+settings:
+  - { key: max_candidates, type: int, default: 3, min: 1, max: 8 }

@@ -1,0 +1,11 @@
+name: escape-clears
+event: { type: key, keycode: 27, modifiers: 0, action: 0 }
+workspace:
+  plugin/pime-keymap-default/action: escape
+state: { buf: nihao }
+expect:
+  handled: true
+  workspace:
+    - { k: raw, v: "" }
+  commands:
+    - { type: hide_candidates }

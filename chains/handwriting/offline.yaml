@@ -1,0 +1,17 @@
+api: 1
+id: offline
+description: 离线手写链
+core: ">=1.0.0"
+
+plugins:
+  - { id: pime-handwriting-ncnn, role: recognize }
+  - { id: pime-candidates-format, role: format }
+  - { id: pime-learn-frequency, role: learn }
+  - { id: pime-user-dict, role: service }
+
+workspace:
+  - { key: plugin/pime-handwriting-ncnn/candidates,
+      from: pime-handwriting-ncnn, to: [pime-candidates-format] }
+  - { key: plugin/pime-candidates-format/committed,
+      from: pime-candidates-format,
+      to: [pime-learn-frequency, pime-user-dict] }

@@ -1,0 +1,4 @@
+name: feed-bad
+event: { type: net.result, id: 1 }
+expect:
+  handled: false

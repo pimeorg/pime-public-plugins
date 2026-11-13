@@ -1,0 +1,7 @@
+name: zhi-initial-v
+event: { type: text, text: i }
+state: { half: v }
+expect:
+  handled: true
+  workspace:
+    - { k: syllable, v: zhi }

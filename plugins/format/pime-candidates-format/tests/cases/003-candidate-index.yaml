@@ -1,0 +1,13 @@
+name: candidate-event-selects-index
+event: { type: candidate, index: 1 }
+workspace:
+  plugin/pime-pinyin-parse/raw: nihao
+  plugin/pime-pinyin-rank/candidates:
+    - { text: 你好, score: 19000 }
+    - { text: 你号, score: 1200 }
+expect:
+  handled: true
+  commands:
+    - { type: commit, text: 你号 }
+  workspace:
+    - { k: committed, v: 你号 }

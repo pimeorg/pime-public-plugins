@@ -1,0 +1,6 @@
+name: missing-current-version
+event: { type: update.check }
+expect:
+  handled: false
+  workspace:
+    - { k: status, v: need-version }

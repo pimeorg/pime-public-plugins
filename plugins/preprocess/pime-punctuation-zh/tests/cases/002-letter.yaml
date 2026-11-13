@@ -1,0 +1,5 @@
+name: letter-passthrough
+event: { type: text, text: n }
+expect:
+  handled: false
+  commands: []

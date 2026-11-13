@@ -1,0 +1,7 @@
+name: add-word
+event: { type: user_dict.add, word: 你好 }
+expect:
+  handled: true
+  workspace:
+    - { k: status, v: added }
+    - { k: word, v: 你好 }

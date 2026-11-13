@@ -1,0 +1,6 @@
+name: net-result-merged
+event: { type: net.result, id: 1 }
+expect:
+  handled: true
+  workspace:
+    - { k: status, v: synced }

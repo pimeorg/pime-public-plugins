@@ -1,0 +1,8 @@
+name: exact-code
+event: { type: text, text: t }
+workspace:
+  plugin/pime-wubi-parse/code: trnt
+expect:
+  handled: true
+  workspace:
+    - { k: candidates, v: [{ text: 我, score: 40000, source: dict }] }

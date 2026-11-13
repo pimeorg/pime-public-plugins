@@ -1,0 +1,29 @@
+api: 1
+id: default
+description: 全拼默认链
+core: ">=1.0.0"
+
+plugins:
+  - { id: pime-keymap-default, role: preprocess }
+  - { id: pime-pinyin-parse, role: parse }
+  - { id: pime-pinyin-translate, role: translate, settings: { max_candidates: 8 } }
+  - { id: pime-pinyin-rank, role: rank }
+  - { id: pime-candidates-format, role: format, settings: { page_size: 5 } }
+  - { id: pime-learn-frequency, role: learn }
+  - { id: pime-user-dict, role: service }
+
+workspace:
+  - { key: plugin/pime-keymap-default/action,
+      from: pime-keymap-default, to: [pime-pinyin-parse] }
+  - { key: plugin/pime-pinyin-parse/raw,
+      from: pime-pinyin-parse,
+      to: [pime-pinyin-translate, pime-candidates-format] }
+  - { key: plugin/pime-pinyin-parse/syllables,
+      from: pime-pinyin-parse, to: [pime-pinyin-translate] }
+  - { key: plugin/pime-pinyin-translate/candidates,
+      from: pime-pinyin-translate, to: [pime-pinyin-rank] }
+  - { key: plugin/pime-pinyin-rank/candidates,
+      from: pime-pinyin-rank, to: [pime-candidates-format] }
+  - { key: plugin/pime-candidates-format/committed,
+      from: pime-candidates-format,
+      to: [pime-learn-frequency, pime-user-dict] }

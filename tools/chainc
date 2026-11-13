@@ -1,0 +1,282 @@
+#!/usr/bin/env python3
+"""Compile a chain recipe into the core generation config.
+
+    python tools/chainc chains/pinyin/default.yaml -o build/pinyin.cbor
+    python tools/chainc chains/pinyin/default.yaml --lock
+    python tools/chainc chains/pinyin/default.yaml --check
+
+Only the fields the core understands are encoded:
+    { plugins: [ { id, role, version?, alias?, settings? } ] }
+Workspace contracts stay in the YAML for lint and tests.
+
+--lock writes <chain>.lock.yaml with (id, version, code_hash) per plugin.
+--check verifies the lock against the recipe, the installed manifests and,
+when present, the built packages under dist/packages (or --packages DIR).
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import sys
+from pathlib import Path
+
+try:
+    import yaml
+except ImportError:  # pragma: no cover - environment guard
+    sys.exit("chainc: PyYAML is required (pip install pyyaml)")
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import cbor  # noqa: E402
+
+ROLES = {
+    "preprocess", "parse", "translate", "rank", "format",
+    "recognize", "learn", "predict", "service",
+}
+
+
+def parse_semver(text: str):
+    parts = str(text).split(".")
+    if len(parts) != 3:
+        return None
+    try:
+        return tuple(int(part.split("-")[0].split("+")[0]) for part in parts)
+    except ValueError:
+        return None
+
+
+def satisfies(version: str, constraint: str | None) -> bool:
+    if not constraint or constraint == "*":
+        return True
+    current = parse_semver(version)
+    if not current:
+        return False
+    text = str(constraint).strip()
+    if text.startswith("^"):
+        base = parse_semver(text[1:])
+        return base is not None and current >= base and current[0] == base[0]
+    if text.startswith("~"):
+        base = parse_semver(text[1:])
+        return base is not None and current >= base and current[:2] == base[:2]
+    for operator in (">=", "<=", ">", "<"):
+        if text.startswith(operator):
+            base = parse_semver(text[len(operator):])
+            if base is None:
+                return False
+            return {
+                ">=": current >= base,
+                "<=": current <= base,
+                ">": current > base,
+                "<": current < base,
+            }[operator]
+    base = parse_semver(text)
+    return base is not None and current == base
+
+
+def load_yaml(path: Path):
+    with path.open("r", encoding="utf-8") as handle:
+        return yaml.safe_load(handle)
+
+
+def discover_plugins(root: Path) -> dict[str, dict]:
+    plugins: dict[str, dict] = {}
+    for manifest in sorted((root / "plugins").glob("*/*/manifest.yaml")):
+        data = load_yaml(manifest)
+        if isinstance(data, dict) and data.get("id"):
+            data["_dir"] = manifest.parent
+            plugins[data["id"]] = data
+    return plugins
+
+
+def resolve_entries(chain: dict, plugins: dict[str, dict]) -> list[dict]:
+    entries = []
+    for entry in chain.get("plugins") or []:
+        plugin_id = str(entry.get("id", ""))
+        if plugin_id not in plugins:
+            raise SystemExit(f"chainc: unknown plugin '{plugin_id}'")
+        manifest = plugins[plugin_id]
+        constraint = entry.get("version")
+        version = str(manifest.get("version"))
+        if not satisfies(version, constraint):
+            raise SystemExit(
+                f"chainc: '{plugin_id}' version {version} does not satisfy '{constraint}'")
+        resolved = {
+            "id": plugin_id,
+            "role": str(entry.get("role", manifest.get("role"))),
+            "version": version,
+        }
+        if entry.get("alias"):
+            resolved["alias"] = str(entry["alias"])
+        if entry.get("settings"):
+            resolved["settings"] = dict(entry["settings"])
+        entries.append(resolved)
+    return entries
+
+
+def core_config(entries: list[dict]) -> dict:
+    plugins = []
+    for entry in entries:
+        item = {
+            "id": entry["id"],
+            "role": entry["role"],
+            "version": entry["version"],
+        }
+        if "alias" in entry:
+            item["alias"] = entry["alias"]
+        if "settings" in entry:
+            item["settings"] = entry["settings"]
+        plugins.append(item)
+    return {"plugins": plugins}
+
+
+def package_hash(package_dir: Path) -> str:
+    if not package_dir.exists():
+        return "sha256:unbuilt"
+    files = sorted(
+        path for path in package_dir.rglob("*")
+        if path.is_file() and path.name != "SIGNATURE"
+    )
+    digest = hashlib.sha256()
+    for path in files:
+        relative = str(path.relative_to(package_dir)).replace("\\", "/")
+        data = path.read_bytes()
+        digest.update(relative.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(str(len(data)).encode("ascii"))
+        digest.update(b"\0")
+        digest.update(hashlib.sha256(data).hexdigest().encode("ascii"))
+        digest.update(b"\n")
+    return "sha256:" + digest.hexdigest()
+
+
+def find_package(packages_dir: Path, plugin_id: str, version: str) -> Path:
+    return packages_dir / f"pime-plugin-{plugin_id}-{version}"
+
+
+def lock_document(root: Path, chain: dict, entries: list[dict],
+                  packages_dir: Path) -> dict:
+    locked = []
+    for entry in entries:
+        package = find_package(packages_dir, entry["id"], entry["version"])
+        item = {
+            "id": entry["id"],
+            "version": entry["version"],
+            "code_hash": package_hash(package),
+        }
+        if "alias" in entry:
+            item["alias"] = entry["alias"]
+        locked.append(item)
+    return {
+        "api": 1,
+        "chain": str(chain.get("id")),
+        "core": str(chain.get("core", "")).lstrip(">=") or "1.0.0",
+        "plugins": locked,
+    }
+
+
+def write_lock(path: Path, document: dict) -> None:
+    header = (
+        "# Generated by tools/chainc --lock. Do not edit by hand.\n"
+        "# code_hash is sha256 over sorted `path\\0size\\0sha256` entries of the\n"
+        "# built package (SIGNATURE excluded); 'sha256:unbuilt' means the package\n"
+        "# has not been built yet.\n"
+    )
+    body = yaml.safe_dump(document, sort_keys=False, allow_unicode=True)
+    path.write_text(header + body, encoding="utf-8")
+
+
+def check_lock(root: Path, chain: dict, chain_path: Path, entries: list[dict],
+               packages_dir: Path, allow_missing: bool) -> int:
+    lock_path = chain_path.with_name(chain_path.stem + ".lock.yaml")
+    if not lock_path.exists():
+        print(f"error: missing lock {lock_path}")
+        return 1
+    lock = load_yaml(lock_path)
+    problems = []
+    if str(lock.get("chain")) != str(chain.get("id")):
+        problems.append(f"lock chain '{lock.get('chain')}' != '{chain.get('id')}'")
+    locked = {str(item.get("id")): item for item in lock.get("plugins") or []}
+    for entry in entries:
+        item = locked.get(entry["id"])
+        if not item:
+            problems.append(f"{entry['id']} missing from lock")
+            continue
+        if str(item.get("version")) != entry["version"]:
+            problems.append(
+                f"{entry['id']} lock version {item.get('version')} != {entry['version']}")
+        package = find_package(packages_dir, entry["id"], entry["version"])
+        if package.exists():
+            actual = package_hash(package)
+            if actual != item.get("code_hash"):
+                problems.append(
+                    f"{entry['id']} code_hash mismatch (lock {item.get('code_hash')}, "
+                    f"package {actual})")
+        elif not allow_missing and item.get("code_hash") != "sha256:unbuilt":
+            problems.append(f"{entry['id']} package {package.name} not built")
+    for problem in problems:
+        print(f"error: {problem}")
+    return 0 if not problems else 1
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Compile a pime chain recipe")
+    parser.add_argument("chain")
+    parser.add_argument("-o", "--output", default=None,
+                        help="write the core config CBOR here")
+    parser.add_argument("--lock", action="store_true", help="write <chain>.lock.yaml")
+    parser.add_argument("--check", action="store_true", help="verify the lock")
+    parser.add_argument("--print", action="store_true", help="print the core config")
+    parser.add_argument("--packages", default=None, help="package directory")
+    parser.add_argument("--allow-missing", action="store_true")
+    parser.add_argument("--root", default=str(Path(__file__).resolve().parents[1]))
+    args = parser.parse_args()
+
+    root = Path(args.root).resolve()
+    chain_path = Path(args.chain)
+    if not chain_path.is_absolute():
+        chain_path = (Path.cwd() / chain_path).resolve()
+    chain = load_yaml(chain_path)
+    if not isinstance(chain, dict):
+        sys.exit("chainc: chain is not a mapping")
+    if chain.get("api") != 1:
+        sys.exit("chainc: api must be 1")
+
+    plugins = discover_plugins(root)
+    entries = resolve_entries(chain, plugins)
+    packages_dir = Path(args.packages).resolve() if args.packages else root / "dist" / "packages"
+
+    for entry in entries:
+        if entry["role"] not in ROLES:
+            sys.exit(f"chainc: unknown role '{entry['role']}'")
+        if entry["role"] != plugins[entry["id"]].get("role"):
+            sys.exit(f"chainc: '{entry['id']}' role does not match its manifest")
+        declared = {
+            str(item.get("key")) for item in plugins[entry["id"]].get("settings") or []
+            if isinstance(item, dict)
+        }
+        for key in entry.get("settings", {}):
+            if key not in declared:
+                sys.exit(f"chainc: '{entry['id']}' does not declare setting '{key}'")
+
+    config = core_config(entries)
+    encoded = cbor.dumps(config)
+    if args.print:
+        import json
+        print(json.dumps(config, ensure_ascii=False, indent=2))
+    if args.output:
+        output = Path(args.output)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_bytes(encoded)
+        print(f"wrote {output} ({len(encoded)} bytes)")
+    if args.lock:
+        lock_path = chain_path.with_name(chain_path.stem + ".lock.yaml")
+        write_lock(lock_path, lock_document(root, chain, entries, packages_dir))
+        print(f"wrote {lock_path}")
+    if args.check:
+        return check_lock(root, chain, chain_path, entries, packages_dir,
+                          args.allow_missing)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

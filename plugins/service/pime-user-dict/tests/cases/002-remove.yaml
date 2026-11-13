@@ -1,0 +1,6 @@
+name: remove-word
+event: { type: user_dict.remove, word: 你好 }
+expect:
+  handled: true
+  workspace:
+    - { k: status, v: removed }

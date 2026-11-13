@@ -1,0 +1,30 @@
+description: 服务：检查新版本（HTTP 源，包签名由 core 校验）
+id: pime-update
+version: 1.0.0
+abi: { major: 1, minor: 0 }
+min_core: "1.0.0"
+state_schema: 1
+store_schema: 1
+runtime: lua
+role: service
+platforms: [windows-x64, windows-arm64, macos-x64, macos-arm64,
+            linux-x64, linux-arm64, android-arm64, ios-arm64, harmony-arm64]
+entry: plugin.lua
+capabilities: [net.http, config.read, workspace]
+requires: []
+limits:
+  memory_mb: 8
+  instructions: 200000
+  time_ms: 20
+  state_kb: 8
+  workspace_kb: 16
+  net_concurrency: 1
+  net_streams: 1
+  net_bytes: 262144
+  net_bandwidth_kbps: 256
+  max_frame_bytes: 65536
+budget: { sync_us: 80, async_ms: 5000 }
+settings:
+  - { key: enabled, type: bool, default: true }
+  - { key: feed_url, type: string, default: "https://updates.pime.dev/plugin-feed.txt" }
+  - { key: timeout_ms, type: int, default: 5000, min: 500, max: 60000 }

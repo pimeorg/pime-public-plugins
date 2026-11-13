@@ -1,0 +1,26 @@
+description: 中文标点：半角标点转全角，引号样式可配置
+id: pime-punctuation-zh
+version: 1.0.0
+abi: { major: 1, minor: 0 }
+min_core: "1.0.0"
+state_schema: 1
+store_schema: 1
+runtime: lua
+role: preprocess
+platforms: [windows-x64, windows-arm64, macos-x64, macos-arm64,
+            linux-x64, linux-arm64, android-arm64, ios-arm64, harmony-arm64]
+entry: plugin.lua
+capabilities: [input.read, output.emit, config.read]
+requires: []
+limits:
+  memory_mb: 8
+  instructions: 200000
+  time_ms: 5
+  state_kb: 8
+  workspace_kb: 8
+  candidates_max: 8
+  max_frame_bytes: 65536
+budget: { sync_us: 30, async_ms: 20 }
+settings:
+  - { key: enabled, type: bool, default: true }
+  - { key: quotes, type: enum, values: [chinese, straight], default: chinese }

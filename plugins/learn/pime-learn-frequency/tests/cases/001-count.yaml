@@ -1,0 +1,9 @@
+name: committed-word-counted
+event: { type: text, text: " " }
+workspace:
+  plugin/pime-candidates-format/committed: 你好
+expect:
+  handled: false
+  workspace:
+    - { k: last, v: 你好 }
+    - { k: count, v: 1 }

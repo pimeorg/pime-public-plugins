@@ -1,0 +1,6 @@
+name: ctrl-combo-passthrough
+event: { type: key, keycode: 67, modifiers: 2, action: 0, text: c }
+context: { locale: zh-CN, page_size: 5 }
+expect:
+  handled: false
+  workspace: []

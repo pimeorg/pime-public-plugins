@@ -1,0 +1,4 @@
+name: no-commit-no-action
+event: { type: text, text: n }
+expect:
+  handled: false

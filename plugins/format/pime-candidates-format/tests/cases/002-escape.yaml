@@ -1,0 +1,10 @@
+name: escape-hides
+event: { type: key, keycode: 27, modifiers: 0, action: 0 }
+workspace:
+  plugin/pime-keymap-default/action: escape
+  plugin/pime-pinyin-parse/raw: nihao
+context: { locale: zh-CN, page_size: 5 }
+expect:
+  handled: true
+  commands:
+    - { type: hide_candidates }

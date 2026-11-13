@@ -1,0 +1,11 @@
+name: shuangpin-syllable-consumed
+event: { type: text, text: i }
+workspace:
+  plugin/pime-shuangpin-standard/consumed: true
+  plugin/pime-shuangpin-standard/syllable: ni
+state: { buf: "" }
+expect:
+  handled: true
+  workspace:
+    - { k: raw, v: ni }
+    - { k: syllables, v: [ni] }

@@ -1,0 +1,15 @@
+name: space-commits-first
+event: { type: key, keycode: 32, modifiers: 0, action: 0 }
+workspace:
+  plugin/pime-keymap-default/action: space
+  plugin/pime-pinyin-parse/raw: nihao
+  plugin/pime-pinyin-rank/candidates:
+    - { text: 你好, score: 19000, source: dict }
+    - { text: 你号, score: 1200, source: dict }
+context: { locale: zh-CN, page_size: 5 }
+expect:
+  handled: true
+  commands:
+    - { type: commit, text: 你好 }
+  workspace:
+    - { k: committed, v: 你好 }

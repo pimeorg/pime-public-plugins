@@ -1,0 +1,6 @@
+name: collect-point
+event: { type: touch, x: 10, y: 20 }
+expect:
+  handled: true
+  workspace:
+    - { k: candidates, v: [] }

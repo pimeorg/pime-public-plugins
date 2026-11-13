@@ -1,0 +1,10 @@
+name: backspace-drops-last
+event: { type: key, keycode: 8, modifiers: 0, action: 0 }
+workspace:
+  plugin/pime-keymap-default/action: backspace
+state: { buf: wqv }
+expect:
+  handled: true
+  state: { buf: wq }
+  workspace:
+    - { k: code, v: wq }

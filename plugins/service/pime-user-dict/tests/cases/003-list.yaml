@@ -1,0 +1,6 @@
+name: list-words
+event: { type: user_dict.list }
+expect:
+  handled: true
+  workspace:
+    - { k: status, v: listed }

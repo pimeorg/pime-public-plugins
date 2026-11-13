@@ -1,0 +1,7 @@
+name: recognize-pcm
+event: { type: audio.end }
+state:
+  pcm: !!binary "AQIDBA=="
+expect:
+  handled: true
+  first_candidate: { text: 你, score: 1000, source: speech }

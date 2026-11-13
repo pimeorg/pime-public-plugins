@@ -1,0 +1,443 @@
+#!/usr/bin/env python3
+"""Validate the pime plugin repository layout.
+
+Checks every plugins/<role>/<id>/ against docs/structure.md section 6 and the
+core manifest contract (pime-core/src/codec/manifest.cpp), then validates the
+chain recipes in chains/.
+
+    python tools/check_plugins [--root .] [--sdk DIR] [--write-index]
+                               [--strict-models]
+
+Exit status is non-zero when any error is found. Warnings never fail the run
+unless --strict-models is given.
+"""
+
+from __future__ import annotations
+
+import argparse
+import re
+import sys
+from pathlib import Path
+
+try:
+    import yaml
+except ImportError:  # pragma: no cover - environment guard
+    sys.exit("check_plugins: PyYAML is required (pip install pyyaml)")
+
+ROLES = [
+    "preprocess", "parse", "translate", "rank", "format",
+    "recognize", "learn", "predict", "service",
+]
+
+CAPABILITIES = {
+    "input.read", "context.read", "surrounding.read", "output.emit",
+    "config.read", "asset.read", "store.kv", "workspace", "thread", "emit",
+    "ctx", "ctx.share", "channel", "sync", "shm", "time", "timer",
+    "caps.query", "log", "metric", "net.http", "net.sse", "net.ws",
+    "net.wss", "net.insecure", "random", "audio.pcm", "audio.opus",
+    "audio.capture", "audio.playback", "ml.infer", "permission",
+}
+
+PLUGIN_ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
+
+FORBIDDEN_CPP = [
+    "_WIN32", "windows.h", "dlopen", "LoadLibrary", "socket(", "curl/curl.h",
+    "<openssl/", "opus.h", "alsa/asoundlib.h", "CoreAudio", "objc/",
+]
+FORBIDDEN_LUA = [
+    "require(", "dofile(", "loadfile(", "io.", "os.execute", "os.remove",
+    "package.",
+]
+
+ALLOWED_PLUGIN_ENTRIES = {
+    "manifest.yaml", "README.md", "CHANGELOG.md", "CMakeLists.txt", "src",
+    "plugin.lua", "assets", "models", "tests", "assets.lock", "models.lock",
+    "package", ".gitignore",
+}
+
+PLATFORMS = {
+    "windows-x64", "windows-arm64", "macos-x64", "macos-arm64", "linux-x64",
+    "linux-arm64", "android-arm64", "ios-arm64", "harmony-arm64",
+}
+
+
+class Report:
+    def __init__(self) -> None:
+        self.errors: list[str] = []
+        self.warnings: list[str] = []
+
+    def error(self, where: str, message: str) -> None:
+        self.errors.append(f"{where}: {message}")
+
+    def warn(self, where: str, message: str) -> None:
+        self.warnings.append(f"{where}: {message}")
+
+    def ok(self) -> bool:
+        return not self.errors
+
+
+def parse_semver(text: str) -> tuple[int, int, int] | None:
+    match = re.match(r"^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$", str(text).strip())
+    if not match:
+        return None
+    return tuple(int(part) for part in match.groups())
+
+
+def load_yaml(path: Path):
+    try:
+        with path.open("r", encoding="utf-8") as handle:
+            return yaml.safe_load(handle)
+    except Exception as exc:  # noqa: BLE001 - report, do not crash the run
+        return exc
+
+
+def read_abi(core_dir: Path) -> tuple[int, int]:
+    abi_file = core_dir / "schema" / "abi.txt"
+    major, minor = 1, 0
+    if abi_file.exists():
+        for line in abi_file.read_text(encoding="utf-8").splitlines():
+            if line.startswith("PIME_ABI_MAJOR="):
+                major = int(line.split("=", 1)[1])
+            elif line.startswith("PIME_ABI_MINOR="):
+                minor = int(line.split("=", 1)[1])
+    return major, minor
+
+
+def read_core_version(core_dir: Path) -> str:
+    cmake = core_dir / "CMakeLists.txt"
+    if cmake.exists():
+        match = re.search(
+            r"project\(pime_core\s+VERSION\s+(\d+\.\d+\.\d+)",
+            cmake.read_text(encoding="utf-8"),
+        )
+        if match:
+            return match.group(1)
+    return "0.0.0"
+
+
+def check_source(path: Path, patterns: list[str], report: Report, where: str) -> None:
+    text = path.read_text(encoding="utf-8", errors="replace")
+    for pattern in patterns:
+        if pattern in text:
+            report.error(where, f"forbidden token '{pattern}' in {path.name}")
+
+
+def check_manifest(plugin_dir: Path, role_dir: str, report: Report,
+                   abi: tuple[int, int], core_version: str) -> dict | None:
+    where = str(plugin_dir.relative_to(plugin_dir.parents[2]))
+    manifest_path = plugin_dir / "manifest.yaml"
+    if not manifest_path.exists():
+        report.error(where, "missing manifest.yaml")
+        return None
+    manifest = load_yaml(manifest_path)
+    if isinstance(manifest, Exception):
+        report.error(where, f"manifest.yaml: {manifest}")
+        return None
+    if not isinstance(manifest, dict):
+        report.error(where, "manifest.yaml is not a mapping")
+        return None
+
+    plugin_id = str(manifest.get("id", ""))
+    if plugin_id != plugin_dir.name:
+        report.error(where, f"id '{plugin_id}' != directory '{plugin_dir.name}'")
+    if not PLUGIN_ID_RE.match(plugin_id):
+        report.error(where, f"id '{plugin_id}' violates ^[a-z0-9][a-z0-9._-]{{0,63}}$")
+    if str(manifest.get("role", "")) != role_dir:
+        report.error(where, f"role '{manifest.get('role')}' != directory '{role_dir}'")
+    if manifest.get("role") not in ROLES:
+        report.error(where, f"unknown role '{manifest.get('role')}'")
+
+    version = parse_semver(manifest.get("version", ""))
+    if not version:
+        report.error(where, f"version '{manifest.get('version')}' is not SemVer")
+
+    abi_value = manifest.get("abi")
+    if not isinstance(abi_value, dict):
+        report.error(where, "abi must be a map {major, minor}")
+    else:
+        if abi_value.get("major") != abi[0] or abi_value.get("minor", 0) > abi[1]:
+            report.error(where, f"abi {abi_value} incompatible with core ABI {abi}")
+
+    min_core = parse_semver(manifest.get("min_core", ""))
+    if not min_core:
+        report.error(where, f"min_core '{manifest.get('min_core')}' is not SemVer")
+    elif min_core > parse_semver(core_version):
+        report.error(where, f"min_core {manifest.get('min_core')} > core {core_version}")
+
+    runtime = manifest.get("runtime")
+    if runtime not in {"wasm", "lua", "native"}:
+        report.error(where, f"unknown runtime '{runtime}'")
+    if runtime == "native" and manifest.get("trusted") is not True:
+        report.error(where, "native plugin must be trusted: true")
+
+    src_dir = plugin_dir / "src"
+    lua_file = plugin_dir / "plugin.lua"
+    if runtime == "lua":
+        if not lua_file.exists():
+            report.error(where, "lua runtime requires plugin.lua")
+        if src_dir.exists():
+            report.error(where, "lua plugin must not have src/")
+        if manifest.get("entry") != "plugin.lua":
+            report.error(where, "lua entry must be plugin.lua")
+    elif runtime in {"wasm", "native"}:
+        if not src_dir.exists() or not list(src_dir.glob("*.cpp")):
+            report.error(where, "wasm/native runtime requires src/*.cpp")
+        if lua_file.exists():
+            report.error(where, "wasm/native plugin must not ship plugin.lua")
+        if manifest.get("entry") != "pime_process":
+            report.error(where, "wasm/native entry must be pime_process")
+
+    platforms = manifest.get("platforms") or []
+    if not platforms:
+        report.error(where, "platforms must be non-empty")
+    for platform in platforms:
+        if platform not in PLATFORMS:
+            report.error(where, f"unknown platform '{platform}'")
+
+    limits = manifest.get("limits")
+    if not isinstance(limits, dict):
+        report.error(where, "limits map is required")
+        limits = {}
+    state_kb = limits.get("state_kb")
+    workspace_kb = limits.get("workspace_kb")
+    if not isinstance(state_kb, int) or not 0 < state_kb <= 1024:
+        report.error(where, "limits.state_kb must be 1..1024")
+    if not isinstance(workspace_kb, int) or not 0 < workspace_kb <= 4096:
+        report.error(where, "limits.workspace_kb must be 1..4096")
+    if runtime == "wasm" and limits.get("scratch_bytes", 0) < 1024:
+        report.warn(where, "wasm plugin should declare limits.scratch_bytes")
+
+    capabilities = manifest.get("capabilities") or []
+    for capability in capabilities:
+        if capability.startswith("crypto."):
+            continue
+        if capability not in CAPABILITIES:
+            report.error(where, f"unknown capability '{capability}'")
+
+    for requirement in manifest.get("requires") or []:
+        if not re.match(r"^[a-z0-9][a-z0-9._-]*(@[^@]+)$", str(requirement)):
+            report.error(where, f"requires entry '{requirement}' must be name@constraint")
+
+    assets = manifest.get("assets") or []
+    declared = sorted(str(item) for item in assets)
+    actual = sorted(
+        str(path.relative_to(plugin_dir / "assets")).replace("\\", "/")
+        for path in (plugin_dir / "assets").rglob("*")
+        if path.is_file()
+    ) if (plugin_dir / "assets").exists() else []
+    if declared != actual:
+        report.error(where, f"assets mismatch: manifest {declared} != files {actual}")
+
+    models = manifest.get("models") or []
+    model_files = sorted(
+        str(path.relative_to(plugin_dir / "models")).replace("\\", "/")
+        for path in (plugin_dir / "models").rglob("*")
+        if path.is_file()
+    ) if (plugin_dir / "models").exists() else []
+    declared_models = sorted(str(item.get("path")) for item in models
+                             if isinstance(item, dict) and item.get("path"))
+    if model_files and declared_models != model_files:
+        report.error(where, f"models mismatch: manifest {declared_models} != files {model_files}")
+    if declared_models and not model_files:
+        report.warn(where, f"models {declared_models} are fetched at build time (models.lock)")
+    for model in models:
+        if isinstance(model, dict):
+            if not model.get("hash") or not str(model.get("hash")).startswith("sha256"):
+                report.error(where, f"model '{model.get('id')}' needs hash: sha256:...")
+            if not model.get("engine"):
+                report.error(where, f"model '{model.get('id')}' needs engine")
+
+    settings = manifest.get("settings") or []
+    setting_keys = set()
+    for setting in settings:
+        if not isinstance(setting, dict) or "key" not in setting:
+            report.error(where, "settings entries need a key")
+            continue
+        setting_keys.add(setting["key"])
+        if setting.get("type") not in {"bool", "int", "string", "enum"}:
+            report.error(where, f"setting '{setting['key']}' has unknown type")
+        if setting.get("type") == "enum" and not setting.get("values"):
+            report.error(where, f"enum setting '{setting['key']}' needs values")
+
+    for required in ("README.md", "CHANGELOG.md", "CMakeLists.txt"):
+        if not (plugin_dir / required).exists():
+            report.error(where, f"missing {required}")
+    cases = list((plugin_dir / "tests" / "cases").glob("*.yaml"))
+    if not cases:
+        report.error(where, "at least one tests/cases/*.yaml is required")
+
+    for entry in plugin_dir.iterdir():
+        if entry.name not in ALLOWED_PLUGIN_ENTRIES:
+            report.warn(where, f"unexpected entry '{entry.name}'")
+
+    if runtime in {"wasm", "native"}:
+        for source in list(src_dir.glob("*.cpp")) + list(src_dir.glob("*.hpp")):
+            check_source(source, FORBIDDEN_CPP, report, where)
+    if runtime == "lua" and lua_file.exists():
+        check_source(lua_file, FORBIDDEN_LUA, report, where)
+
+    return {
+        "dir": plugin_dir,
+        "role": role_dir,
+        "id": plugin_id,
+        "version": str(manifest.get("version")),
+        "runtime": runtime,
+        "settings": setting_keys,
+        "description": str(manifest.get("description", "")),
+    }
+
+
+def check_chains(root: Path, plugins: dict[str, dict], report: Report) -> None:
+    chains_dir = root / "chains"
+    if not chains_dir.exists():
+        return
+    seen_ids: set[str] = set()
+    for chain_path in sorted(chains_dir.rglob("*.yaml")):
+        if chain_path.name.endswith(".lock.yaml"):
+            continue
+        where = str(chain_path.relative_to(root))
+        chain = load_yaml(chain_path)
+        if isinstance(chain, Exception):
+            report.error(where, f"{chain}")
+            continue
+        if not isinstance(chain, dict):
+            report.error(where, "chain is not a mapping")
+            continue
+        if chain.get("api") != 1:
+            report.error(where, "api must be 1")
+        chain_id = str(chain.get("id", ""))
+        if not chain_id:
+            report.error(where, "id is required")
+        if chain_id in seen_ids:
+            report.error(where, f"duplicate chain id '{chain_id}'")
+        seen_ids.add(chain_id)
+        if chain_path.stem != chain_id:
+            report.error(where, f"file name '{chain_path.stem}' != id '{chain_id}'")
+
+        lock_path = chain_path.with_name(chain_path.stem + ".lock.yaml")
+        if not lock_path.exists():
+            report.error(where, f"missing lock file {lock_path.name}")
+
+        entries = chain.get("plugins") or []
+        if not entries:
+            report.error(where, "plugins must be non-empty")
+            continue
+        positions: dict[str, int] = {}
+        previous = -1
+        for index, entry in enumerate(entries):
+            if not isinstance(entry, dict):
+                report.error(where, "plugin entry is not a mapping")
+                continue
+            plugin_id = str(entry.get("id", ""))
+            role = str(entry.get("role", ""))
+            if plugin_id not in plugins:
+                report.error(where, f"unknown plugin '{plugin_id}'")
+                continue
+            plugin = plugins[plugin_id]
+            if role != plugin["role"]:
+                report.error(where, f"plugin '{plugin_id}' role '{plugin['role']}' != chain role '{role}'")
+            for key in (entry.get("settings") or {}):
+                if key not in plugin["settings"]:
+                    report.error(where, f"setting '{key}' is not declared by '{plugin_id}'")
+            positions[plugin_id] = index
+
+        for contract in chain.get("workspace") or []:
+            if not isinstance(contract, dict):
+                report.error(where, "workspace entry is not a mapping")
+                continue
+            key = str(contract.get("key", ""))
+            producer = str(contract.get("from", ""))
+            consumers = contract.get("to") or []
+            if not key.startswith(f"plugin/{producer}/"):
+                report.error(where, f"workspace key '{key}' does not belong to '{producer}'")
+            if producer not in positions:
+                report.error(where, f"workspace producer '{producer}' not in chain")
+                continue
+            for consumer in consumers:
+                if consumer not in positions:
+                    report.error(where, f"workspace consumer '{consumer}' not in chain")
+                    continue
+                if positions[consumer] <= positions[producer]:
+                    report.error(where, f"consumer '{consumer}' must follow '{producer}'")
+                consumer_readme = plugins[consumer]["dir"] / "README.md"
+                if key not in consumer_readme.read_text(encoding="utf-8"):
+                    report.error(where, f"{consumer} README does not declare read of {key}")
+            producer_readme = plugins[producer]["dir"] / "README.md"
+            if key not in producer_readme.read_text(encoding="utf-8"):
+                report.error(where, f"{producer} README does not declare write of {key}")
+        previous = previous  # keep loop shape explicit
+
+
+def write_index(root: Path, plugins: dict[str, dict]) -> None:
+    lines = [
+        "# 插件索引",
+        "",
+        "> 由 `python tools/check_plugins --write-index` 生成，不要手改。",
+        "",
+        "| role | id | runtime | version | 说明 |",
+        "|---|---|---|---|---|",
+    ]
+    for plugin in sorted(plugins.values(), key=lambda item: (item["role"], item["id"])):
+        lines.append(
+            f"| `{plugin['role']}` | `{plugin['id']}` | {plugin['runtime']} | "
+            f"{plugin['version']} | {plugin['description']} |"
+        )
+    (root / "plugins" / "README.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Validate pime plugin layout")
+    parser.add_argument("--root", default=str(Path(__file__).resolve().parents[1]))
+    parser.add_argument("--sdk", default=None)
+    parser.add_argument("--write-index", action="store_true")
+    parser.add_argument("--strict-models", action="store_true")
+    parser.add_argument("--quiet", action="store_true")
+    args = parser.parse_args()
+
+    root = Path(args.root).resolve()
+    core_dir = Path(args.sdk).resolve().parent if args.sdk else root.parent / "pime-core"
+    abi = read_abi(core_dir)
+    core_version = read_core_version(core_dir)
+    report = Report()
+
+    plugins_dir = root / "plugins"
+    plugins: dict[str, dict] = {}
+    if not plugins_dir.exists():
+        report.error("plugins", "directory missing")
+    else:
+        entries = sorted(
+            path for path in plugins_dir.iterdir()
+            if path.is_dir() and not path.name.startswith("_")
+        )
+        for role_dir in entries:
+            if role_dir.name not in ROLES:
+                report.error(f"plugins/{role_dir.name}", "unknown role directory")
+                continue
+            for plugin_dir in sorted(
+                path for path in role_dir.iterdir()
+                if path.is_dir() and not path.name.startswith("_")
+            ):
+                info = check_manifest(plugin_dir, role_dir.name, report, abi, core_version)
+                if not info or not info["id"]:
+                    continue
+                if info["id"] in plugins:
+                    report.error(info["id"], "duplicate plugin id")
+                    continue
+                plugins[info["id"]] = info
+
+    check_chains(root, plugins, report)
+    if args.write_index and plugins:
+        write_index(root, plugins)
+
+    if not args.quiet:
+        for warning in report.warnings:
+            print(f"warning: {warning}")
+        for error in report.errors:
+            print(f"error: {error}")
+        print(f"checked {len(plugins)} plugin(s), "
+              f"{len(report.errors)} error(s), {len(report.warnings)} warning(s)")
+    return 0 if report.ok() else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

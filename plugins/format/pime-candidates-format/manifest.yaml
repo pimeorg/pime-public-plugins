@@ -1,0 +1,27 @@
+description: 候选与组合收尾：展示候选、空格/数字选词、Esc 取消
+id: pime-candidates-format
+version: 1.0.0
+abi: { major: 1, minor: 0 }
+min_core: "1.0.0"
+state_schema: 1
+store_schema: 1
+runtime: wasm
+role: format
+platforms: [windows-x64, windows-arm64, macos-x64, macos-arm64,
+            linux-x64, linux-arm64, android-arm64, ios-arm64, harmony-arm64]
+entry: pime_process
+capabilities: [workspace, output.emit]
+requires: []
+limits:
+  memory_mb: 16
+  instructions: 5000000
+  time_ms: 5
+  state_kb: 32
+  workspace_kb: 128
+  candidates_max: 32
+  scratch_bytes: 16384
+  max_frame_bytes: 65536
+budget: { sync_us: 50, async_ms: 20 }
+settings:
+  - { key: page_size, type: int, default: 5, min: 1, max: 9 }
+  - { key: commit_on_enter, type: bool, default: true }

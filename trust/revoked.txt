@@ -1,0 +1,1 @@
+# Revoked key ids, one per line. Empty means nothing is revoked.

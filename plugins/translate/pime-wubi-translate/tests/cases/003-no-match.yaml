@@ -1,0 +1,8 @@
+name: no-match
+event: { type: text, text: zzzz }
+workspace:
+  plugin/pime-wubi-parse/code: zzzz
+expect:
+  handled: false
+  workspace:
+    - { k: candidates, v: [] }
