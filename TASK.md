@@ -76,4 +76,5 @@
 - [x] 全部 WASM 插件产出可加载包到 `build/wasm-ndk/package/`
 - [x] 修复 `AssetHandle` 截断 64 位句柄导致资产读 `STALE`
 - [x] 宿主（core + WAMR）加载五包、build/activate、`nihao` → `你好`
+- [x] 清单平台列表补充 `android-x64` / `ios-x64` / `harmony-x64`（x86_64 模拟器）
 - [ ] CI 接入 NDK wasm32 工具链与真实包构建

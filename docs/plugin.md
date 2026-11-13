@@ -434,7 +434,7 @@ state_schema: 3
 store_schema: 2
 runtime: wasm
 role: parse
-platforms: [windows-x64, macos-arm64, ios-arm64, android-arm64, harmony-arm64]
+platforms: [windows-x64, macos-arm64, ios-arm64, ios-x64, android-arm64, android-x64, harmony-arm64, harmony-x64]
 entry: pime_process
 capabilities: [input.read, output.emit, context.read, config.read, asset.read,
                store.kv, workspace, time, timer, caps.query, log, metric]

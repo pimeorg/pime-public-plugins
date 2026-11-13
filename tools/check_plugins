@@ -57,7 +57,8 @@ ALLOWED_PLUGIN_ENTRIES = {
 
 PLATFORMS = {
     "windows-x64", "windows-arm64", "macos-x64", "macos-arm64", "linux-x64",
-    "linux-arm64", "android-arm64", "ios-arm64", "harmony-arm64",
+    "linux-arm64", "android-arm64", "android-x64", "ios-arm64", "ios-x64",
+    "harmony-arm64", "harmony-x64",
 }
 
 

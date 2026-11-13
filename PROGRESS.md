@@ -78,6 +78,10 @@
 `__stack_pointer`，未定义符号保持为 `env` 导入，由 core 注册的原生函数解析。
 NDK 是本机已有的 wasm32 clang/链接器来源，因此不依赖 wasi-sdk。
 
+Android 实测还暴露了清单的平台列表问题：原先只写 `android-arm64`，在 x86_64
+模拟器上 `Core::plugin_load` 的平台过滤直接返回 `PIME_NOT_FOUND`。18 个清单与
+模板、文档示例已补上 `android-x64`、`ios-x64`、`harmony-x64`。
+
 ### 链与测试
 
 | 内容 | 位置 |

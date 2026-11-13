@@ -8,7 +8,7 @@ store_schema: 1
 runtime: wasm
 role: rank
 platforms: [windows-x64, windows-arm64, macos-x64, macos-arm64,
-            linux-x64, linux-arm64, android-arm64, ios-arm64, harmony-arm64]
+            linux-x64, linux-arm64, android-arm64, android-x64, ios-arm64, ios-x64, harmony-arm64, harmony-x64]
 entry: pime_process
 capabilities: [workspace]
 requires: [pime-pinyin-translate@^1.0]
