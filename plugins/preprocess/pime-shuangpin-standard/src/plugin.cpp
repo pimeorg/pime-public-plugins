@@ -150,8 +150,21 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
     span_text(frame.workspace_value("plugin/pime-keymap-default/action"), &action,
               &action_len);
 
-    if (action && action_len == 9 && Frame::equal(action, 9, "backspace", 9))
+    if (action && action_len == 9 && Frame::equal(action, 9, "backspace", 9)) {
+        if (half_len == 0)
+            return pass_through(out, cap, out_len, nullptr, 0);
         return respond(out, cap, out_len, nullptr, 0, nullptr, 0);
+    }
+
+    const char* type = nullptr;
+    uint32_t type_len = 0;
+    const bool is_candidate =
+        frame.event.text("type", &type, &type_len) &&
+        Frame::equal(type, type_len, "candidate", 9);
+    if (is_candidate ||
+        (action && action_len == 5 && Frame::equal(action, 5, "space", 5)) ||
+        (action && action_len == 5 && Frame::equal(action, 5, "enter", 5)))
+        return pass_through(out, cap, out_len, nullptr, 0);
 
     const char* text = nullptr;
     uint32_t text_len = 0;

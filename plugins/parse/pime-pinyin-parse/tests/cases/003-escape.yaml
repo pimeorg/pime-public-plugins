@@ -8,4 +8,5 @@ expect:
   workspace:
     - { k: raw, v: "" }
   commands:
+    - { type: set_composition, text: "", cursor: 0 }
     - { type: hide_candidates }

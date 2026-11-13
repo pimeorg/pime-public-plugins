@@ -1,0 +1,11 @@
+name: space-commit-clears-state
+event: { type: key, keycode: 32, modifiers: 0, action: 0 }
+workspace:
+  plugin/pime-keymap-default/action: space
+state: { buf: ni }
+expect:
+  handled: false
+  state: { buf: "" }
+  workspace:
+    - { k: raw, v: ni }
+  commands: []

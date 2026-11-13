@@ -82,6 +82,16 @@ Android 实测还暴露了清单的平台列表问题：原先只写 `android-ar
 模拟器上 `Core::plugin_load` 的平台过滤直接返回 `PIME_NOT_FOUND`。18 个清单与
 模板、文档示例已补上 `android-x64`、`ios-x64`、`harmony-x64`。
 
+Android 模拟器把候选点击链路的问题逼了出来：parse 最初在 `candidate` 事件里
+直接把 `buf` 清零，同一次链调用里 translate/format 已经拿不到码串，提交静默
+失败；只保留旧状态又会让下一次输入拼上旧码。现在的契约是“提交阶段”：parse 在
+`candidate` / `space` / `enter` 时**仍写出提交前的 workspace 码串**（translate/
+format 需要它定位候选），但 **`state` 写空且不发 `set_composition`**；组合串被
+清空（退格/esc）时补发 `set_composition("")` 结束宿主组合态。同时 `keymap`
+只写 workspace `action`，不再把所有控制键标记 `handled`，否则空组合退格会被吞掉。
+三个 parse 插件（全拼/五笔/仓颉）与双拼 preprocess 同步修改，并新增
+`005-candidate-commit`、`006-space-commit`、`007-backspace-to-empty` 用例。
+
 ### 链与测试
 
 | 内容 | 位置 |

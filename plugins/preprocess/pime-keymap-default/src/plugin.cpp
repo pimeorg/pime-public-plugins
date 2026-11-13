@@ -56,7 +56,9 @@ pime_status respond(uint8_t* out, uint32_t cap, uint32_t* out_len,
         w.map(0);
     }
     w.key("handled");
-    w.boolean(action != nullptr);
+    /* Mapping a key is not consuming it: parse/format decide whether the
+     * action is used, so unmatched keys still reach the editor. */
+    w.boolean(false);
     w.key("commands");
     w.array(0);
     *out_len = w.size();

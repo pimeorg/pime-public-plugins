@@ -77,4 +77,7 @@
 - [x] 修复 `AssetHandle` 截断 64 位句柄导致资产读 `STALE`
 - [x] 宿主（core + WAMR）加载五包、build/activate、`nihao` → `你好`
 - [x] 清单平台列表补充 `android-x64` / `ios-x64` / `harmony-x64`（x86_64 模拟器）
+- [x] 提交阶段契约：parse 在 candidate/space/enter 保留 workspace 码串、清空 `state`
+- [x] 组合串清空时 parse 补发 `set_composition("")`；keymap 不再吞控制键
+- [x] 新增提交/退格用例（005/006/007），全量 43 个用例通过
 - [ ] CI 接入 NDK wasm32 工具链与真实包构建

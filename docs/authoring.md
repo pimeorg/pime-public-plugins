@@ -142,6 +142,12 @@ platforms: [windows-x64, macos-arm64, linux-x64]
 - 键名、值类型、生产者/消费者写入 `chains/*.yaml` 的 `workspace:` 段，并在
   插件 README 中重复声明。
 - 失败调用丢弃本次 `workspace_delta`；不要依赖失败插件的写入。
+- 提交语义：`parse` 在 `candidate` / `space` / `enter` 这几次调用里仍写出提交前的
+  码串（`format` 需要它定位候选），但 `state` 写空、不再发 `set_composition`；
+  下一个按键从空状态重新开始。组合串清空时 `parse` 补发
+  `set_composition("")`，让宿主结束编辑器的组合态。
+- `handled` 只由真正消费按键的插件置 true。`preprocess` 的键位映射只写
+  workspace 的 `action`，不吞键；否则空组合下的退格、空格无法回传给编辑器。
 
 ## 7 测试用例
 

@@ -1,0 +1,10 @@
+name: candidate-commit-clears-state
+event: { type: candidate, index: 0 }
+state: { buf: nihao }
+expect:
+  handled: false
+  state: { buf: "" }
+  workspace:
+    - { k: raw, v: nihao }
+    - { k: syllables, v: [ni, hao] }
+  commands: []

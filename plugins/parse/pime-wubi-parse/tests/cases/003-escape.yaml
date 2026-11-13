@@ -7,4 +7,5 @@ expect:
   handled: true
   state: { buf: "" }
   commands:
+    - { type: set_composition, text: "", cursor: 0 }
     - { type: hide_candidates }

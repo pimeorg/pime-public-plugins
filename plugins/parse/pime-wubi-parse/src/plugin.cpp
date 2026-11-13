@@ -50,13 +50,16 @@ bool append(char* buffer, uint32_t* len, const char* text, uint32_t text_len) {
 }
 
 pime_status respond(uint8_t* out, uint32_t cap, uint32_t* out_len,
-                    const char* buffer, uint32_t len, bool handled) {
+                    const char* buffer, uint32_t len, bool handled,
+                    bool commit_phase) {
     Writer w(out, cap);
     w.map(4);
     w.key("state");
     w.map(1);
     w.key("buf");
-    w.text(buffer, len);
+    /* On a commit the composition is gone, but the workspace still carries the
+     * pre-commit code so translate and format can resolve the selection. */
+    w.text(buffer, commit_phase ? 0 : len);
 
     w.key("workspace");
     w.map(1);
@@ -67,7 +70,9 @@ pime_status respond(uint8_t* out, uint32_t cap, uint32_t* out_len,
     w.boolean(handled);
 
     w.key("commands");
-    if (len > 0) {
+    if (commit_phase) {
+        w.array(0);
+    } else if (len > 0) {
         w.array(1);
         w.map(3);
         w.key("type");
@@ -77,7 +82,9 @@ pime_status respond(uint8_t* out, uint32_t cap, uint32_t* out_len,
         w.key("cursor");
         w.u64(len);
     } else if (handled) {
-        w.array(1);
+        /* The composition is gone: finish it in the editor and drop the bar. */
+        w.array(2);
+        cmd_set_composition(w, "", 0, 0);
         cmd_hide_candidates(w);
     } else {
         w.array(0);
@@ -118,19 +125,33 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
     const bool has_type = frame.event.text("type", &type, &type_len);
     const bool is_key = has_type && text_is(type, type_len, "key");
     const bool is_text = has_type && text_is(type, type_len, "text");
+    const bool is_candidate =
+        has_type && text_is(type, type_len, "candidate");
 
     const char* action = nullptr;
     uint32_t action_len = 0;
     span_text(frame.workspace_value("plugin/pime-keymap-default/action"),
               &action, &action_len);
 
-    if (is_key || is_text) {
+    bool commit_phase = false;
+    if (is_candidate) {
+        /* The candidate is being committed: clear the state, but keep the code
+         * in the workspace so format can resolve the selection. */
+        commit_phase = true;
+    } else if (is_key || is_text) {
         if (text_is(action, action_len, "backspace")) {
-            if (len > 0) --len;
-            handled = true;
+            /* Empty buffer: let the editor delete the committed text. */
+            if (len > 0) {
+                --len;
+                handled = true;
+            }
         } else if (text_is(action, action_len, "escape")) {
             len = 0;
             handled = true;
+        } else if (text_is(action, action_len, "space") ||
+                   text_is(action, action_len, "enter")) {
+            /* format commits the highlighted candidate on these keys. */
+            commit_phase = true;
         } else {
             const char* text = nullptr;
             uint32_t text_len = 0;
@@ -139,7 +160,7 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
         }
     }
 
-    return respond(out, cap, out_len, buffer, len, handled);
+    return respond(out, cap, out_len, buffer, len, handled, commit_phase);
 }
 
 PIME_EXPORT pime_status pime_on_event(const uint8_t* in, uint32_t in_len,
@@ -150,7 +171,7 @@ PIME_EXPORT pime_status pime_on_event(const uint8_t* in, uint32_t in_len,
     if (!frame.parse(in, in_len)) return PIME_CORRUPT;
     char buffer[kMaxCode];
     const uint32_t len = load_buffer(frame, buffer);
-    return respond(out, cap, out_len, buffer, len, false);
+    return respond(out, cap, out_len, buffer, len, false, false);
 }
 
 PIME_EXPORT void pime_shutdown(void) { g_max_code = 4; }
