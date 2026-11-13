@@ -75,7 +75,9 @@ pime-public-plugin/
 │   ├── PimePluginSdk.cmake           # 定位 core SDK，校验 ABI / min_core
 │   ├── PimePluginWasm.cmake          # wasm32 工具链与 AOT 规则
 │   └── toolchains/
-│       └── wasm32-wamr.cmake
+│       ├── wasm32-wamr.cmake         # wasi-sdk 工具链
+│       └── wasm32-ndk.cmake          # NDK clang + wasm-ld 工具链（本机可用）
+│           wasm32-ndk-project.cmake  # project() 后置：模块链接标志
 ├── docs/
 │   ├── plugin.md                     # 插件规格（core 文档副本）
 │   ├── structure.md                  # 本文

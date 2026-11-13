@@ -50,7 +50,9 @@ inline bool asset_call(uint8_t op, const uint8_t* in, uint32_t in_len,
 } /* namespace detail */
 
 struct AssetHandle {
-    uint32_t id = 0;
+    /* Handles are (generation << 32) | index; truncating to 32 bits makes the
+     * core report the handle as stale. */
+    uint64_t id = 0;
     bool valid() const { return id != 0; }
 };
 
@@ -72,7 +74,7 @@ inline bool asset_open(const char* path, AssetHandle* out) {
     MapView map = MapView::of(result);
     uint64_t handle = 0;
     if (!map.uint("handle", &handle) || handle == 0) return false;
-    if (out) out->id = static_cast<uint32_t>(handle);
+    if (out) out->id = handle;
     return true;
 }
 

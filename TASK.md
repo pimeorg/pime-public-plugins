@@ -69,3 +69,11 @@
   包时编译。
 - 手写/语音权重未入库，`hash` 为 `sha256:unfetched`。
 - 仓颉仅有 parse；在线语音首批未实现，`chains/speech/online.yaml` 以离线识别兜底。
+
+### G 真实 WASM 产物与联调（2026-11-13）
+
+- [x] wasm32 NDK 工具链（clang + wasm-ld，`--allow-undefined`，非 `-shared`）
+- [x] 全部 WASM 插件产出可加载包到 `build/wasm-ndk/package/`
+- [x] 修复 `AssetHandle` 截断 64 位句柄导致资产读 `STALE`
+- [x] 宿主（core + WAMR）加载五包、build/activate、`nihao` → `你好`
+- [ ] CI 接入 NDK wasm32 工具链与真实包构建

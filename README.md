@@ -43,8 +43,19 @@ cmake --build build/native -j
 ctest --test-dir build/native
 ```
 
-WASM 产物需要 wasi-sdk（`cmake/toolchains/wasm32-wamr.cmake`）；没有工具链时
-WASM 插件只参与用例模拟器（`tests/host/sim_main.cpp`），不产出 `.wasm`。
+WASM 产物用 Android NDK 自带的 clang + wasm-ld 交叉编译：
+
+```sh
+cmake -S . -B build/wasm-ndk \
+      -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/wasm32-ndk.cmake \
+      -DANDROID_NDK_HOME=/path/to/ndk \
+      -DPIME_CORE_DIR=../pime-core
+cmake --build build/wasm-ndk -j
+# 每个插件的可加载包: build/wasm-ndk/package/<id>-<version>/
+```
+
+没有该工具链时 WASM 插件只参与用例模拟器（`tests/host/sim_main.cpp`），
+不产出 `.wasm`。
 
 单个插件可独立构建：
 
@@ -77,6 +88,7 @@ Lua 插件目前没有运行时模拟器，只做静态检查。
 
 ## 状态
 
-首批 18 个插件、6 条产品链、信任根与校验工具均已落地。没有 wasi-sdk 时
-`.wasm` 包与 `tests/host/main.cpp`（链接真实 core）不参与构建。进度见
-[`PROGRESS.md`](PROGRESS.md)，任务见 [`TASK.md`](TASK.md)。
+首批 18 个插件、6 条产品链、信任根与校验工具均已落地。WASM 插件已用 NDK
+工具链产出真实 `.wasm`，并在 pime-core + WAMR 宿主上跑通默认拼音链；
+`tests/host/main.cpp`（链接真实 core）仍按 core 包是否可见决定是否编译。
+进度见 [`PROGRESS.md`](PROGRESS.md)，任务见 [`TASK.md`](TASK.md)。
