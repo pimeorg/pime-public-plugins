@@ -1,0 +1,11 @@
+name: phrase-beats-partial-tail
+event: { type: text, text: wozaijia }
+workspace:
+  plugin/pime-pinyin-parse/raw: wozaijia
+  plugin/pime-pinyin-parse/syllables: [wo, zai, jia]
+# “jia”同时也是“jian”的前缀，逐字路径会拼出“我+再见”（半音节 n 未输入）。
+# 短语“我在家”作为一个词条，完整音节路径优先于尾部半音节猜测。
+expect:
+  handled: true
+  first_candidate: { text: 我在家 }
+  candidates_include: [我再见]

@@ -59,8 +59,10 @@ score = log2(freq) - 26500 - 简拼/模糊罚分 + 9000 * (覆盖字母数 - 1)
 
 `assets/pinyin.dict`：`<空格分隔音节>\t<候选词>\t<词频>`，UTF-8，`#` 开头为注释。
 紧凑词表由 `data/pinyin/pinyin.dict` 同步而来，其中 rime-wanxiang 的基础词表
-（CC BY 4.0）再合并 `data/pinyin/extra.txt` 的常用短语；来源、合并规则与许可
-见 `data/pinyin/SOURCES.md`。
+（CC BY 4.0）再合并 `data/pinyin/extra.txt` 的常用短语；补充表也承担无上下文
+时的排序选择（`zsh` → 早上好、`gz` → 广州、`sz` → 深圳、句末“吧”，以及
+“我在家/一起去吧/一起吃饭吧”短语）。来源、合并规则与许可见
+`data/pinyin/SOURCES.md`。
 
 加载时只解析一次：按首字母建立连续桶，并把条目缓存为 `Entry` 表；按键路径不再
 线性扫描整个文本文件。
@@ -74,7 +76,7 @@ score = log2(freq) - 26500 - 简拼/模糊罚分 + 9000 * (覆盖字母数 - 1)
 
 ## 预算
 
-`sync_us: 300`。词表约 434 KB / 20,066 条；首次调用会解析词表（一次性），之后
+`sync_us: 300`。词表约 434 KB / 20,069 条；首次调用会解析词表（一次性），之后
 按首字母桶匹配并做束搜索。manifest 将 `instructions` 提高到 20M、`time_ms`
 提高到 10，覆盖 64 个字母的最坏输入。
 
@@ -82,5 +84,7 @@ score = log2(freq) - 26500 - 简拼/模糊罚分 + 9000 * (覆盖字母数 - 1)
 
 `tests/cases/`：`nihao`、`ws` 简拼、`nh`、`wsm` 整句、`hbg` → 还不够、
 `dd` → 等等（叠词压过“的的”）、`woshizhongguoren` 多词合成、`zongguo`
-模糊音/关闭模糊音、半音节前缀、无命中；以及网格保留多重切分的 `ysh`
-（有时候可见）、`xian`（西安可见）、`deg`（第二个可见）。
+模糊音/关闭模糊音、半音节前缀、无命中；网格保留多重切分的 `ysh`（有时候
+可见）、`xian`（西安可见）、`deg`（第二个可见）；以及无上下文排序的
+`zsh` → 早上好、`gz` → 广州、`sz` → 深圳、`yiqichifanba` → 一起吃饭吧、
+`wozaijia` → 我在家。

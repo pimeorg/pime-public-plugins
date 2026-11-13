@@ -19,15 +19,21 @@
 - [x] 回归确认 `zh` → 这、`hbg` → 还不够、`ysh` → 也是 未被长词压过
 - [x] 新增 `data/pinyin/extra.txt`：晚安、生日快乐、天安门、女孩、绿色等短语
 - [x] 新增 `tools/pinyin_merge`：校验 413 音节表/汉字数，补充表权威、合并幂等
-- [x] 词表合并为 20,066 条 / 434 KB，同步到插件资产
+- [x] 词表合并为 20,069 条 / 434 KB，同步到插件资产
 - [x] 新增用例：`dd` → 等等首位；`woshizhongguoren` 两词合成
-- [x] native 用例 56/56 通过；`ctest --test-dir build/native` 通过
+- [x] 无上下文歧义修复：提高 `早上好`、`广州`、`深圳`、`吧` 词频；
+      加入 `我在家`、`一起去吧`、`一起吃饭吧` 多字短语
+- [x] 新增 5 条回归用例：`zsh`、`gz`、`sz`、`yiqichifanba`、`wozaijia`
+- [x] native 用例 61/61 通过；`ctest --test-dir build/native` 通过
 - [x] `check_plugins` 0 error / 2 warning；`chainc --check` 通过；
       `tests/conformance` ok
 - [x] wasm 包重建，只有 `env.pime_host_asset` 一个导入，无 memset/memcpy 等未声明导入
 - [x] Android 资产同步、APK 重建、`pm clear` 后 MuMu 实测 13 条输入：
       `hbg`、`wanan`、`shengrikuaile`、`tiananmen`、`nvhai`、`lvse`、
       `srkl`、`nhm`、`zgm`、`dhrs`、`nh`、`dd`、`wsm`、`xian` 全部符合预期
+- [x] 用 20,069 条词表重新打包 wasm 并同步 Android
+- [x] MuMu 复测 `zsh` → 早上好、`gz` → 广州、`sz` → 深圳、
+      `yiqichifanba` → 一起吃饭吧、`wozaijia` → 我在家 均为首位
 - [x] 更新 README / CHANGELOG / SOURCES / tools README / PROGRESS /
       Android TASK / Android PROGRESS
 - [x] 提交 pime-public-plugin 与 pime-android
@@ -35,11 +41,10 @@
 ## 遗留 / 已知限制
 
 - [ ] CI 接入 NDK wasm32 工具链与真实包构建（上一轮遗留）
-- 纯简拼歧义无法在没有上下文 LM 时消解：`zsh` 首位“这是”、`gz` 首位
-  “工作”、`sz` 首位“甚至”；目前保证高频目标词尽量进入前 8 条
-- 词表为 20,066 条紧凑规模；更大词表需同时提高 `kDictBytes` / `kMaxEntries`
+- 排序覆盖是按聊天场景做的数据取舍（`gz` → 广州 而非“工作”），不是上下文
+  模型；真正的上下文排序仍需 bigram/ngram LM
+- 词表为 20,069 条紧凑规模；更大词表需同时提高 `kDictBytes` / `kMaxEntries`
   与 manifest `memory_mb`
-- 整句排序使用词频 + 内聚奖励，长句仍有歧义（`wozaijia` 首位“我再见”）
 - 首次按键会解析词表（约 434 KB，一次性）；后续按键走索引
 - Android 重装 APK 不会覆盖 `files/plugins`，实测前需 `pm clear dev.pime.ime`
   或提升插件版本

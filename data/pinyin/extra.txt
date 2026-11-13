@@ -8,7 +8,7 @@
 # greetings and daily chat
 wan an	晚安	120000
 zao an	早安	60000
-zao shang hao	早上好	90000
+zao shang hao	早上好	2500000
 zhong wu hao	中午好	40000
 xia wu hao	下午好	40000
 wan shang hao	晚上好	60000
@@ -113,8 +113,8 @@ tian an men	天安门	80000
 chang cheng	长城	60000
 gu gong	故宫	50000
 shang hai	上海	100000
-guang zhou	广州	60000
-shen zhen	深圳	70000
+guang zhou	广州	900000
+shen zhen	深圳	900000
 cheng du	成都	50000
 wu han	武汉	45000
 tian jin	天津	35000
@@ -126,3 +126,11 @@ su zhou	苏州	40000
 zheng zhou	郑州	35000
 chang sha	长沙	40000
 qing dao	青岛	40000
+
+# Ambiguous readings that need a ranking override without a context LM.
+# 字频高的单字（把/这是）会压过聊天里更常用的读法；这里只调整同键竞争的词，
+# 不改变匹配规则。多字短语作为一个词条，避免被“高频单字 + 高频单字”拆散。
+ba	吧	1200000
+wo zai jia	我在家	100000
+yi qi qu ba	一起去吧	100000
+yi qi chi fan ba	一起吃饭吧	100000

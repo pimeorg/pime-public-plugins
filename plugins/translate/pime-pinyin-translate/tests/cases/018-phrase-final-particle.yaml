@@ -1,0 +1,10 @@
+name: phrase-final-particle
+event: { type: text, text: yiqichifanba }
+workspace:
+  plugin/pime-pinyin-parse/raw: yiqichifanba
+  plugin/pime-pinyin-parse/syllables: [yi, qi, chi, fan, ba]
+# 句末语气词“吧”在通用字频里略低于“把”，整句输入时应当优先。
+# 词表把“一起吃饭吧”作为一个短语条目，避免逐字竞争。
+expect:
+  handled: true
+  first_candidate: { text: 一起吃饭吧 }

@@ -17,9 +17,14 @@
 - 词表升级为 20k 条带词频的 rime-wanxiang 紧凑词表（CC BY 4.0，见
   `data/pinyin/SOURCES.md`）；加载时建立首字母桶索引。
 - 新增 `data/pinyin/extra.txt` 与 `tools/pinyin_merge`：把晚安、生日快乐、
-  天安门、女孩、绿色等聊天高频短语并入词表（20,066 条 / 434 KB），补充表
-  可提高也可下调词频，合并幂等。
+  天安门、女孩、绿色等聊天高频短语并入词表，补充表可提高也可下调词频，
+  合并幂等。
 - 新增多场景实测用例：`dd` → 等等、`woshizhongguoren` 两词合成；
   Android MuMu 实测覆盖全拼短语、四字母简拼、模糊音和 `xian` 多重切分。
+- 处理无上下文 LM 时的同键歧义：补充表提高 `早上好`、`广州`、`深圳`、`吧`
+  的词频，并以短语条目加入 `我在家`、`一起去吧`、`一起吃饭吧`。`zsh` →
+  早上好、`gz` → 广州、`sz` → 深圳、`yiqichifanba` → 一起吃饭吧、
+  `wozaijia` → 我在家 均为首位；词表 20,069 条。
+- 新增 5 条对应回归用例，共 61 条用例通过。
 - 新增 `pimeplug/memory.hpp`：freestanding wasm 的弱 `memset/memcpy/memmove`，
   避免未解析的 `env` 导入。

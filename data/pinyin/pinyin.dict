@@ -117,8 +117,8 @@ ao ye	熬夜	21339
 ao yun	奥运	6798
 ao yun hui	奥运会	13932
 ao zhou	澳洲	23412
+ba	吧	1200000
 ba	把	934740
-ba	吧	899095
 ba	爸	733503
 ba	八	522796
 ba	扒	43849
@@ -5134,7 +5134,7 @@ guang yi	广义	6242
 guang ying	光影	7414
 guang yuan	光源	7919
 guang zhao	光照	6267
-guang zhou	广州	60000
+guang zhou	广州	900000
 guang zi	光子	11609
 gui	贵	30037
 gui	规	9112
@@ -12153,7 +12153,7 @@ shen ying	身影	12789
 shen yuan	深渊	6921
 shen zang	肾脏	5605
 shen zao	深造	5190
-shen zhen	深圳	70000
+shen zhen	深圳	900000
 shen zhi	甚至	487796
 shen zhi	深知	6986
 shen zhi bi	甚至比	7897
@@ -14790,6 +14790,7 @@ wo yuan yi	我愿意	6534
 wo zai	我在	148010
 wo zai	我再	15524
 wo zai chi fan	我在吃饭	50000
+wo zai jia	我在家	100000
 wo zai mang	我在忙	50000
 wo zai zhe li	我在这里	9163
 wo zen me	我怎么	7473
@@ -16819,7 +16820,9 @@ yi qi	一起	177313
 yi qi	以其	11140
 yi qi	仪器	10713
 yi qi	一期	7143
+yi qi chi fan ba	一起吃饭吧	100000
 yi qi qu	一起去	8428
+yi qi qu ba	一起去吧	100000
 yi qi wan	一起玩	6494
 yi qian	以前	141639
 yi qian	一千	5815
@@ -18160,7 +18163,7 @@ zao qi	早起	69045
 zao qi	早期	7718
 zao ri	早日	9172
 zao shang	早上	38390
-zao shang hao	早上好	90000
+zao shang hao	早上好	2500000
 zao sheng	噪声	8086
 zao shou	遭受	11649
 zao wan	早晚	7520

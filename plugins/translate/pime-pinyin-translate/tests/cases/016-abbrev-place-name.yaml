@@ -1,0 +1,11 @@
+name: abbrev-place-name
+event: { type: text, text: gz }
+workspace:
+  plugin/pime-pinyin-parse/raw: gz
+  plugin/pime-pinyin-parse/syllables: [g, z]
+# 广州/深圳这类高频地名在聊天输入里与“工作/甚至”同缩写；
+# 补充词表按地名场景调整词频，保证 gz/sz 首位是地名。
+expect:
+  handled: true
+  first_candidate: { text: 广州 }
+  candidates_include: [工作]

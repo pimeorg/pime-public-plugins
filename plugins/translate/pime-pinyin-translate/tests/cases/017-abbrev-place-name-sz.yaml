@@ -1,0 +1,9 @@
+name: abbrev-place-name-sz
+event: { type: text, text: sz }
+workspace:
+  plugin/pime-pinyin-parse/raw: sz
+  plugin/pime-pinyin-parse/syllables: [s, z]
+expect:
+  handled: true
+  first_candidate: { text: 深圳 }
+  candidates_include: [甚至]

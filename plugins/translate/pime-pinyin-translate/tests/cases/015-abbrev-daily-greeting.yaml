@@ -1,0 +1,10 @@
+name: abbrev-daily-greeting
+event: { type: text, text: zsh }
+workspace:
+  plugin/pime-pinyin-parse/raw: zsh
+  plugin/pime-pinyin-parse/syllables: [z, sh]
+# chat 里 zsh 更常指“早上好”，而不是把 z 和 sh 各当成半音节拼出的“这是”。
+# 补充词表把“早上好”的词频调到与常用双字词同一量级。
+expect:
+  handled: true
+  first_candidate: { text: 早上好 }
