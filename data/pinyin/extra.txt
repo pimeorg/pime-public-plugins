@@ -1,6 +1,6 @@
 # Curated pinyin supplement for common chat/daily phrases.
 # Format: <space separated syllables>\t<word>\t<frequency>
-# Merged into pinyin.dict by tools/pinyin_merge (highest frequency wins).
+# Merged into pinyin.dict by tools/pinyin_merge (this table is authoritative).
 # Keep the frequencies in the same order of magnitude as the base corpus;
 # they only need to beat character-by-character compositions for full pinyin
 # and make the phrase reachable for initials.
