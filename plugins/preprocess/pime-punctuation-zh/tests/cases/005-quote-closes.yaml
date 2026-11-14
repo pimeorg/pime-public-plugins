@@ -1,0 +1,8 @@
+name: chinese-quote-closes
+event: { type: text, text: "\"" }
+state: { quote_open: true }
+expect:
+  handled: true
+  commands:
+    - { type: commit, text: "”" }
+  state: { quote_open: false }

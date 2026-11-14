@@ -11,7 +11,9 @@
 
 #include <pimeplug/cbor.hpp>
 
+#include <cstdlib>
 #include <fstream>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -29,6 +31,17 @@ struct AssetEntry {
 };
 
 std::vector<AssetEntry> g_assets;
+std::map<std::string, std::string> g_store;
+
+uint64_t sim_now_ms() {
+    const char* value = std::getenv("SIM_NOW_MS");
+    return value ? std::strtoull(value, nullptr, 10) : 1767323045000ull;
+}
+
+int sim_tz_minutes() {
+    const char* value = std::getenv("SIM_TZ_MIN");
+    return value ? std::atoi(value) : 0;
+}
 
 bool load_asset(const std::string& path, std::vector<uint8_t>* out) {
     if (g_asset_dir.empty()) return false;
@@ -152,8 +165,80 @@ pime_status pime_host_workspace(const uint8_t*, const uint8_t*, uint32_t,
                                 uint8_t* out, uint32_t cap, uint32_t* out_len) {
     return envelope(out, cap, out_len, PIME_UNSUPPORTED);
 }
-pime_status pime_host_store(const uint8_t*, const uint8_t*, uint32_t,
+pime_status pime_host_store(const uint8_t* op, const uint8_t* in, uint32_t in_len,
                             uint8_t* out, uint32_t cap, uint32_t* out_len) {
+    if (!op) return PIME_INVALID;
+    MapView request;
+    if (in && in_len) {
+        request = MapView::of(Span{in, in + in_len});
+        if (!request.valid) return PIME_INVALID;
+    }
+    const char* key = nullptr;
+    uint32_t key_len = 0;
+    const uint8_t opcode = *op;
+    if (opcode == 0) { /* get */
+        if (!request.text("key", &key, &key_len)) return PIME_INVALID;
+        const std::string name(key, key_len);
+        const auto it = g_store.find(name);
+        Writer w(out, cap);
+        w.map(2);
+        w.key("status");
+        w.u64(0);
+        w.key("result");
+        w.map(2);
+        w.key("found");
+        w.boolean(it != g_store.end());
+        w.key("value");
+        if (it != g_store.end())
+            w.text(it->second.data(), static_cast<uint32_t>(it->second.size()));
+        else
+            w.text("");
+        if (out_len) *out_len = w.size();
+        return w.ok() ? PIME_OK : PIME_BUFFER_TOO_SMALL;
+    }
+    if (opcode == 1) { /* set */
+        const char* value = nullptr;
+        uint32_t value_len = 0;
+        if (!request.text("key", &key, &key_len) ||
+            !request.text("value", &value, &value_len))
+            return PIME_INVALID;
+        g_store[std::string(key, key_len)] = std::string(value, value_len);
+        return envelope(out, cap, out_len, PIME_OK);
+    }
+    if (opcode == 2) { /* del */
+        if (!request.text("key", &key, &key_len)) return PIME_INVALID;
+        g_store.erase(std::string(key, key_len));
+        return envelope(out, cap, out_len, PIME_OK);
+    }
+    if (opcode == 4) { /* scan */
+        if (!request.text("prefix", &key, &key_len)) return PIME_INVALID;
+        uint64_t limit = 1000;
+        request.uint("limit", &limit);
+        if (limit == 0) limit = 1000;
+        const std::string prefix(key, key_len);
+        std::vector<const std::pair<const std::string, std::string>*> matched;
+        for (const auto& entry : g_store) {
+            if (entry.first.compare(0, prefix.size(), prefix) == 0)
+                matched.push_back(&entry);
+        }
+        if (matched.size() > limit) matched.resize(static_cast<size_t>(limit));
+        Writer w(out, cap);
+        w.map(2);
+        w.key("status");
+        w.u64(0);
+        w.key("result");
+        w.array(matched.size());
+        for (const auto* entry : matched) {
+            w.map(2);
+            w.key("k");
+            w.text(entry->first.data(), static_cast<uint32_t>(entry->first.size()));
+            w.key("v");
+            w.text(entry->second.data(),
+                   static_cast<uint32_t>(entry->second.size()));
+        }
+        if (out_len) *out_len = w.size();
+        return w.ok() ? PIME_OK : PIME_BUFFER_TOO_SMALL;
+    }
     return envelope(out, cap, out_len, PIME_UNSUPPORTED);
 }
 pime_status pime_host_config(const uint8_t*, const uint8_t*, uint32_t,
@@ -224,7 +309,12 @@ uint32_t pime_host_ml_run_async(uint32_t, const uint8_t*, uint32_t) { return 0; 
 pime_status pime_host_ml_cancel(uint32_t) { return PIME_UNSUPPORTED; }
 pime_status pime_host_ml_free(uint32_t) { return PIME_UNSUPPORTED; }
 
-uint64_t pime_host_time(uint32_t) { return 0; }
+uint64_t pime_host_time(uint32_t kind) {
+    if (kind == 1) return sim_now_ms();
+    if (kind == 2)
+        return static_cast<uint64_t>(static_cast<int64_t>(sim_tz_minutes()));
+    return 0;
+}
 pime_status pime_host_random(uint8_t* out, uint32_t len) {
     for (uint32_t i = 0; i < len; ++i) out[i] = 0;
     return PIME_OK;

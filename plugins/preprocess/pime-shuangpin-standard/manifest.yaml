@@ -1,6 +1,6 @@
-description: 双拼：两键合成完整拼音音节，写入 workspace 供 parse 使用
+description: 双拼四方案（小鹤/自然码/微软/搜狗）：两键合成音节
 id: pime-shuangpin-standard
-version: 1.0.0
+version: 1.1.0
 abi: { major: 1, minor: 0 }
 min_core: "1.0.0"
 state_schema: 1
@@ -23,4 +23,4 @@ limits:
   max_frame_bytes: 65536
 budget: { sync_us: 50, async_ms: 20 }
 settings:
-  - { key: show_half_code, type: bool, default: true }
+  - { key: scheme, type: enum, values: [xiaohe, ziranma, microsoft, sogou], default: xiaohe }

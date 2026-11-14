@@ -1,0 +1,7 @@
+name: abbreviation-not-corrected
+event: { type: text, text: zsh }
+expect:
+  handled: true
+  workspace:
+    - { k: raw, v: zsh }
+    - { k: marks, v: [] }

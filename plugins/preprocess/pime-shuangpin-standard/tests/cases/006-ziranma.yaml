@@ -1,0 +1,8 @@
+name: ziranma-ai
+event: { type: text, text: l }
+state: { half: n }
+settings: { scheme: ziranma }
+expect:
+  handled: true
+  workspace:
+    - { k: syllable, v: nai }

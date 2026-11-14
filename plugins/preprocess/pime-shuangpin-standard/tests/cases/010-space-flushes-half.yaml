@@ -1,0 +1,9 @@
+name: space-flushes-half
+event: { type: key, keycode: 32, modifiers: 0, action: 0 }
+state: { half: n }
+workspace:
+  plugin/pime-keymap-default/action: space
+expect:
+  handled: true
+  workspace:
+    - { k: syllable, v: n }

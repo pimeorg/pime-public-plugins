@@ -1,0 +1,7 @@
+name: chinese-quotes-alternate
+event: { type: text, text: "\"" }
+expect:
+  handled: true
+  commands:
+    - { type: commit, text: "“" }
+  state: { quote_open: true }

@@ -5,27 +5,27 @@
 
 ## 键位方案
 
-音节 = 首键（声母）+ 次键（韵母）。`v / i / u` 作为声母时分别表示 `zh / ch / sh`。
-零声母音节把首字母当作首键（例如 `aj → an`、`ah → ang`）。
+音节 = 首键（声母）+ 次键（韵母）。`v / i / u` 作为声母时分别表示
+`zh / ch / sh`。支持四套方案，`settings.scheme` 切换：
 
-韵母码表（starter 表，`src/plugin.cpp` 的 `kFinals`，可按目标方案调整）：
+| 方案 | 零声母 | `ing` 键 | 备注 |
+|---|---|---|---|
+| `xiaohe`（默认） | 单韵母双击、双字母原样、三字母首字母+韵母键 | `k` | `l` = iang/uang |
+| `ziranma` | 同上 | `y` | `y` = uai/ing |
+| `microsoft` | `o` + 韵母键，另收 `a/e` 首字母与 `ou` 原样 | `;` | `y` 兼作 `ü` |
+| `sogou` | 同上 | `;` | `v` 只作 `ui` |
 
-```text
-a→a   b→ou  c→iao d→ai  e→e   f→en  g→eng h→ang
-i→i   j→an  k→ao  l→in  m→ian n→iang o→o  p→ie
-q→iu  r→uan s→ong t→ue  u→u   v→v   w→ua  x→ia
-y→ing z→ei
-```
-
-单键元音（`a` / `e` / `o`）连按两次得到该元音。
+`j/q/x/y` 后的 `ü` 同时接受 `u` 与 `v` 键。韵母表见
+`src/plugin.cpp` 的 `kXiaohe/kZiranma/kMicrosoft/kSogou`。
 
 ## 事件
 
 | 事件 | 行为 |
 |---|---|
-| 字母键（第 1 键） | 记入 state，写 `consumed=true` |
-| 字母键（第 2 键） | 合成音节，写 `syllable`，清 state |
-| `action=backspace` | 清 state |
+| 字母键/`;`（第 1 键） | 记入 state，写 `consumed=true` |
+| 字母键/`;`（第 2 键） | 合成音节，写 `syllable`，清 state |
+| `action=backspace/escape` | 有半码时清 state 并消费；否则放行 |
+| `action=space/enter`、选词事件 | 把半码作为前缀音节提交 |
 | 其他 | 放行 |
 
 ## Workspace
@@ -33,23 +33,23 @@ y→ing z→ei
 | 键 | 类型 | 说明 |
 |---|---|---|
 | `plugin/pime-shuangpin-standard/consumed` | bool | 本次按键已被双拼消费 |
-| `plugin/pime-shuangpin-standard/syllable` | text | 第 2 键时写入的完整音节 |
+| `plugin/pime-shuangpin-standard/syllable` | text | 合成出的完整音节 |
 
 消费者：`pime-pinyin-parse` 读取这两个键。`consumed=true` 表示 parse 不要再用
 `event.text`。
 
-读取：`plugin/pime-keymap-default/action`（`backspace` 时清空半码）。
+读取：`plugin/pime-keymap-default/action`（退格/空格/回车时使用）。
 
 ## Settings
 
 | key | 类型 | 默认 | 说明 |
 |---|---|---|---|
-| `show_half_code` | bool | true | 保留位：半码是否进入预编辑 |
+| `scheme` | enum | `xiaohe` | `xiaohe` / `ziranma` / `microsoft` / `sogou` |
 
 ## 预算
 
-`sync_us: 50`；只做两张小表查找。
+`sync_us: 50`；只做几张固定小表查找，无分配。
 
 ## 用例
 
-`tests/cases/`：首键存储、两键合成、退格清空。
+`tests/cases/`：四方案合成、`;`→ing、零声母、退格清空、空格提交半码。

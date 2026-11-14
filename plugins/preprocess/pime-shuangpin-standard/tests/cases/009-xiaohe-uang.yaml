@@ -1,0 +1,8 @@
+name: xiaohe-guang
+event: { type: text, text: l }
+state: { half: g }
+settings: { scheme: xiaohe }
+expect:
+  handled: true
+  workspace:
+    - { k: syllable, v: guang }

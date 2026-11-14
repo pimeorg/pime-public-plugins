@@ -1,0 +1,8 @@
+name: microsoft-ing-on-semicolon
+event: { type: text, text: ";" }
+state: { half: n }
+settings: { scheme: microsoft }
+expect:
+  handled: true
+  workspace:
+    - { k: syllable, v: ning }

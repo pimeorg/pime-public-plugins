@@ -1,0 +1,10 @@
+name: auto-correct-swapped-letters
+event: { type: text, text: zhogn }
+expect:
+  handled: true
+  workspace:
+    - { k: raw, v: zhong }
+    - { k: input, v: zhogn }
+    - { k: marks, v: [ { type: swap, start: 3, end: 5 } ] }
+  commands:
+    - { type: set_composition, text: zhong, cursor: 5 }

@@ -1,0 +1,8 @@
+name: sogou-zero-o-key
+event: { type: text, text: h }
+state: { half: o }
+settings: { scheme: sogou }
+expect:
+  handled: true
+  workspace:
+    - { k: syllable, v: ang }

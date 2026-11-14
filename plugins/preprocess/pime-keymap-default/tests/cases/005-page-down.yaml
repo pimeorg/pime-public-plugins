@@ -1,0 +1,7 @@
+name: page-down-browses
+event: { type: key, keycode: 34, modifiers: 0, action: 0 }
+context: { locale: zh-CN, page_size: 5 }
+expect:
+  handled: false
+  workspace:
+    - { k: action, v: pagedown }

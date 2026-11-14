@@ -23,12 +23,30 @@ constexpr uint64_t kModMeta = 1u << 3;
 constexpr uint64_t kKeyBackspace = 8;
 constexpr uint64_t kKeyTab = 9;
 constexpr uint64_t kKeyEnter = 13;
+constexpr uint64_t kKeyShift = 16;
+constexpr uint64_t kKeyCapsLock = 20;
 constexpr uint64_t kKeyEscape = 27;
 constexpr uint64_t kKeySpace = 32;
+constexpr uint64_t kKeyPageUp = 33;
+constexpr uint64_t kKeyPageDown = 34;
+constexpr uint64_t kKeyEnd = 35;
+constexpr uint64_t kKeyHome = 36;
+constexpr uint64_t kKeyLeft = 37;
+constexpr uint64_t kKeyUp = 38;
+constexpr uint64_t kKeyRight = 39;
+constexpr uint64_t kKeyDown = 40;
 constexpr uint64_t kKeyDelete = 46;
+constexpr uint64_t kKeyDigitFirst = 48;
+constexpr uint64_t kKeyDigitLast = 57;
+constexpr uint64_t kKeyBacktick = 192;
 
 bool g_space_selects = true;
+bool g_candidate_keys = true;
+bool g_number_selects = true;
 
+/* Navigation and paging only become actions while a chain has candidates;
+ * candidates-format decides whether the action is consumed. Digits keep their
+ * text too, so an editor without a composition still receives them. */
 const char* action_for(uint64_t keycode) {
     switch (keycode) {
         case kKeyBackspace: return "backspace";
@@ -37,6 +55,23 @@ const char* action_for(uint64_t keycode) {
         case kKeyEscape: return "escape";
         case kKeySpace: return "space";
         case kKeyDelete: return "delete";
+        case kKeyShift: return "shift";
+        case kKeyCapsLock: return "capslock";
+        case kKeyBacktick: return "backtick";
+        default: return nullptr;
+    }
+}
+
+const char* candidate_action_for(uint64_t keycode) {
+    switch (keycode) {
+        case kKeyLeft: return "left";
+        case kKeyRight: return "right";
+        case kKeyUp: return "up";
+        case kKeyDown: return "down";
+        case kKeyPageUp: return "pageup";
+        case kKeyPageDown: return "pagedown";
+        case kKeyHome: return "home";
+        case kKeyEnd: return "end";
         default: return nullptr;
     }
 }
@@ -71,6 +106,8 @@ extern "C" {
 
 PIME_EXPORT pime_status pime_init(const uint8_t* config, uint32_t len) {
     g_space_selects = true;
+    g_candidate_keys = true;
+    g_number_selects = true;
     if (!config || !len) return PIME_OK;
     MapView root = MapView::of(Span{config, config + len});
     if (!root.valid) return PIME_INVALID;
@@ -79,6 +116,9 @@ PIME_EXPORT pime_status pime_init(const uint8_t* config, uint32_t len) {
         bool value = true;
         if (settings.boolean("space_selects_candidate", &value))
             g_space_selects = value;
+        if (settings.boolean("candidate_keys", &value)) g_candidate_keys = value;
+        if (settings.boolean("number_selects_candidate", &value))
+            g_number_selects = value;
     }
     return PIME_OK;
 }
@@ -111,6 +151,10 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
 
     const char* mapped = action_for(keycode);
     if (mapped && keycode == kKeySpace && !g_space_selects) mapped = nullptr;
+    if (!mapped && g_candidate_keys) mapped = candidate_action_for(keycode);
+    if (!mapped && g_number_selects && keycode >= kKeyDigitFirst &&
+        keycode <= kKeyDigitLast)
+        mapped = "digit";
     return respond(out, cap, out_len, mapped);
 }
 

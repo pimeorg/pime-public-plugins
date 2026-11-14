@@ -1,100 +1,63 @@
 /*
- * pime-pinyin-parse: full-pinyin segmentation (greedy longest match).
+ * pime-pinyin-parse: full-pinyin segmentation with typo correction.
  *
- * State: { buf: text } — the letters typed so far, max 64 bytes.
- * Workspace out: raw (text), syllables (array<text>).
+ * State: { buf: text } — the letters typed so far, max 96 bytes.
+ * Workspace out:
+ *   raw        corrected letter stream consumed by translate
+ *   input      original letter stream (what the user typed)
+ *   syllables  display segmentation of `raw`
+ *   marks      correction marks [{type, start, end}] (offsets into `input`)
+ *
+ * Correction follows the WeaveText rule: a correction is kept only when the
+ * plain reading is not fully syllable-segmentable and the corrected reading
+ * is. Adjacent swaps, one missing letter and one extra letter are tried;
+ * tap-neighbour letters (event.neighbour) are tried first. Abbreviations such
+ * as "hbg" have no fully segmentable correction and are left untouched.
+ *
  * Workspace in: keymap action, shuangpin syllable/consumed.
  */
 #include <pime/plugin_api.h>
 
 #include <pimeplug/cbor.hpp>
 #include <pimeplug/commands.hpp>
+#include <pimeplug/pinyin.hpp>
+#include <pimeplug/text.hpp>
 
 using namespace pimeplug;
 
 namespace {
 
 constexpr uint32_t kScratchBytes = 16384;
-constexpr uint32_t kMaxBuffer = 64;
-constexpr uint32_t kMaxSegments = 16;
+constexpr uint32_t kMaxBuffer = 96;
+constexpr uint32_t kMaxSegments = 32;
+constexpr uint32_t kMaxMarks = 8;
+constexpr uint32_t kCorrectLimit = 24;
+
 alignas(8) uint8_t g_scratch[kScratchBytes];
 
-const char kSyllables[] =
-    "a ai an ang ao "
-    "ba bai ban bang bao bei ben beng bi bian biao bie bin bing bo bu "
-    "ca cai can cang cao ce cen ceng cha chai chan chang chao che chen cheng "
-    "chi chong chou chu chua chuai chuan chuang chui chun chuo ci cong cou cu "
-    "cuan cui cun cuo "
-    "da dai dan dang dao de dei den deng di dia dian diao die ding diu dong "
-    "dou du duan dui dun duo "
-    "e ei en eng er "
-    "fa fan fang fei fen feng fo fou fu "
-    "ga gai gan gang gao ge gei gen geng gong gou gu gua guai guan guang gui "
-    "gun guo "
-    "ha hai han hang hao he hei hen heng hong hou hu hua huai huan huang hui "
-    "hun huo "
-    "ji jia jian jiang jiao jie jin jing jiong jiu ju juan jue jun "
-    "ka kai kan kang kao ke kei ken keng kong kou ku kua kuai kuan kuang kui "
-    "kun kuo "
-    "la lai lan lang lao le lei leng li lia lian liang liao lie lin ling liu "
-    "long lou lu luan lue lun luo lv lve "
-    "ma mai man mang mao me mei men meng mi mian miao mie min ming miu mo mou mu "
-    "na nai nan nang nao ne nei nen neng ni nian niang niao nie nin ning niu "
-    "nong nou nu nuan nue nun nuo nv nve "
-    "o ou "
-    "pa pai pan pang pao pei pen peng pi pian piao pie pin ping po pou pu "
-    "qi qia qian qiang qiao qie qin qing qiong qiu qu quan que qun "
-    "ran rang rao re ren reng ri rong rou ru rua ruan rui run ruo "
-    "sa sai san sang sao se sen seng sha shai shan shang shao she shei shen "
-    "sheng shi shou shu shua shuai shuan shuang shui shun shuo si song sou su "
-    "suan sui sun suo "
-    "ta tai tan tang tao te tei teng ti tian tiao tie ting tong tou tu tuan "
-    "tui tun tuo "
-    "wa wai wan wang wei wen weng wo wu "
-    "xi xia xian xiang xiao xie xin xing xiong xiu xu xuan xue xun "
-    "ya yan yang yao ye yi yin ying yo yong you yu yuan yue yun "
-    "za zai zan zang zao ze zei zen zeng zha zhai zhan zhang zhao zhe zhei "
-    "zhen zheng zhi zhong zhou zhu zhua zhuai zhuan zhuang zhui zhun zhuo zi "
-    "zong zou zu zuan zui zun zuo ";
-
-bool is_syllable(const char* text, uint32_t len) {
-    uint32_t i = 0;
-    while (kSyllables[i]) {
-        while (kSyllables[i] == ' ') ++i;
-        const uint32_t start = i;
-        while (kSyllables[i] && kSyllables[i] != ' ') ++i;
-        const uint32_t token_len = i - start;
-        if (token_len == len &&
-            Frame::equal(kSyllables + start, token_len, text, len))
-            return true;
-    }
-    return false;
-}
-
-bool is_syllable_prefix(const char* text, uint32_t len) {
-    if (len == 0 || len > 6) return false;
-    uint32_t i = 0;
-    while (kSyllables[i]) {
-        while (kSyllables[i] == ' ') ++i;
-        const uint32_t start = i;
-        while (kSyllables[i] && kSyllables[i] != ' ') ++i;
-        const uint32_t token_len = i - start;
-        if (token_len >= len &&
-            Frame::equal(kSyllables + start, len, text, len))
-            return true;
-    }
-    return false;
-}
+bool g_auto_correct = true;
+bool g_tap_correct = true;
 
 struct Segment {
     uint32_t start;
     uint32_t end;
+    uint8_t type; /* 0 normal, 1 corrected, 2 incomplete/abbreviation */
+};
+
+struct Correction {
+    char text[kMaxBuffer];
+    uint32_t len = 0;
+    uint8_t type = 0; /* 1 swap, 2 delete, 3 insert, 4 neighbour */
+    uint32_t start = 0;
+    uint32_t end = 0;
+    bool valid = false;
 };
 
 uint32_t segment(const char* buffer, uint32_t len, Segment* out,
-                 uint32_t max_segments) {
+                 uint32_t max_segments, bool* complete) {
     uint32_t count = 0;
     uint32_t i = 0;
+    bool all = true;
     while (i < len && count < max_segments) {
         if (buffer[i] == '\'') {
             ++i;
@@ -109,18 +72,208 @@ uint32_t segment(const char* buffer, uint32_t len, Segment* out,
                 break;
             }
         }
+        uint8_t type = 0;
         if (best == 0) {
-            /* A trailing incomplete syllable ("zh", "h") stays one segment;
-             * translate treats it as a prefix of any matching syllable. */
             const uint32_t rest = len - i;
             best = (rest <= 6 && is_syllable_prefix(buffer + i, rest)) ? rest : 1;
+            type = 2;
+            all = false;
         }
         out[count].start = i;
         out[count].end = i + best;
+        out[count].type = type;
         ++count;
         i += best;
     }
+    if (complete) *complete = all && i >= len;
     return count;
+}
+
+bool fully_segmented(const char* buffer, uint32_t len) {
+    Segment parts[kMaxSegments];
+    bool complete = false;
+    segment(buffer, len, parts, kMaxSegments, &complete);
+    return complete;
+}
+
+uint32_t count_letters(const char* buffer, uint32_t len) {
+    uint32_t n = 0;
+    for (uint32_t i = 0; i < len; ++i)
+        if (ascii_alpha(buffer[i])) ++n;
+    return n;
+}
+
+/* Acceptable = every segment but the last is a complete syllable and the last
+ * is a prefix (or the string is fully segmented). "xianr" is acceptable
+ * (xian + trailing initial); "zhogn" is not. */
+bool acceptable(const char* buffer, uint32_t len) {
+    bool reachable[kMaxBuffer + 1] = {};
+    reachable[0] = true;
+    for (uint32_t i = 0; i <= len; ++i) {
+        if (!reachable[i]) continue;
+        uint32_t limit = len - i;
+        if (limit > 6) limit = 6;
+        for (uint32_t n = 1; n <= limit; ++n) {
+            if (is_syllable(buffer + i, n)) reachable[i + n] = true;
+        }
+    }
+    if (reachable[len]) return true;
+    for (uint32_t i = len; i > 0; --i) {
+        if (!reachable[i - 1]) continue;
+        const uint32_t rest = len - (i - 1);
+        if (rest <= 6 && is_syllable_prefix(buffer + (i - 1), rest)) return true;
+    }
+    return false;
+}
+
+uint32_t common_prefix(const char* a, const char* b, uint32_t len) {
+    uint32_t n = 0;
+    while (n < len && a[n] == b[n]) ++n;
+    return n;
+}
+
+/* Preference among equally long common prefixes: a neighbour correction is
+ * the most trustworthy, then a swap, then a missing letter, then an extra
+ * one (deleting a letter can too easily "fix" a different valid word). */
+uint8_t rank_of(uint8_t type) {
+    switch (type) {
+        case 4: return 0;
+        case 1: return 1;
+        case 3: return 2;
+        case 2: return 3;
+        default: return 4;
+    }
+}
+
+void consider(const char* buffer, uint32_t len, const Correction& candidate,
+              Correction* best, uint32_t* best_prefix) {
+    const uint32_t prefix = common_prefix(candidate.text, buffer, len);
+    bool take = false;
+    if (!best->valid) {
+        take = true;
+    } else if (prefix > *best_prefix) {
+        take = true;
+    } else if (prefix == *best_prefix &&
+               rank_of(candidate.type) < rank_of(best->type)) {
+        take = true;
+    }
+    if (!take) return;
+    *best = candidate;
+    *best_prefix = prefix;
+}
+
+bool make_edit(const char* buffer, uint32_t len, uint32_t position,
+               uint8_t kind, char insert, Correction* out) {
+    Buffer b(out->text, sizeof(out->text));
+    for (uint32_t i = 0; i < len; ++i) {
+        if (kind == 2 && i == position) continue;
+        if (kind == 1 && i == position) {
+            b.append(buffer[position + 1]);
+            b.append(buffer[position]);
+            ++i;
+            continue;
+        }
+        if (kind == 3 && i == position) b.append(insert);
+        b.append(buffer[i]);
+    }
+    if (kind == 3 && position == len) b.append(insert);
+    if (b.len == 0 || b.len > kMaxBuffer) return false;
+    /* Only a complete reading beats the typed text; a merely "acceptable"
+     * reading (trailing initial) can be produced by almost any swap. */
+    if (!fully_segmented(b.data, b.len)) return false;
+    out->len = b.len;
+    out->type = kind;
+    out->start = position;
+    out->end = kind == 3 ? position : position + (kind == 2 ? 1 : 2);
+    out->valid = true;
+    return true;
+}
+
+bool correct(const char* buffer, uint32_t len, const char* neighbour,
+             uint32_t neighbour_len, Correction* out) {
+    if (len < 3 || len > kCorrectLimit) return false;
+    if (count_letters(buffer, len) < 3) return false;
+    if (fully_segmented(buffer, len)) return false;
+
+    Correction best;
+    uint32_t best_prefix = 0;
+
+    /* Tap-neighbour: the finger landed next to the intended key. Works even
+     * when the plain reading is a valid abbreviation lattice, as long as the
+     * neighbour turns the tail into a complete spelling. */
+    if (g_tap_correct && neighbour && neighbour_len == 1) {
+        const char alt = lower_ascii(neighbour[0]);
+        for (uint32_t i = 0; i < len; ++i) {
+            if (!ascii_alpha(buffer[i]) || buffer[i] == alt) continue;
+            if (i > 0 && buffer[i - 1] == '\'') continue;
+            Correction candidate;
+            Buffer b(candidate.text, sizeof(candidate.text));
+            for (uint32_t k = 0; k < len; ++k)
+                b.append(k == i ? alt : buffer[k]);
+            if (b.len == 0 || !fully_segmented(b.data, b.len)) continue;
+            candidate.len = b.len;
+            candidate.type = 4;
+            candidate.start = i;
+            candidate.end = i + 1;
+            candidate.valid = true;
+            consider(buffer, len, candidate, &best, &best_prefix);
+        }
+    }
+
+    /* Vowel-less strings are pure abbreviations ("zsh", "hbg", "dhrs"), not
+     * typos. A trailing initial can also make an already-readable string
+     * "acceptable" without being complete; both stay untouched. */
+    bool has_vowel = false;
+    for (uint32_t i = 0; i < len; ++i) {
+        const char c = lower_ascii(buffer[i]);
+        if (c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u' || c == 'v')
+            has_vowel = true;
+    }
+    if (!has_vowel || acceptable(buffer, len)) {
+        if (!best.valid) return false;
+        *out = best;
+        return true;
+    }
+
+    /* A doubled letter is the most common extra-key typo; delete one copy
+     * before considering an insertion elsewhere. */
+    for (uint32_t i = 0; i + 1 < len; ++i) {
+        if (!ascii_alpha(buffer[i]) || buffer[i] != buffer[i + 1]) continue;
+        Correction candidate;
+        if (make_edit(buffer, len, i, 2, 0, &candidate)) {
+            *out = candidate;
+            return true;
+        }
+    }
+
+    /* Adjacent swap. */
+    for (uint32_t i = 0; i + 1 < len; ++i) {
+        if (!ascii_alpha(buffer[i]) || !ascii_alpha(buffer[i + 1])) continue;
+        if (buffer[i] == buffer[i + 1]) continue;
+        Correction candidate;
+        if (make_edit(buffer, len, i, 1, 0, &candidate))
+            consider(buffer, len, candidate, &best, &best_prefix);
+    }
+    /* One extra letter. */
+    for (uint32_t i = 0; i < len; ++i) {
+        if (!ascii_alpha(buffer[i])) continue;
+        Correction candidate;
+        if (make_edit(buffer, len, i, 2, 0, &candidate))
+            consider(buffer, len, candidate, &best, &best_prefix);
+    }
+    /* One missing letter. */
+    const char kVowels[] = {'a', 'e', 'i', 'o', 'u', 'n', 'g'};
+    for (uint32_t i = 0; i <= len; ++i) {
+        for (uint32_t k = 0; k < sizeof(kVowels); ++k) {
+            Correction candidate;
+            if (!make_edit(buffer, len, i, 3, kVowels[k], &candidate)) continue;
+            consider(buffer, len, candidate, &best, &best_prefix);
+        }
+    }
+
+    if (!best.valid) return false;
+    *out = best;
+    return true;
 }
 
 uint32_t load_buffer(const Frame& frame, char* buffer) {
@@ -151,29 +304,61 @@ bool text_is(const char* text, uint32_t len, const char* expected) {
            Frame::equal(text, len, expected, len);
 }
 
+void mark_type_name(uint8_t type, const char** name) {
+    switch (type) {
+        case 1: *name = "swap"; break;
+        case 2: *name = "delete"; break;
+        case 3: *name = "insert"; break;
+        case 4: *name = "replace"; break;
+        default: *name = "none"; break;
+    }
+}
+
 pime_status respond(uint8_t* out, uint32_t cap, uint32_t* out_len,
-                    const char* buffer, uint32_t len, bool handled,
-                    bool commit_phase) {
+                    const char* buffer, uint32_t len, const char* original,
+                    uint32_t original_len, const Correction* correction,
+                    bool handled, bool commit_phase) {
     Segment segments[kMaxSegments];
-    const uint32_t segment_count = segment(buffer, len, segments, kMaxSegments);
+    bool complete = false;
+    const uint32_t segment_count =
+        segment(buffer, len, segments, kMaxSegments, &complete);
 
     Writer w(out, cap);
     w.map(4);
     w.key("state");
     w.map(1);
     w.key("buf");
-    /* On a commit the composition is gone, but the workspace still carries the
-     * pre-commit raw text so translate and format can resolve the selection. */
-    w.text(buffer, commit_phase ? 0 : len);
+    /* State keeps exactly what was typed, not the corrected spelling, so the
+     * next key is appended to the original and backspace stays predictable.
+     * On a commit the composition is gone; workspace still carries the raw
+     * text so translate and format can resolve the selection. */
+    w.text(original, commit_phase ? 0 : original_len);
 
     w.key("workspace");
-    w.map(2);
+    w.map(4);
     w.key("raw");
     w.text(buffer, len);
+    w.key("input");
+    w.text(original, original_len);
     w.key("syllables");
     w.array(len > 0 ? segment_count : 0);
     for (uint32_t i = 0; i < segment_count && len > 0; ++i)
         w.text(buffer + segments[i].start, segments[i].end - segments[i].start);
+    w.key("marks");
+    if (correction && correction->valid) {
+        w.array(1);
+        w.map(3);
+        w.key("type");
+        const char* name = nullptr;
+        mark_type_name(correction->type, &name);
+        w.text(name);
+        w.key("start");
+        w.u64(correction->start);
+        w.key("end");
+        w.u64(correction->end);
+    } else {
+        w.array(0);
+    }
 
     w.key("handled");
     w.boolean(handled);
@@ -199,7 +384,7 @@ pime_status respond(uint8_t* out, uint32_t cap, uint32_t* out_len,
             w.key("end");
             w.u64(segments[i].end);
             w.key("type");
-            w.u64(0);
+            w.u64(segments[i].type);
         }
     } else if (handled) {
         /* The composition is gone: finish it in the editor and drop the bar. */
@@ -218,7 +403,18 @@ pime_status respond(uint8_t* out, uint32_t cap, uint32_t* out_len,
 
 extern "C" {
 
-PIME_EXPORT pime_status pime_init(const uint8_t*, uint32_t) { return PIME_OK; }
+PIME_EXPORT pime_status pime_init(const uint8_t* config, uint32_t len) {
+    g_auto_correct = true;
+    g_tap_correct = true;
+    if (!config || !len) return PIME_OK;
+    MapView root = MapView::of(Span{config, config + len});
+    MapView settings = MapView::of(root.get("settings"));
+    if (!settings.valid) return PIME_OK;
+    bool value = true;
+    if (settings.boolean("auto_correct", &value)) g_auto_correct = value;
+    if (settings.boolean("tap_correct", &value)) g_tap_correct = value;
+    return PIME_OK;
+}
 
 PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
                                      uint8_t* out, uint32_t cap,
@@ -250,12 +446,9 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
 
     bool commit_phase = false;
     if (is_candidate) {
-        /* The candidate is being committed: clear the state, but keep the raw
-         * text in the workspace so format can resolve the selection. */
         commit_phase = true;
     } else if (is_key || is_text) {
         if (text_is(action, action_len, "backspace")) {
-            /* Empty buffer: let the editor delete the committed text. */
             if (len > 0) {
                 --len;
                 handled = true;
@@ -265,7 +458,6 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
             handled = true;
         } else if (text_is(action, action_len, "space") ||
                    text_is(action, action_len, "enter")) {
-            /* format commits the highlighted candidate on these keys. */
             commit_phase = true;
         } else if (shuangpin_consumed) {
             handled = true;
@@ -283,7 +475,52 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
         }
     }
 
-    return respond(out, cap, out_len, buffer, len, handled, commit_phase);
+    /* Correction is applied to the display/translate stream, while state keeps
+     * exactly what was typed so backspace stays predictable. */
+    Correction correction;
+    const char* display = buffer;
+    uint32_t display_len = len;
+    const char* neighbour = nullptr;
+    uint32_t neighbour_len = 0;
+    frame.event.text("neighbour", &neighbour, &neighbour_len);
+
+    /* When the core starts a composition it may pass the whole typed text
+     * without state. Once state exists it is authoritative; otherwise a
+     * multi-letter `text` event is the composition itself. */
+    MapView state_view = MapView::of(frame.root.get("state"));
+    const bool has_state_buf = state_view.valid && state_view.get("buf").valid();
+    if (!has_state_buf && (is_text || is_key) && !commit_phase) {
+        const char* incoming = nullptr;
+        uint32_t incoming_len = 0;
+        if (frame.event_text(&incoming, &incoming_len) && incoming_len > 0 &&
+            incoming_len <= kMaxBuffer) {
+            bool pure = true;
+            for (uint32_t i = 0; i < incoming_len; ++i) {
+                const char c = lower_ascii(incoming[i]);
+                if (!ascii_alpha(c) && c != '\'') {
+                    pure = false;
+                    break;
+                }
+            }
+            if (pure && (action_len == 0 || shuangpin_consumed)) {
+                Buffer b(buffer, kMaxBuffer);
+                for (uint32_t i = 0; i < incoming_len; ++i)
+                    b.append(lower_ascii(incoming[i]));
+                len = b.len;
+            }
+        }
+    }
+
+    if (g_auto_correct && len > 0) {
+        if (correct(buffer, len, neighbour, neighbour_len, &correction)) {
+            display = correction.text;
+            display_len = correction.len;
+        }
+    }
+
+    return respond(out, cap, out_len, display, display_len, buffer, len,
+                   correction.valid ? &correction : nullptr, handled,
+                   commit_phase);
 }
 
 PIME_EXPORT pime_status pime_on_event(const uint8_t* in, uint32_t in_len,
@@ -294,10 +531,14 @@ PIME_EXPORT pime_status pime_on_event(const uint8_t* in, uint32_t in_len,
     if (!frame.parse(in, in_len)) return PIME_CORRUPT;
     char buffer[kMaxBuffer];
     const uint32_t len = load_buffer(frame, buffer);
-    return respond(out, cap, out_len, buffer, len, false, false);
+    return respond(out, cap, out_len, buffer, len, buffer, len, nullptr, false,
+                   false);
 }
 
-PIME_EXPORT void pime_shutdown(void) {}
+PIME_EXPORT void pime_shutdown(void) {
+    g_auto_correct = true;
+    g_tap_correct = true;
+}
 
 PIME_EXPORT uint32_t pime_scratch_ptr(void) {
     return static_cast<uint32_t>(reinterpret_cast<uintptr_t>(g_scratch));
