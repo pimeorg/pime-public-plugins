@@ -1,0 +1,7 @@
+name: typo-suggests-neighbour
+event: { type: text, text: trnq }
+workspace:
+  plugin/pime-wubi-parse/code: trnq
+expect:
+  handled: true
+  first_candidate: { text: 我, comment: 拼写建议 }

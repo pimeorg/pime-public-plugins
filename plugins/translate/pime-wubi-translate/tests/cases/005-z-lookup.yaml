@@ -1,0 +1,7 @@
+name: z-pinyin-lookup-shows-wubi-code
+event: { type: text, text: zwo }
+workspace:
+  plugin/pime-wubi-parse/code: zwo
+expect:
+  handled: true
+  first_candidate: { text: 我, comment: trnt, source: pinyin-lookup }

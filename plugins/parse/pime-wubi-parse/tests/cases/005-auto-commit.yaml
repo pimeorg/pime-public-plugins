@@ -1,0 +1,13 @@
+name: unique-four-code-commits
+steps:
+  - { event: { type: text, text: g } }
+  - { event: { type: text, text: g } }
+  - { event: { type: text, text: l } }
+  - event: { type: text, text: l }
+    expect:
+      handled: true
+      state: { buf: "" }
+      workspace:
+        - { k: code, v: "" }
+      commands:
+        - { type: commit, text: 一 }

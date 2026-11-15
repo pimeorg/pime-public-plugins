@@ -1,0 +1,9 @@
+name: auto-commit-off-keeps-code
+event: { type: text, text: l }
+state: { buf: ggl }
+settings: { auto_commit: false }
+expect:
+  handled: true
+  state: { buf: ggll }
+  workspace:
+    - { k: code, v: ggll }

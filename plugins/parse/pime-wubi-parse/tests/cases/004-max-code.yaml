@@ -1,9 +1,11 @@
-name: max-code-stops
+name: full-code-restarts
 event: { type: text, text: g }
 state: { buf: wqvb }
 settings: { max_code: 4 }
 expect:
-  handled: false
-  state: { buf: wqvb }
+  handled: true
+  state: { buf: g }
   workspace:
-    - { k: code, v: wqvb }
+    - { k: code, v: g }
+  commands:
+    - { type: set_composition, text: g, cursor: 1 }

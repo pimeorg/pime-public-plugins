@@ -1,6 +1,6 @@
 description: 五笔：累积字母码并写入 workspace 供词表翻译
 id: pime-wubi-parse
-version: 1.0.0
+version: 1.1.0
 abi: { major: 1, minor: 0 }
 min_core: "1.0.0"
 state_schema: 1
@@ -10,8 +10,9 @@ role: parse
 platforms: [windows-x64, windows-arm64, macos-x64, macos-arm64,
             linux-x64, linux-arm64, android-arm64, android-x64, ios-arm64, ios-x64, harmony-arm64, harmony-x64]
 entry: pime_process
-capabilities: [input.read, workspace]
+capabilities: [input.read, workspace, asset.read]
 requires: []
+assets: [wubi.dict]
 limits:
   memory_mb: 8
   instructions: 1000000
@@ -23,4 +24,7 @@ limits:
   max_frame_bytes: 65536
 budget: { sync_us: 30, async_ms: 20 }
 settings:
-  - { key: max_code, type: int, default: 4 }
+  - { key: max_code, type: int, default: 4, min: 1, max: 16 }
+  - { key: auto_commit, type: bool, default: true }
+  - { key: pinyin_lookup, type: bool, default: true }
+  - { key: max_pinyin, type: int, default: 16, min: 1, max: 16 }

@@ -1,7 +1,7 @@
 name: no-match
-event: { type: text, text: zzzz }
+event: { type: text, text: qqqq }
 workspace:
-  plugin/pime-wubi-parse/code: zzzz
+  plugin/pime-wubi-parse/code: qqqq
 expect:
   handled: false
   workspace:

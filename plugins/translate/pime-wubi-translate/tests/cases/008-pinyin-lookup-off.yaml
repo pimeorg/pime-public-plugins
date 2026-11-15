@@ -1,0 +1,9 @@
+name: pinyin-lookup-off
+event: { type: text, text: zwo }
+workspace:
+  plugin/pime-wubi-parse/code: zwo
+settings: { pinyin_lookup: false }
+expect:
+  handled: false
+  workspace:
+    - { k: candidates, v: [] }

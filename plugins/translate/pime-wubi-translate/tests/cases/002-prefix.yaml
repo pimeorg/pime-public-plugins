@@ -4,4 +4,4 @@ workspace:
   plugin/pime-wubi-parse/code: wq
 expect:
   handled: true
-  first_candidate: { text: 你, score: 28000 }
+  first_candidate: { text: 你, score: 27600, source: completion, comment: iy }

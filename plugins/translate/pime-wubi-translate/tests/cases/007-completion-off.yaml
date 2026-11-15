@@ -1,0 +1,8 @@
+name: completion-off
+event: { type: text, text: khk }
+workspace:
+  plugin/pime-wubi-parse/code: khk
+settings: { completion: false }
+expect:
+  handled: true
+  first_candidate: { text: 中, score: 30000 }

@@ -1,0 +1,10 @@
+name: pinyin-lookup-code-grows
+event: { type: text, text: women }
+state: { buf: z }
+expect:
+  handled: true
+  state: { buf: zwomen }
+  workspace:
+    - { k: code, v: zwomen }
+  commands:
+    - { type: set_composition, text: zwomen, cursor: 6 }

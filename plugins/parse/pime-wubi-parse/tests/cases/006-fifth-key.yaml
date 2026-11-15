@@ -1,0 +1,11 @@
+name: fifth-key-pushes-top
+event: { type: text, text: w }
+state: { buf: trnt }
+expect:
+  handled: true
+  state: { buf: w }
+  workspace:
+    - { k: code, v: w }
+  commands:
+    - { type: commit, text: 我 }
+    - { type: set_composition, text: w, cursor: 1 }

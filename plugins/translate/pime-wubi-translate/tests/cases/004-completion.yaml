@@ -1,0 +1,7 @@
+name: completion-shows-remaining-code
+event: { type: text, text: khl }
+workspace:
+  plugin/pime-wubi-parse/code: khl
+expect:
+  handled: true
+  first_candidate: { text: 中国, comment: g, source: completion }

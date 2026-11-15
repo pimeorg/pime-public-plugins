@@ -10,10 +10,10 @@ plugins:
   version: 1.2.0
   code_hash: sha256:unbuilt
 - id: pime-wubi-parse
-  version: 1.0.0
+  version: 1.1.0
   code_hash: sha256:unbuilt
 - id: pime-wubi-translate
-  version: 1.0.0
+  version: 1.1.0
   code_hash: sha256:unbuilt
 - id: pime-rank-default
   version: 1.0.0
