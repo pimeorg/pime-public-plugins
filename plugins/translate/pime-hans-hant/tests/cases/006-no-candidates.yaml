@@ -1,0 +1,7 @@
+name: no-candidates
+event: { type: text, text: ni }
+workspace: {}
+expect:
+  handled: false
+  workspace:
+    - { k: candidates, v: [] }

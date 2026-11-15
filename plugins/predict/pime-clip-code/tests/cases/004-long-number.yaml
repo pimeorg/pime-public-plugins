@@ -1,0 +1,7 @@
+name: long-number-not-truncated
+event: { type: surrounding }
+context: { surrounding_before: "订单号 1234567890" }
+expect:
+  handled: false
+  workspace:
+    - { k: candidates, v: [] }

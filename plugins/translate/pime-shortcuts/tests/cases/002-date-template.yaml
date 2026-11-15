@@ -1,0 +1,10 @@
+name: date-template
+event: { type: text, text: rq }
+time: { now_ms: 1790478360000, tz_min: 480 }
+workspace: { plugin/pime-pinyin-parse/raw: rq }
+expect:
+  handled: false
+  workspace:
+    - k: candidates
+      v:
+        - { text: 2026年9月27日, source: shortcut }

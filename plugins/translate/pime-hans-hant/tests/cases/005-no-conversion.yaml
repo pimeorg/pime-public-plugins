@@ -1,0 +1,9 @@
+name: already-traditional
+event: { type: text, text: ni }
+workspace:
+  plugin/pime-pinyin-rank/candidates:
+    - { text: 你的, score: 900, source: dict }
+expect:
+  handled: false
+  workspace:
+    - { k: candidates, v: [] }

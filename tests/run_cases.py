@@ -123,6 +123,9 @@ def compare(case: dict, output: dict) -> list[str]:
 
 
 def main() -> int:
+    # Candidate text may contain non-GBK characters (emoji); never fail on print.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     parser = argparse.ArgumentParser(description="Run plugin test cases")
     parser.add_argument("--root", default=str(Path(__file__).resolve().parents[1]))
     parser.add_argument("--sim-dir", required=True)

@@ -1,0 +1,8 @@
+name: disabled
+settings: { enabled: false }
+event: { type: text, text: dz }
+workspace: { plugin/pime-pinyin-parse/raw: dz }
+expect:
+  handled: false
+  workspace:
+    - { k: candidates, v: [] }

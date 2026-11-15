@@ -1,0 +1,8 @@
+name: emoji-disabled
+settings: { enabled: false }
+event: { type: text, text: n }
+context: { surrounding_before: 谢谢 }
+expect:
+  handled: false
+  workspace:
+    - { k: candidates, v: [] }

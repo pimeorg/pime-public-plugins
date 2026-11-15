@@ -1,0 +1,9 @@
+name: emoji-learn-last
+event: { type: text, text: n }
+workspace: { plugin/pime-learn-user-dict/last: 晚安 }
+expect:
+  handled: false
+  workspace:
+    - k: candidates
+      v:
+        - { text: 🌙, source: emoji }

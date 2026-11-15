@@ -1,0 +1,13 @@
+name: multiple-candidates
+event: { type: text, text: wm }
+workspace:
+  plugin/pime-pinyin-rank/candidates:
+    - { text: 我们, score: 900, source: dict }
+    - { text: 后台, score: 800, source: dict }
+expect:
+  handled: false
+  workspace:
+    - k: candidates
+      v:
+        - { text: 我們, source: hans-hant }
+        - { text: 後台, source: hans-hant }

@@ -1,0 +1,9 @@
+name: emoji-long-context
+event: { type: text, text: n }
+context: { surrounding_before: 今天很开心 }
+expect:
+  handled: false
+  workspace:
+    - k: candidates
+      v:
+        - { text: 😄, source: emoji, comment: 表情 }

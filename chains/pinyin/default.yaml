@@ -9,6 +9,10 @@ plugins:
   - { id: pime-pinyin-translate, role: translate, settings: { max_candidates: 8 } }
   - { id: pime-pinyin-rank, role: rank }
   - { id: pime-special-candidates, role: translate }
+  - { id: pime-shortcuts, role: translate }
+  - { id: pime-hans-hant, role: translate }
+  - { id: pime-emoji-suggest, role: predict }
+  - { id: pime-clip-code, role: predict }
   - { id: pime-candidates-format, role: format, settings: { page_size: 5 } }
   - { id: pime-learn-user-dict, role: learn }
   - { id: pime-predict-context, role: predict }
@@ -21,7 +25,7 @@ workspace:
       from: pime-keymap-default, to: [pime-pinyin-parse] }
   - { key: plugin/pime-pinyin-parse/raw,
       from: pime-pinyin-parse,
-      to: [pime-pinyin-translate, pime-special-candidates,
+      to: [pime-pinyin-translate, pime-special-candidates, pime-shortcuts,
             pime-candidates-format] }
   - { key: plugin/pime-pinyin-parse/syllables,
       from: pime-pinyin-parse, to: [pime-pinyin-translate] }
@@ -29,9 +33,20 @@ workspace:
       from: pime-pinyin-translate, to: [pime-pinyin-rank] }
   - { key: plugin/pime-pinyin-rank/candidates,
       from: pime-pinyin-rank,
-      to: [pime-special-candidates, pime-candidates-format] }
+      to: [pime-special-candidates, pime-shortcuts, pime-hans-hant,
+            pime-candidates-format] }
   - { key: plugin/pime-special-candidates/candidates,
-      from: pime-special-candidates, to: [pime-candidates-format] }
+      from: pime-special-candidates,
+      to: [pime-shortcuts, pime-hans-hant, pime-candidates-format] }
+  - { key: plugin/pime-shortcuts/candidates,
+      from: pime-shortcuts,
+      to: [pime-hans-hant, pime-candidates-format] }
+  - { key: plugin/pime-hans-hant/candidates,
+      from: pime-hans-hant, to: [pime-candidates-format] }
+  - { key: plugin/pime-emoji-suggest/candidates,
+      from: pime-emoji-suggest, to: [pime-candidates-format] }
+  - { key: plugin/pime-clip-code/candidates,
+      from: pime-clip-code, to: [pime-candidates-format] }
   - { key: plugin/pime-candidates-format/committed,
       from: pime-candidates-format,
       to: [pime-learn-user-dict, pime-learn-frequency, pime-user-dict] }

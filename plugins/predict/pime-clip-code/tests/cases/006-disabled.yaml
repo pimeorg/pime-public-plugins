@@ -1,0 +1,8 @@
+name: disabled
+settings: { enabled: false }
+event: { type: surrounding }
+context: { surrounding_before: "您的验证码是 8341" }
+expect:
+  handled: false
+  workspace:
+    - { k: candidates, v: [] }

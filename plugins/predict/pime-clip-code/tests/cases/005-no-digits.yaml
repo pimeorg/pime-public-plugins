@@ -1,0 +1,7 @@
+name: no-digits
+event: { type: surrounding }
+context: { surrounding_before: "没有数字" }
+expect:
+  handled: false
+  workspace:
+    - { k: candidates, v: [] }
