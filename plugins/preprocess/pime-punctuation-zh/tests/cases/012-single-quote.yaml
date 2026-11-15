@@ -1,0 +1,7 @@
+name: single-quote-opens
+event: { type: text, text: "'" }
+expect:
+  handled: true
+  commands:
+    - { type: commit, text: "‘" }
+  state: { quote_open: true }

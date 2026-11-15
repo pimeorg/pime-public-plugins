@@ -1,0 +1,5 @@
+name: modified-key-passthrough
+event: { type: key, keycode: 188, modifiers: 2, text: "," }
+expect:
+  handled: false
+  commands: []

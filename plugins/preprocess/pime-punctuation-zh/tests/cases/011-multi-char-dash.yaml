@@ -1,0 +1,7 @@
+name: multi-char-dash
+settings: { multi_char: true }
+event: { type: text, text: "_" }
+expect:
+  handled: true
+  commands:
+    - { type: commit, text: "——" }

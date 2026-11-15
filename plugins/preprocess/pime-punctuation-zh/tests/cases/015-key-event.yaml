@@ -1,0 +1,6 @@
+name: key-event-question
+event: { type: key, keycode: 191, modifiers: 1, text: "?" }
+expect:
+  handled: true
+  commands:
+    - { type: commit, text: "？" }

@@ -1,0 +1,6 @@
+name: backspace-action-passthrough
+event: { type: key, keycode: 8, text: "," }
+workspace: { plugin/pime-keymap-default/action: backspace }
+expect:
+  handled: false
+  commands: []

@@ -17,7 +17,7 @@
 | `predict` | `pime-emoji-suggest` | wasm | 1.0.0 | 预测：按上下文末词联想表情 |
 | `predict` | `pime-predict-context` | wasm | 1.1.0 | 预测：用户二元组、接续表、字符搭配模型、末字续字四档联想 |
 | `preprocess` | `pime-keymap-default` | wasm | 1.2.0 | 默认键位：把控制键映射为链内动作，文本键放行 |
-| `preprocess` | `pime-punctuation-zh` | lua | 1.1.0 | 中文标点：半角标点转全角，引号样式可配置 |
+| `preprocess` | `pime-punctuation-zh` | wasm | 1.2.0 | 中文标点：半角标点转全角，引号样式可配置 |
 | `preprocess` | `pime-shuangpin-standard` | wasm | 1.1.0 | 双拼四方案（小鹤/自然码/微软/搜狗）：两键合成音节 |
 | `rank` | `pime-pinyin-rank` | wasm | 1.1.0 | 拼音候选重排：短词加权后按分数降序 |
 | `rank` | `pime-rank-default` | wasm | 1.0.0 | 通用重排：按分数降序、过滤低分、截断 |

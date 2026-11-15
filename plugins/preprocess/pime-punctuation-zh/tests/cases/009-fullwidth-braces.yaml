@@ -1,0 +1,7 @@
+name: fullwidth-braces
+settings: { braces: fullwidth }
+event: { type: text, text: "}" }
+expect:
+  handled: true
+  commands:
+    - { type: commit, text: "｝" }

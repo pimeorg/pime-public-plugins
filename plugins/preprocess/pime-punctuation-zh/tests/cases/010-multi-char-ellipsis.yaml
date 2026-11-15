@@ -1,0 +1,7 @@
+name: multi-char-ellipsis
+settings: { multi_char: true }
+event: { type: text, text: "^" }
+expect:
+  handled: true
+  commands:
+    - { type: commit, text: "……" }

@@ -1,0 +1,7 @@
+name: corner-braces
+settings: { braces: corner }
+event: { type: text, text: "{" }
+expect:
+  handled: true
+  commands:
+    - { type: commit, text: "「" }
