@@ -7,6 +7,8 @@
  */
 #include <pime/plugin_api.h>
 
+#include <pimeplug/memory.hpp>
+
 #include <pimeplug/cbor.hpp>
 
 using namespace pimeplug;

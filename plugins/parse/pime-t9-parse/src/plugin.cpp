@@ -8,6 +8,8 @@
  */
 #include <pime/plugin_api.h>
 
+#include <pimeplug/memory.hpp>
+
 #include <pimeplug/cbor.hpp>
 #include <pimeplug/commands.hpp>
 #include <pimeplug/t9.hpp>

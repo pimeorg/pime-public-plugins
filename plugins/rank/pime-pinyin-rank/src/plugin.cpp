@@ -18,6 +18,8 @@
  */
 #include <pime/plugin_api.h>
 
+#include <pimeplug/memory.hpp>
+
 #include <pimeplug/cbor.hpp>
 #include <pimeplug/host.hpp>
 #include <pimeplug/text.hpp>

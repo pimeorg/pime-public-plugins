@@ -1,0 +1,12 @@
+name: u-mode-keeps-components
+steps:
+  - event: { type: text, text: u }
+  - event: { type: text, text: m }
+  - event: { type: text, text: u }
+  - event: { type: text, text: m }
+  - event: { type: text, text: u }
+    expect:
+      handled: true
+      workspace:
+        - { k: raw, v: umumu }
+# u 模式是部件码，不能被“漏拼纠正”改成 oumumu。

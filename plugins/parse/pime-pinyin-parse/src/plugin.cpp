@@ -18,6 +18,8 @@
  */
 #include <pime/plugin_api.h>
 
+#include <pimeplug/memory.hpp>
+
 #include <pimeplug/cbor.hpp>
 #include <pimeplug/commands.hpp>
 #include <pimeplug/pinyin.hpp>
@@ -544,7 +546,10 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
         }
     }
 
-    if (g_auto_correct && len > 0) {
+    /* u-mode ("umumu") and the glyph filter ("`mu") are component codes, not
+     * pinyin; spelling correction would "fix" the leading u into ou. */
+    const bool shape_mode = len >= 2 && (buffer[0] == 'u' || buffer[0] == '`');
+    if (g_auto_correct && len > 0 && !shape_mode) {
         if (correct(buffer, len, neighbour, neighbour_len, &correction)) {
             display = correction.text;
             display_len = correction.len;

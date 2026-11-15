@@ -11,6 +11,8 @@
  */
 #include <pime/plugin_api.h>
 
+#include <pimeplug/memory.hpp>
+
 #include <pimeplug/cbor.hpp>
 #include <pimeplug/commands.hpp>
 #include <pimeplug/workspace.hpp>
@@ -297,8 +299,14 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
         commit = g_commit_on_enter && total > 0;
         raw_fallback = g_commit_on_enter && !commit;
     } else if (is_key && same(action, action_len, "digit")) {
+        /* v-mode keeps digits literal: "v1234" is a number/expression, not a
+         * candidate selection. The digit reached the parser as text. */
+        const bool v_mode =
+            has_composition && raw_len > 0 &&
+            (raw[0] == 'v' || raw[0] == 'V');
         uint64_t digit = 0;
-        if (span_uint(frame.workspace_value("plugin/pime-keymap-default/digit"),
+        if (!v_mode &&
+            span_uint(frame.workspace_value("plugin/pime-keymap-default/digit"),
                       &digit) &&
             digit >= 1 && digit <= 9) {
             const uint32_t slot =

@@ -539,3 +539,53 @@ WeaveText 的 `refresh_wubi` / `Schema::Wubi86` 包含四项行为，本轮按�
 3. 手写连写候选最初排在单字之后，`first_candidate` 仍是单字；改为把拼接候选插到
    队首，并给单字候选去重。
 4. 语音 VAD 返回裁剪长度但没返回起点，取音频指针时算错；改为额外输出 start 偏移。
+
+## MuMu 12 实机验证（Android 15 / x86_64）
+
+用户要求把新插件放到 MuMu 上实测。过程与结论：
+
+### 环境与部署
+
+- NDK 28.2（`E:/andiod/andriod-sdk/ndk/28.2.13676358`）+ `cmake/toolchains/wasm32-ndk.cmake`
+  产出 18 个 WASM 包；`pime-android` 的 assets 换成这批包，链为
+  `chains/pinyin/default.yaml` 的 Android 子集（去掉 Lua 插件）。
+- MuMu 12（`127.0.0.1:16384`）安装 APK，`pm clear` 后由宿主把 assets 复制到
+  `files/plugins`，18 个包全部 `plugin loaded`，链激活成功。
+
+### 实机通过的路径
+
+| 输入 | 结果 |
+|---|---|
+| `nihao` | 候选首位「你好」，空格提交成功 |
+| `dz` | 候选首位「地址」（快捷短语） |
+| `rq` | 候选首位「2026年11月15日」（日期） |
+| `v1234` | 候选「1234 / 壹仟贰佰叁拾肆元整 / 一千二百三十四」（数字模式） |
+| `umumu` | 候选「林」（u 模式拆字） |
+| `shuo` | 候选「說」（繁简转换） |
+| `xiexie` | 候选「謝謝」，提交后重打仍为首位（space 提交学习） |
+
+### 实机暴露并修复的问题
+
+1. **WASM 缺 `memset/memcpy` 定义**：新插件里的聚合清零/拷贝触发了
+   `env.memset` / `env.memcpy` 未定义导入，WAMR 链接失败，focus/key 全部
+   `CORRUPT`。修复：所有 WASM 插件源码统一 include
+   `<pimeplug/memory.hpp>`（31 个文件）。Native 模拟器链接 libc，无法发现这个问题。
+2. **v 模式数字被当成选词**：软键盘数字键被 keymap 映射为 `digit` 动作，
+   format 直接按选词处理，`v1234` 打不出来。修复：format 在 composition 以
+   `v/V` 开头时跳过数字选词，让数字进入 parse。
+3. **u 模式被“漏拼纠正”改写**：parse 把 `umumu` 纠正成 `oumumu`（给孤立的
+   `u` 补 `o`），shape 模式因此失效。修复：parse 在 `u`/反引号前缀模式下不纠正。
+
+三个修复都补了 native 回归用例（`016-u-mode-no-correct`、
+`010-v-mode-digit`），并在模拟器上全绿。
+
+### 未能实机覆盖
+
+- `pime-clip-code` / `pime-emoji-suggest` 依赖宿主 surrounding 文本，当前
+  `pime-android` 只在部分事件里回传 surrounding，且 `hans-hant` 默认开启后
+  候选变繁体，简化字表匹配不上；
+- `pime-predict-context` 提交后的联想同理（表是简体）；
+- `pime-app-mode` / `pime-dict-packs` / `pime-personal-merge` /
+  `pime-model-manager` 是 service 事件驱动，宿主 UI 还没有对应入口；
+- 中英混输的大写片段：MuMu + adb 连点 Shift 不可靠，未能稳定复现。
+这些路径仍由 native 用例覆盖，实机接线留待宿主补 surrounding / 事件入口。

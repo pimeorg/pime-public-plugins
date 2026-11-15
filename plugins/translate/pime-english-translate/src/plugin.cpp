@@ -11,6 +11,8 @@
  */
 #include <pime/plugin_api.h>
 
+#include <pimeplug/memory.hpp>
+
 #include <pimeplug/asset.hpp>
 #include <pimeplug/candidates.hpp>
 #include <pimeplug/cbor.hpp>

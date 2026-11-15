@@ -1,0 +1,13 @@
+name: v-mode-digit-is-not-selection
+event: { type: key, keycode: 49 }
+workspace:
+  plugin/pime-keymap-default/action: digit
+  plugin/pime-keymap-default/digit: 1
+  plugin/pime-pinyin-parse/raw: v1234
+  plugin/pime-special-candidates/candidates:
+    - { text: "1234", score: 9000, source: special }
+expect:
+  handled: true
+  commands:
+    - { type: show_candidates, items: [{ text: "1234" }] }
+# v 模式下数字属于表达式，不能触发候选选择。

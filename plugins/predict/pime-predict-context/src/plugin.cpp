@@ -21,6 +21,8 @@
  */
 #include <pime/plugin_api.h>
 
+#include <pimeplug/memory.hpp>
+
 #include <pimeplug/asset.hpp>
 #include <pimeplug/cbor.hpp>
 #include <pimeplug/commands.hpp>
