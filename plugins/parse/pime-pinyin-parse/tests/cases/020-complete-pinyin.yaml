@@ -1,0 +1,7 @@
+name: complete-pinyin-flag
+event: { type: text, text: nihao }
+expect:
+  handled: true
+  workspace:
+    - { k: complete, v: true }
+    - { k: syllables, v: [ni, hao] }

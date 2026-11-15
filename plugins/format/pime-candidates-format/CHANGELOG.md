@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.3
+
+- 候选来源顺序把 `pime-english-translate` 提到 `pime-hans-hant` 之前：
+  中文链里它是“中文候选 + 英文补全”的合并视图；空数组时照旧回退。
+
 ## 1.1.0
 
 - 候选注释：透传 `comment`，缺失时回退 `pinyin`。

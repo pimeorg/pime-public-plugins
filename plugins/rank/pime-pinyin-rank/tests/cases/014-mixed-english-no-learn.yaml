@@ -1,0 +1,19 @@
+name: mixed-english-does-not-learn
+steps:
+  - event: { type: candidate, index: 1 }
+    workspace:
+      plugin/pime-pinyin-parse/raw: goo
+      plugin/pime-pinyin-parse/complete: false
+      plugin/pime-pinyin-translate/candidates:
+        - { text: 够, score: 500000, source: dict, words: 1 }
+        - { text: 工, score: 499000, source: dict, words: 1 }
+  - event: { type: text, text: goo }
+    workspace:
+      plugin/pime-pinyin-parse/raw: goo
+      plugin/pime-pinyin-parse/complete: false
+      plugin/pime-pinyin-translate/candidates:
+        - { text: 够, score: 500000, source: dict, words: 1 }
+        - { text: 工, score: 499000, source: dict, words: 1 }
+# 合并视图下标不对应本插件数组，选“工”不应在下次输入时把它顶到首位。
+    expect:
+      first_candidate: { text: 够 }

@@ -1,6 +1,6 @@
-description: 英文翻译：原码在前，前缀补全与拼写建议，保留输入大小写
+description: 英文翻译：原码在前，前缀补全与拼写建议；中文链内追加英文候选
 id: pime-english-translate
-version: 1.0.1
+version: 1.0.2
 abi: { major: 1, minor: 0 }
 min_core: "1.0.0"
 state_schema: 1
@@ -11,7 +11,7 @@ platforms: [windows-x64, windows-arm64, macos-x64, macos-arm64,
             linux-x64, linux-arm64, android-arm64, android-x64, ios-arm64, ios-x64, harmony-arm64, harmony-x64]
 entry: pime_process
 capabilities: [workspace, asset.read, output.emit]
-requires: [pime-english-parse@^1.0]
+requires: []
 assets: [english.dict]
 limits:
   memory_mb: 24

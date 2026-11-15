@@ -1,0 +1,6 @@
+name: incomplete-english-flag
+event: { type: text, text: goo }
+expect:
+  handled: true
+  workspace:
+    - { k: complete, v: false }

@@ -1,5 +1,6 @@
 name: phrase-priority
 event: { type: text, text: toufa }
+settings: { enabled: true }
 workspace:
   plugin/pime-pinyin-rank/candidates:
     - { text: 头发, score: 900, source: dict }

@@ -16,18 +16,20 @@
 | 其他 | 只展示候选 |
 
 候选按顺序从以下 workspace 键读取，取第一个非空数组：
-`plugin/pime-shape-translate/candidates`、`plugin/pime-shortcuts/candidates`、`plugin/pime-hans-hant/candidates`、
+`plugin/pime-shape-translate/candidates`、`plugin/pime-shortcuts/candidates`、
+`plugin/pime-english-translate/candidates`、`plugin/pime-hans-hant/candidates`、
 `plugin/pime-special-candidates/candidates`、`plugin/pime-pinyin-rank/candidates`、
 `plugin/pime-rank-default/candidates`、`plugin/pime-pinyin-translate/candidates`、
 `plugin/pime-wubi-translate/candidates`、
 `plugin/pime-cangjie-translate/candidates`、`plugin/pime-t9-translate/candidates`、
-`plugin/pime-english-translate/candidates`、`plugin/pime-emoji-suggest/candidates`、
+`plugin/pime-emoji-suggest/candidates`、
 `plugin/pime-clip-code/candidates`、`plugin/pime-predict-context/candidates`、
 `plugin/pime-handwriting-ncnn/candidates`、`plugin/pime-speech-ncnn/candidates`。
 
-`pime-shortcuts` 与 `pime-hans-hant` 排在最前：两者都输出**合并视图**（短语/转换结果
-＋上游候选），优先采用不会丢掉词典候选。`pime-emoji-suggest` / `pime-clip-code` /
-`pime-predict-context` 排在词典源之后，只在组合结束、词典源为空时才生效。
+`pime-shortcuts`、`pime-english-translate` 与 `pime-hans-hant` 排在最前：三者都输出
+**合并视图**（短语/转换/英文补全＋上游候选），优先采用不会丢掉词典候选。
+`pime-emoji-suggest` / `pime-clip-code` / `pime-predict-context` 排在词典源之后，
+只在组合结束、词典源为空时才生效。
 
 ## 读取的 Workspace
 

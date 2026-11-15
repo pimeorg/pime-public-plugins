@@ -1,0 +1,10 @@
+name: mixed-pure-pinyin-stays-chinese
+event: { type: text, text: nihao }
+workspace:
+  plugin/pime-pinyin-parse/raw: nihao
+  plugin/pime-pinyin-parse/complete: true
+  plugin/pime-pinyin-rank/candidates:
+    - { text: 你好, score: 100, source: dict }
+expect:
+  handled: false
+  first_candidate: null

@@ -1,0 +1,10 @@
+name: mixed-abbreviation-stays-chinese
+event: { type: text, text: nh }
+workspace:
+  plugin/pime-pinyin-parse/raw: nh
+  plugin/pime-pinyin-parse/complete: false
+  plugin/pime-pinyin-rank/candidates:
+    - { text: 你好, score: 100, source: dict }
+expect:
+  handled: false
+  first_candidate: null

@@ -562,6 +562,31 @@ bool has_preferred_candidates(const Frame& frame) {
     return false;
 }
 
+/* English-looking input (`goo`, `hel`, `want`) gets mixed English candidates
+ * from pime-english-translate, which runs after this plugin. The displayed
+ * index then addresses that merged view, not this array, so learning must stay
+ * silent. Complete pinyin and vowel-less abbreviations (`nh`, `zsh`) still
+ * learn normally. */
+bool looks_english(const Frame& frame, const char* raw, uint32_t raw_len) {
+    WorkspaceKey key = full_key("pime-pinyin-parse", "complete");
+    bool complete = false;
+    if (!span_bool(frame.workspace_value(key.text), &complete)) return false;
+    if (complete || raw_len < 2) return false;
+    bool vowel = false;
+    for (uint32_t i = 0; i < raw_len; ++i) {
+        char c = raw[i];
+        if (c >= 'A' && c <= 'Z') c = static_cast<char>(c - 'A' + 'a');
+        if (c >= 'a' && c <= 'z') {
+            if (c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u' ||
+                c == 'y')
+                vowel = true;
+        } else if (c != '\'') {
+            return false;
+        }
+    }
+    return vowel;
+}
+
 bool is_arrow_action(const char* action, uint32_t len) {
     return text_is(action, len, "left") || text_is(action, len, "right");
 }
@@ -841,7 +866,8 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
 
     /* The displayed list may be a merged view from an earlier plugin; then the
      * index/space mapping below does not address this array. */
-    const bool preferred = has_preferred_candidates(frame);
+    const bool preferred =
+        has_preferred_candidates(frame) || looks_english(frame, raw, raw_len);
     const uint32_t effective_page =
         update_page(&pick, action, action_len, is_key, is_text, count);
 

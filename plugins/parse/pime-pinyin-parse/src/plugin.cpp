@@ -366,7 +366,7 @@ pime_status respond(uint8_t* out, uint32_t cap, uint32_t* out_len,
     w.text(original, commit_phase ? 0 : original_len);
 
     w.key("workspace");
-    w.map(5);
+    w.map(6);
     w.key("raw");
     w.text(buffer, len);
     w.key("input");
@@ -398,6 +398,11 @@ pime_status respond(uint8_t* out, uint32_t cap, uint32_t* out_len,
     } else {
         w.array(0);
     }
+    /* True only when the raw letters split into complete syllables. Mixed
+     * input uses this to tell "goo"/"hel" (English-looking) from "ni"/"nihao"
+     * (real pinyin); v-mode digits and abbreviations are not pinyin either. */
+    w.key("complete");
+    w.boolean(plain && complete);
 
     w.key("handled");
     w.boolean(handled);

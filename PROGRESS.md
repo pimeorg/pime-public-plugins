@@ -668,3 +668,32 @@ Android 侧接入英文链后，宿主实测 `hel` 的候选里没有 `hello`：
   `chains/english/latin.lock.yaml` 同步）。
 - 用例 18 条英文相关全部通过；Android 侧 MuMu 12 复验：
   `hel` → `hel / help / held / helped / hell`，`dont` → `don't`。
+
+## 中英混输（2026-11-15）
+
+用户：“在中文状态下输入明显是英文的东西，比如 `goo`，就要意识到 good、google…，
+当然，这并不意味着没有中文候选。”
+
+### 插件
+
+- `pime-pinyin-parse 1.1.4` 新增 workspace `complete`：原码能否切成完整音节。
+  `ni`/`nihao`/`xian` 为 true；`goo`/`hel`/`nh`、v-mode 与简拼为 false。
+- `pime-english-translate 1.0.2`：中文链没有 `english-parse` 时回退读
+  `pinyin-parse/raw`；只对“≥2 个字母、有元音、且不是完整拼音”的输入查英文
+  词表，纯拼音不付出词表扫描。输出合并视图：**原码 + 两条补全 → 中文候选 →
+  其余英文补全**，完全重复剔除，上限 32。`complete` 缺失时用
+  `pinyin-translate` 的 `source=raw` 作回退信号。去掉 `requires`，避免中文链
+  自动实例化 `english-parse` 并把拼音组合覆盖成整段原码。
+- `pime-candidates-format 1.3.3`：`pime-english-translate` 进入候选源优先级
+  （shortcuts 之后、hans-hant 之前），合并视图优先于它已经合并过的中文源。
+- `pime-pinyin-rank 1.2.1`：合并视图的展示下标不对应本插件数组，英文像输入
+  （`complete=false` 且有元音）跳过学习，避免选“工”把不相关候选顶到首位。
+- 共享 `Candidate::set_source` 补长度重载：workspace 字符串是 span 不是 C
+  串，按 `cstr_len` 拷贝会把紧随其后的 CBOR 一起写进 `source`，合并中文候选时
+  输出坏 CBOR（用例 010 暴露）。
+
+### 验证
+
+- 用例 281 条全过；新增/改造 010（`goo` → `goo good goods 够 工`，`Google`
+  仍在列表）、011（纯拼音不混入）、012（`nh` 简拼不混入）、014（合并视图不学习）。
+- 全部链 lock 重新生成，`tests/conformance/run.py` ok。

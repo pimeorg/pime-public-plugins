@@ -30,8 +30,22 @@ constexpr uint32_t kExactBoost = 10000;
 constexpr uint32_t kLetterCost = 350;
 constexpr uint32_t kSuggestionCost = 4000;
 constexpr uint32_t kMaxDictBytes = 1024 * 1024;
+constexpr uint32_t kMaxUpstream = 16;
+constexpr uint32_t kMaxMerged = 32;
+/* English items shown before the Chinese list in a mixed view. The raw text
+ * and its two best completions answer "this is English"; more would push every
+ * Chinese candidate off the first chain page. */
+constexpr uint32_t kMixedEnglishHead = 3;
 
 const char kParseId[] = "pime-english-parse";
+const char kPinyinParseId[] = "pime-pinyin-parse";
+
+/* Chinese candidate arrays in format's preference order. The merged view must
+ * start from exactly the list format would otherwise show. */
+const char* const kChineseSources[] = {
+    "pime-shape-translate", "pime-shortcuts",        "pime-hans-hant",
+    "pime-special-candidates", "pime-pinyin-rank",   "pime-pinyin-translate",
+};
 
 alignas(8) uint8_t g_scratch[kScratchBytes];
 alignas(8) uint8_t g_dict[kMaxDictBytes];
@@ -66,16 +80,30 @@ char lower_ascii(char c) {
     return (c >= 'A' && c <= 'Z') ? static_cast<char>(c - 'A' + 'a') : c;
 }
 
+/* In the English chain english-parse supplies the fragment; in the Chinese
+ * chain the same plugin mirrors the pinyin raw text so a clearly English
+ * fragment (`goo`, `hel`) can be completed without switching modes. */
 uint32_t read_typed(const Frame& frame, char* out) {
     uint32_t len = 0;
-    WorkspaceKey raw = full_key(kParseId, "raw");
     const char* text = nullptr;
     uint32_t text_len = 0;
-    if (span_text(frame.workspace_value(raw.text), &text, &text_len)) {
-        if (text_len > kMaxTyped) text_len = kMaxTyped;
-        for (uint32_t i = 0; i < text_len; ++i) out[len++] = text[i];
+    WorkspaceKey raw = full_key(kParseId, "raw");
+    if (!span_text(frame.workspace_value(raw.text), &text, &text_len)) {
+        WorkspaceKey pinyin = full_key(kPinyinParseId, "raw");
+        if (!span_text(frame.workspace_value(pinyin.text), &text, &text_len))
+            return 0;
     }
+    if (text_len > kMaxTyped) text_len = kMaxTyped;
+    for (uint32_t i = 0; i < text_len; ++i) out[len++] = text[i];
     return len;
+}
+
+/* True when the chain has a pinyin parser in it (the Chinese generation). */
+bool has_pinyin_context(const Frame& frame) {
+    WorkspaceKey raw = full_key(kPinyinParseId, "raw");
+    const char* text = nullptr;
+    uint32_t len = 0;
+    return span_text(frame.workspace_value(raw.text), &text, &len);
 }
 
 /* Matching key: lowercase with apostrophes removed (`dont` finds `don't`). */
@@ -257,7 +285,8 @@ bool source_is(const Candidate& c, const char* expected) {
            Frame::equal(c.source, c.source_len, expected, len);
 }
 
-void sort_and_write(Writer& w) {
+/* Sorts and dedupes the English candidates in place; returns the count. */
+uint32_t collect_sorted() {
     sort_candidates(g_candidates, g_count);
     uint32_t written = 0;
     uint32_t completions = 0;
@@ -281,8 +310,105 @@ void sort_and_write(Writer& w) {
         }
         g_candidates[written++] = g_candidates[i];
     }
-    write_candidates(w, g_candidates, written);
-    g_count = 0;
+    return written;
+}
+
+/* True when the pinyin parser says the raw letters form complete syllables.
+ * `goo`/`hel`/`nh` are not; `ni`/`nihao`/`xian` are. */
+bool pinyin_complete(const Frame& frame) {
+    WorkspaceKey key = full_key(kPinyinParseId, "complete");
+    bool complete = false;
+    if (span_bool(frame.workspace_value(key.text), &complete)) return complete;
+    /* Older pinyin-parse without the flag: translate adds the raw candidate
+     * only when the letters are not a complete pinyin reading. */
+    Candidate list[kMaxCandidates] = {};
+    bool ok = false;
+    const uint32_t count =
+        read_candidates(frame, "pime-pinyin-translate", "candidates", list,
+                        kMaxCandidates, &ok);
+    if (!ok) return false;
+    for (uint32_t i = 0; i < count; ++i)
+        if (source_is(list[i], "raw")) return false;
+    return true;
+}
+
+bool ascii_word(const char* text, uint32_t len) {
+    for (uint32_t i = 0; i < len; ++i) {
+        const char c = text[i];
+        if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '\''))
+            return false;
+    }
+    return true;
+}
+
+bool has_vowel(const char* text, uint32_t len) {
+    for (uint32_t i = 0; i < len; ++i) {
+        const char c = lower_ascii(text[i]);
+        if (c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u' ||
+            c == 'y')
+            return true;
+    }
+    return false;
+}
+
+/* A Chinese chain only offers English candidates for input that cannot be read
+ * as complete pinyin and looks like a word (letters plus a vowel). Pure
+ * abbreviations such as `nh`/`zsh` stay Chinese-only. */
+bool mixed_eligible(const Frame& frame, const char* typed, uint32_t len) {
+    if (len < 2 || !ascii_word(typed, len) || !has_vowel(typed, len))
+        return false;
+    return !pinyin_complete(frame);
+}
+
+/* The first non-empty Chinese array, in candidates-format's preference order. */
+uint32_t read_chinese(const Frame& frame, Candidate* out, uint32_t max) {
+    for (const char* id : kChineseSources) {
+        bool ok = false;
+        const uint32_t count =
+            read_candidates(frame, id, "candidates", out, max, &ok);
+        if (ok && count > 0) return count;
+    }
+    return 0;
+}
+
+bool same_text(const Candidate& c, const char* text, uint32_t len) {
+    return c.text_len == len && Frame::equal(c.text, c.text_len, text, len);
+}
+
+/* The raw text and its best completions come first (the input is clearly
+ * English), then the Chinese list so nothing is lost, then any remaining
+ * English completions so they stay reachable by paging. Duplicates are dropped
+ * wherever they appear. */
+uint32_t merge_english(const Candidate* chinese, uint32_t chinese_count,
+                       const Candidate* english, uint32_t english_count,
+                       Candidate* out) {
+    uint32_t written = 0;
+    const uint32_t head = english_count < kMixedEnglishHead
+                              ? english_count
+                              : kMixedEnglishHead;
+    for (uint32_t i = 0; i < head && written < kMaxMerged; ++i)
+        out[written++] = english[i];
+    for (uint32_t i = 0; i < chinese_count && written < kMaxMerged; ++i) {
+        bool duplicate = false;
+        for (uint32_t j = 0; j < written; ++j) {
+            if (same_text(out[j], chinese[i].text, chinese[i].text_len)) {
+                duplicate = true;
+                break;
+            }
+        }
+        if (!duplicate) out[written++] = chinese[i];
+    }
+    for (uint32_t i = head; i < english_count && written < kMaxMerged; ++i) {
+        bool duplicate = false;
+        for (uint32_t j = 0; j < written; ++j) {
+            if (same_text(out[j], english[i].text, english[i].text_len)) {
+                duplicate = true;
+                break;
+            }
+        }
+        if (!duplicate) out[written++] = english[i];
+    }
+    return written;
 }
 
 }  // namespace
@@ -319,38 +445,69 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
     Frame frame;
     if (!frame.parse(in, in_len)) return PIME_CORRUPT;
 
-    if (!load_dict()) return PIME_NOT_FOUND;
+    const bool chinese = has_pinyin_context(frame);
 
     char typed[kMaxTyped];
     const uint32_t typed_len = read_typed(frame, typed);
 
-    g_count = 0;
-    if (typed_len > 0) {
-        /* The typed text is never replaced without the user asking for it. */
-        push_candidate(typed, typed_len, 0x7ffffff, "raw", nullptr, 0);
+    /* In a pinyin chain English is only a supplement for clearly English
+     * fragments; complete pinyin must not pay for a dictionary scan. */
+    const bool eligible = !chinese || mixed_eligible(frame, typed, typed_len);
 
-        char key[kMaxTyped];
-        const uint32_t key_len = match_key(typed, typed_len, key);
+    uint32_t english_count = 0;
+    if (eligible) {
+        if (!load_dict()) return PIME_NOT_FOUND;
+        g_count = 0;
+        if (typed_len > 0) {
+            /* The typed text is never replaced without the user asking. */
+            push_candidate(typed, typed_len, 0x7ffffff, "raw", nullptr, 0);
 
-        bool all_caps = typed_len > 1;
-        for (uint32_t i = 0; i < typed_len; ++i) {
-            if (typed[i] >= 'a' && typed[i] <= 'z') {
-                all_caps = false;
-                break;
+            char key[kMaxTyped];
+            const uint32_t key_len = match_key(typed, typed_len, key);
+
+            bool all_caps = typed_len > 1;
+            for (uint32_t i = 0; i < typed_len; ++i) {
+                if (typed[i] >= 'a' && typed[i] <= 'z') {
+                    all_caps = false;
+                    break;
+                }
             }
+            const bool capitalized = typed[0] >= 'A' && typed[0] <= 'Z';
+            lookup(key, key_len, all_caps, capitalized);
         }
-        const bool cap = typed[0] >= 'A' && typed[0] <= 'Z';
-        lookup(key, key_len, all_caps, cap);
+        english_count = collect_sorted();
     }
+    const bool any = english_count > 0;
 
-    const bool any = g_count > 0;
+    Candidate upstream[kMaxUpstream] = {};
+    Candidate merged[kMaxMerged] = {};
+    uint32_t merged_count = 0;
+    if (chinese && english_count > 0) {
+        bool english_added = false;
+        for (uint32_t i = 0; i < english_count; ++i)
+            if (!same_text(g_candidates[i], typed, typed_len))
+                english_added = true;
+        /* Only the raw duplicate: leave the Chinese view untouched so format
+         * keeps its usual list and rank's index mapping stays valid. */
+        if (english_added) {
+            const uint32_t chinese_count =
+                read_chinese(frame, upstream, kMaxUpstream);
+            merged_count = merge_english(upstream, chinese_count, g_candidates,
+                                         english_count, merged);
+        }
+    }
+    g_count = 0;
+
     Writer w(out, cap);
     w.map(4);
     w.key("state");
     w.map(0);
     w.key("workspace");
     w.map(1);
-    sort_and_write(w);
+    if (chinese)
+        write_candidates(w, merged, merged_count);
+    else
+        write_candidates(w, g_candidates, english_count);
     w.key("handled");
     w.boolean(any);
     w.key("commands");

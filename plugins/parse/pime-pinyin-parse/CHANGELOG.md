@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.4
+
+- workspace 新增 `complete`：原始字母串是否完整切成音节，供中英混输判断
+  “像英文的输入”（`goo`/`hel`）与真拼音（`nihao`）；v-mode 恒为 false。
+
 ## 1.0.0
 
 - 首个版本：全拼音节最大匹配、预编辑与 workspace 输出。

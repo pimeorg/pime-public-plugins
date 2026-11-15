@@ -1,5 +1,6 @@
 name: mixed-text
 event: { type: text, text: xuexishijian }
+settings: { enabled: true }
 workspace:
   plugin/pime-pinyin-rank/candidates:
     - { text: 学习时间, score: 900, source: dict }

@@ -1,5 +1,6 @@
 name: convert-single
 event: { type: text, text: wm }
+settings: { enabled: true }
 workspace:
   plugin/pime-pinyin-rank/candidates:
     - { text: 我们, score: 900, source: dict }

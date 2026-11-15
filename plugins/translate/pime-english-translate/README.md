@@ -1,6 +1,8 @@
 # pime-english-translate
 
-`translate` 插件：读 `plugin/pime-english-parse/raw`，产出英文候选。
+`translate` 插件：读英文原码，产出英文候选。独立英文链里原码来自
+`plugin/pime-english-parse/raw`；挂在中文链时回退到
+`plugin/pime-pinyin-parse/raw`，并把英文候选追加到中文候选之后（中英混输）。
 
 ## 查询
 
@@ -16,16 +18,39 @@
 
 `dont` 不会自动变成 `don't`——原码仍在首位，`don't` 作为候选可主动选择。
 
+## 中英混输（挂在中文链时）
+
+中文链里没有 `pime-english-parse`，本插件直接读拼音 parse 的 `raw`：
+
+| 条件 | 行为 |
+|---|---|
+| `plugin/pime-pinyin-parse/complete == true`（`ni`、`nihao`、`xian`） | 纯拼音：不查英文词表，输出空数组 |
+| 原码不足 2 个字符、含非字母/撇号、或没有元音（`nh`、`zsh`） | 不混入英文 |
+| 其余（`goo`、`hel`、`dont`、`want`） | 生成英文候选：原码 + 两条补全在前，中文候选紧随其后，其余补全垫底 |
+
+`goo` 于是得到 `goo`、`good`、`goods`、`够`、`工`、…、`Google`：先看清楚是
+英文，中文候选也不会被挤掉。中文候选保持它们之间的相对顺序；三处都做完全
+重复剔除，总数上限 32 条（英文 16 + 中文 16，正好放得下）。英文没有实际新增（只剩原码重复项）时输出空数组，
+`pime-candidates-format` 继续使用上游中文候选。`complete` 缺失时（旧版
+parse）以 `pime-pinyin-translate` 是否产出 `source=raw` 作为回退信号。
+
+因为展示顺序不再对应 `pime-pinyin-rank` 的下标，rank 对这类输入不记录学习
+（见该插件 README）；纯拼音与无元音简拼不受影响。
+
 ## Workspace
 
 | 键 | 类型 | 说明 |
 |---|---|---|
-| `plugin/pime-english-parse/raw` | text | 输入（原码） |
-| `plugin/pime-english-translate/candidates` | array<map> | 输出：`{text, score, source, ?comment}` |
+| `plugin/pime-english-parse/raw` | text | 英文链输入（原码） |
+| `plugin/pime-pinyin-parse/raw` | text | 中文链回退输入 |
+| `plugin/pime-pinyin-parse/complete` | bool | 纯拼音判定；缺失时走回退 |
+| `plugin/pime-shape-translate/candidates` 等 | array<map> | 中文上游候选，按 format 的优先级取第一个非空 |
+| `plugin/pime-english-translate/candidates` | array<map> | 输出：`{text, score, source, ?comment}`；中文链里是“中文 + 英文”合并视图 |
 
 `source` 取值：`raw`、`dict`、`completion`、`suggestion`。
 
-消费者：`pime-rank-default`、`pime-candidates-format`。
+消费者：`pime-rank-default`、`pime-candidates-format`。中文链里 format 优先采用
+本插件的合并视图；空数组时回退到中文候选。
 
 ## 资产
 

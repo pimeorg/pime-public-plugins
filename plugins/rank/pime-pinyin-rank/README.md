@@ -46,6 +46,11 @@
 `pime-hans-hant` / `pime-special-candidates` 任一有候选）时，展示的数组不是本插件
 的输出，槽位无法对应，此时**不学习**。
 
+中文链里 `pime-english-translate` 排在本插件之后，会把英文候选插到中文候选前面。
+因此“像英文”的输入（`pime-pinyin-parse/complete == false`、至少 2 个字母、含
+元音，如 `goo`/`hel`/`want`）同样**不学习**：此时展示的也是合并视图。纯拼音与
+无元音简拼（`nh`、`zsh`）仍正常学习。
+
 ## 热词
 
 云端热词由 `pime-cloud-hotwords` 下载并验签；宿主把验签后的 payload 以

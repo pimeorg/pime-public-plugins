@@ -1,0 +1,20 @@
+name: mixed-chinese-english
+event: { type: text, text: goo }
+settings: { max_candidates: 16 }
+workspace:
+  plugin/pime-pinyin-parse/raw: goo
+  plugin/pime-pinyin-parse/complete: false
+  plugin/pime-pinyin-rank/candidates:
+    - { text: 够, score: 500000, source: dict }
+    - { text: 工, score: 499000, source: dict }
+# 英文输入：原码 + 两条补全在前，中文候选紧随其后，其余补全垫底。
+expect:
+  handled: true
+  workspace:
+    candidates:
+      - { text: goo, source: raw }
+      - { text: good, source: completion }
+      - { text: goods, source: completion }
+      - { text: 够, source: dict }
+      - { text: 工, source: dict }
+  candidates_include: [Google]

@@ -38,6 +38,10 @@ bool g_show_comments = true;
 const char* const kCandidateSources[] = {
     "pime-shape-translate",
     "pime-shortcuts",
+    /* Mixed-view plugin: in a pinyin chain it carries the Chinese list plus
+     * English suggestions, so it must win over the Chinese sources it merged.
+     * In the English chain the Chinese keys are empty and it is the only one. */
+    "pime-english-translate",
     "pime-hans-hant",
     "pime-special-candidates",
     "pime-pinyin-rank",
@@ -46,7 +50,6 @@ const char* const kCandidateSources[] = {
     "pime-wubi-translate",
     "pime-cangjie-translate",
     "pime-t9-translate",
-    "pime-english-translate",
     "pime-emoji-suggest",
     "pime-clip-code",
     "pime-predict-context",

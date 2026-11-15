@@ -33,10 +33,15 @@ struct Candidate {
         for (uint32_t i = 0; i < len; ++i) text[i] = value[i];
         text_len = len;
     }
+    /* Workspace strings are spans, not C strings: the byte after them is the
+     * next CBOR item, so a length-aware copy is the only safe one. */
+    void set_source(const char* value, uint32_t len) {
+        if (len > sizeof(source)) len = sizeof(source);
+        for (uint32_t i = 0; i < len; ++i) source[i] = value[i];
+        source_len = len;
+    }
     void set_source(const char* value) {
-        source_len = cstr_len(value);
-        if (source_len > sizeof(source)) source_len = sizeof(source);
-        for (uint32_t i = 0; i < source_len; ++i) source[i] = value[i];
+        set_source(value, cstr_len(value));
     }
     void set_comment(const char* value, uint32_t len) {
         if (len > sizeof(comment)) len = sizeof(comment);
@@ -75,7 +80,7 @@ inline uint32_t read_candidates(const Frame& frame, const char* plugin_id,
         const char* source = nullptr;
         uint32_t source_len = 0;
         if (item.text("source", &source, &source_len) && source_len)
-            c.set_source(source);
+            c.set_source(source, source_len);
         const char* comment = nullptr;
         uint32_t comment_len = 0;
         if (item.text("comment", &comment, &comment_len) && comment_len)
