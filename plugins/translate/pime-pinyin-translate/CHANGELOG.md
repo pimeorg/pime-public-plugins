@@ -2,6 +2,10 @@
 
 ## 1.1.0
 
+- 修复：`CMakeLists.txt` 的 `ASSETS` 补上 `assets/pinyin.collocations`。该
+  文件自本版起就声明在 manifest 里，但构建清单漏了，打出的包缺它；插件在
+  `collocation_weight != 0` 时 fail-closed 返回 `PIME_NOT_FOUND`，宿主的链
+  会因此在第一个 translate 插件中断。
 - 新增字符二元搭配模型：`pinyin.collocations` 资产（由词表生成，14k 字对），
   在词边界按搭配词频加分，`collocation_weight` 可调（0 关闭）。
 - 次优整句：束搜索第二条多词路径标记为 `source: "sentence"`。

@@ -33,7 +33,7 @@ format 继续用上游候选——**转换失败绝不遮挡正常候选**。
 
 | key | 类型 | 默认 | 说明 |
 |---|---|---|---|
-| `enabled` | bool | true | 关闭后不转换 |
+| `enabled` | bool | false | 简→繁是可选输出；默认关闭，避免默认链把简体候选整体改写成繁体 |
 | `comment` | bool | true | 是否加「繁体」注释 |
 | `max_candidates` | int | 8 | 转换条数上限 |
 
