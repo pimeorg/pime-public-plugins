@@ -29,9 +29,11 @@ Right=39 / Down=40 / Delete=46 / 0-9=48-57 / Backtick=192`
 | 键 | 类型 | 值 |
 |---|---|---|
 | `plugin/pime-keymap-default/action` | text | `backspace` `delete` `enter` `escape` `space` `tab` `shift` `capslock` `backtick` `digit` `left` `right` `up` `down` `pageup` `pagedown` `home` `end` |
+| `plugin/pime-keymap-default/digit` | uint | `action=digit` 时给出主键盘数字值（0–9） |
 
 下游 `pime-pinyin-parse` / `pime-wubi-parse` 读取该键处理编辑；`pime-candidates-format`
-读取 `space` / `escape` / `enter` / `digit` / 方向键完成选择、分页与取消。
+读取 `space` / `escape` / `enter` / `digit` / 方向键完成选择、分页与取消；
+`digit` 动作同时读 `digit` 键值，用于数字选词。
 
 ## Settings
 

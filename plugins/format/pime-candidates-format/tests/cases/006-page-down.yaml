@@ -1,0 +1,26 @@
+name: page-down-shows-next-page
+settings: { page_size: 2 }
+steps:
+  - event: { type: text, text: ni }
+    workspace:
+      plugin/pime-pinyin-parse/raw: ni
+      plugin/pime-pinyin-rank/candidates:
+        - { text: 你, score: 18000 }
+        - { text: 呢, score: 5500 }
+        - { text: 逆, score: 900 }
+    expect:
+      commands:
+        - { type: show_candidates, items: [{ text: 你 }, { text: 呢 }] }
+  - event: { type: key, keycode: 34 }
+    workspace:
+      plugin/pime-keymap-default/action: pagedown
+      plugin/pime-pinyin-parse/raw: ni
+      plugin/pime-pinyin-rank/candidates:
+        - { text: 你, score: 18000 }
+        - { text: 呢, score: 5500 }
+        - { text: 逆, score: 900 }
+# 翻页状态跨调用保留：第二页只显示剩下的“逆”。
+    expect:
+      state: { page: 1 }
+      commands:
+        - { type: show_candidates, items: [{ text: 逆 }] }

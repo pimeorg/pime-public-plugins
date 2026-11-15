@@ -64,21 +64,32 @@ inline void cmd_show_candidates_begin(Writer& w, uint32_t count) {
     w.array(count);
 }
 
-inline void cmd_candidate_item(Writer& w, const char* text, uint32_t text_len,
-                               const char* comment, uint32_t comment_len) {
+/* Candidate entry with an independent comment (annotation) and label (the
+ * selection key shown next to the item). Either may be absent. */
+inline void cmd_candidate_item_ex(Writer& w, const char* text, uint32_t text_len,
+                                  const char* comment, uint32_t comment_len,
+                                  const char* label, uint32_t label_len) {
+    uint32_t fields = 1;
+    if (comment && comment_len) ++fields;
+    if (label && label_len) ++fields;
+    w.map(fields);
+    w.key("text");
+    w.text(text, text_len);
     if (comment && comment_len) {
-        w.map(3);
-        w.key("text");
-        w.text(text, text_len);
         w.key("comment");
         w.text(comment, comment_len);
-        w.key("label");
-        w.text(comment, comment_len);
-    } else {
-        w.map(1);
-        w.key("text");
-        w.text(text, text_len);
     }
+    if (label && label_len) {
+        w.key("label");
+        w.text(label, label_len);
+    }
+}
+
+inline void cmd_candidate_item(Writer& w, const char* text, uint32_t text_len,
+                               const char* comment, uint32_t comment_len) {
+    /* Historic shape: the comment doubles as the label. */
+    cmd_candidate_item_ex(w, text, text_len, comment, comment_len, comment,
+                          comment_len);
 }
 
 } /* namespace pimeplug */

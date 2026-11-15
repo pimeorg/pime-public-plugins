@@ -1,0 +1,8 @@
+name: digit-publishes-value
+event: { type: key, keycode: 50, modifiers: 0, action: 0 }
+# 数字键映射为 digit 动作时同时发布键值，供 format 做数字选词。
+expect:
+  handled: false
+  workspace:
+    - { k: action, v: digit }
+    - { k: digit, v: 2 }

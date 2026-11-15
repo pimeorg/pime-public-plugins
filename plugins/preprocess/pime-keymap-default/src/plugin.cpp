@@ -77,18 +77,23 @@ const char* candidate_action_for(uint64_t keycode) {
 }
 
 pime_status respond(uint8_t* out, uint32_t cap, uint32_t* out_len,
-                    const char* action) {
+                    const char* action, int digit = -1) {
     Writer w(out, cap);
     w.map(4);
     w.key("state");
     w.map(0);
     w.key("workspace");
+    uint32_t fields = 0;
+    if (action) ++fields;
+    if (digit >= 0) ++fields;
+    w.map(fields);
     if (action) {
-        w.map(1);
         w.key("action");
         w.text(action);
-    } else {
-        w.map(0);
+    }
+    if (digit >= 0) {
+        w.key("digit");
+        w.u64(static_cast<uint64_t>(digit));
     }
     w.key("handled");
     /* Mapping a key is not consuming it: parse/format decide whether the
@@ -152,10 +157,13 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
     const char* mapped = action_for(keycode);
     if (mapped && keycode == kKeySpace && !g_space_selects) mapped = nullptr;
     if (!mapped && g_candidate_keys) mapped = candidate_action_for(keycode);
+    int digit = -1;
     if (!mapped && g_number_selects && keycode >= kKeyDigitFirst &&
-        keycode <= kKeyDigitLast)
+        keycode <= kKeyDigitLast) {
         mapped = "digit";
-    return respond(out, cap, out_len, mapped);
+        digit = static_cast<int>(keycode - kKeyDigitFirst);
+    }
+    return respond(out, cap, out_len, mapped, digit);
 }
 
 PIME_EXPORT pime_status pime_on_event(const uint8_t*, uint32_t, uint8_t* out,

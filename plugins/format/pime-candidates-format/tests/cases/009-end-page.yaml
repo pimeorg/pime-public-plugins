@@ -1,0 +1,27 @@
+name: end-shows-last-page
+settings: { page_size: 2 }
+steps:
+  - event: { type: text, text: ni }
+    workspace:
+      plugin/pime-pinyin-parse/raw: ni
+      plugin/pime-pinyin-rank/candidates:
+        - { text: 你, score: 18000 }
+        - { text: 呢, score: 5500 }
+        - { text: 逆, score: 900 }
+        - { text: 妮, score: 800 }
+        - { text: 腻, score: 700 }
+  - event: { type: key, keycode: 35 }
+    workspace:
+      plugin/pime-keymap-default/action: end
+      plugin/pime-pinyin-parse/raw: ni
+      plugin/pime-pinyin-rank/candidates:
+        - { text: 你, score: 18000 }
+        - { text: 呢, score: 5500 }
+        - { text: 逆, score: 900 }
+        - { text: 妮, score: 800 }
+        - { text: 腻, score: 700 }
+# End 跳到最后一页（第 3 页只有 1 项）。
+    expect:
+      state: { page: 2 }
+      commands:
+        - { type: show_candidates, items: [{ text: 腻 }] }

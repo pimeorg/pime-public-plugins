@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.0
+
+- `digit` 动作同时发布 `digit` 键值（0–9），format 可据此做数字选词。
+
 ## 1.0.0
 
 - 首个版本：默认键位到链内动作的映射（backspace/delete/enter/escape/space/tab）。

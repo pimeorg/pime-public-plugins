@@ -1,0 +1,12 @@
+name: raw-commit-when-no-candidates
+event: { type: key, keycode: 32 }
+workspace:
+  plugin/pime-keymap-default/action: space
+  plugin/pime-pinyin-parse/raw: hello
+# 没有候选时，空格把原码直接上屏（英文/符号串）。
+expect:
+  handled: true
+  commands:
+    - { type: commit, text: hello }
+  workspace:
+    - { k: committed, v: hello }

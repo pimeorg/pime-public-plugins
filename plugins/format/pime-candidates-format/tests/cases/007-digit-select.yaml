@@ -1,0 +1,16 @@
+name: digit-selects-within-page
+event: { type: key, keycode: 50 }
+workspace:
+  plugin/pime-keymap-default/action: digit
+  plugin/pime-keymap-default/digit: 2
+  plugin/pime-pinyin-parse/raw: ni
+  plugin/pime-pinyin-rank/candidates:
+    - { text: 你, score: 18000 }
+    - { text: 呢, score: 5500 }
+# 数字 2 选中本页第二项。
+expect:
+  handled: true
+  commands:
+    - { type: commit, text: 呢 }
+  workspace:
+    - { k: committed, v: 呢 }
