@@ -1,0 +1,7 @@
+name: prefix-completion
+event: { type: text, text: hel }
+workspace:
+  plugin/pime-english-parse/raw: hel
+expect:
+  handled: true
+  candidates_include: [help, hello]

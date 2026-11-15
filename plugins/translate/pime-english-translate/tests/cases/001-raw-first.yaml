@@ -1,0 +1,7 @@
+name: typed-text-first
+event: { type: text, text: hel }
+workspace:
+  plugin/pime-english-parse/raw: hel
+expect:
+  handled: true
+  first_candidate: { text: hel, source: raw }

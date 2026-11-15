@@ -1,0 +1,7 @@
+name: typo-suggestion
+event: { type: text, text: recieve }
+workspace:
+  plugin/pime-english-parse/raw: recieve
+expect:
+  handled: true
+  candidates_include: [receive]

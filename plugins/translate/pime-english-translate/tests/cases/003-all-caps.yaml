@@ -1,0 +1,8 @@
+name: all-caps-follows-input
+event: { type: text, text: HEL }
+workspace:
+  plugin/pime-english-parse/raw: HEL
+expect:
+  handled: true
+  first_candidate: { text: HEL, source: raw }
+  candidates_include: [HELP, HELLO]

@@ -1,0 +1,8 @@
+name: apostrophe-after-letter
+steps:
+  - { event: { type: text, text: don } }
+  - event: { type: text, text: "'t" }
+    expect:
+      state: { buf: "don't" }
+      workspace:
+        - { k: raw, v: "don't" }

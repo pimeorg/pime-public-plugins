@@ -1,0 +1,9 @@
+name: completion-off
+event: { type: text, text: hel }
+workspace:
+  plugin/pime-english-parse/raw: hel
+settings: { completion: false, corrections: false }
+expect:
+  handled: true
+  first_candidate: { text: hel, source: raw }
+  candidates_include: [hel]

@@ -1,0 +1,7 @@
+name: technical-word-case
+event: { type: text, text: github }
+workspace:
+  plugin/pime-english-parse/raw: github
+expect:
+  handled: true
+  candidates_include: [GitHub]

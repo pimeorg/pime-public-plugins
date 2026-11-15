@@ -11,6 +11,7 @@
 | `pinyin/SOURCES.md` | 词表来源（rime-wanxiang，CC BY 4.0）、生成器与裁剪规则 |
 | `wubi/wubi.dict` | 五笔 86 starter 词表（`<code>\t<word>\t<freq>`） |
 | `cangjie/cangjie.dict` | 仓颉 starter 码表（`<code>	<word>	<freq>`） |
+| `english/english.dict` | 英文 starter 词表（`<word>	<word>	<freq>`） |
 | `locks/` | 大文件来源与 sha256 的说明 |
 | `models/` | 模型分发说明（权重不入库） |
 

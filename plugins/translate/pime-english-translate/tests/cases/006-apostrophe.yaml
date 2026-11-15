@@ -1,0 +1,8 @@
+name: apostrophe-word-available
+event: { type: text, text: dont }
+workspace:
+  plugin/pime-english-parse/raw: dont
+expect:
+  handled: true
+  first_candidate: { text: dont, source: raw }
+  candidates_include: ["don't"]

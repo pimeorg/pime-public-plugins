@@ -1,0 +1,7 @@
+name: capitalized-follows-input
+event: { type: text, text: Hel }
+workspace:
+  plugin/pime-english-parse/raw: Hel
+expect:
+  handled: true
+  candidates_include: [Help, Hello]

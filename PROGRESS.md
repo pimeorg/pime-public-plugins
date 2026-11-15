@@ -354,6 +354,26 @@ WeaveText 的 `refresh_wubi` / `Schema::Wubi86` 包含四项行为，本轮按�
    读表同步。
 5. 新增 6 条 translate 用例，全仓 135 条通过；插件数 22、链 9。
 
+## 英文输入（2026-11-15）
+
+英文此前只有 format 里的占位候选源，没有真正的 parse/translate。本轮补齐：
+
+1. **`pime-english-parse`（parse，新增）**：累积字母并**保留原大小写**；撇号只在
+   片段非空时接受；`max_code` 默认 32。提交阶段与其它 parse 同契约（清状态、
+   保留 `raw`）。
+2. **`pime-english-translate`（translate，新增）**：
+   - 输入原文永远排第一（`source=raw`，分数取上限），空格/回车/标点不会把它
+     换成别的词；
+   - 去掉撇号、转小写后做前缀补全（`source=completion`，`freq - 350*多出字母`）；
+   - 无前缀命中时给 Damerau–Levenshtein 距离 ≤ 2 的拼写建议，注释“拼写建议”；
+   - 候选按输入大小写回写：全大写保持全大写，首字母大写则补全也大写；
+     `GitHub` / `WiFi` / `API` 保留自身写法；`dont` 不会自动加撇号。
+3. **`data/english/english.dict`**：starter 词表（90 行，含常用词与技术词）。
+4. **`chains/english/latin.yaml`**：keymap → english-parse → english-translate →
+   candidates-format → learn-frequency，锁已生成。
+5. format / rank-default 的候选源与 README 读表同步。
+6. 新增 17 条用例（parse 8、translate 9），全仓 152 条通过；插件数 24、链 10。
+
 ## 发现的 core 文档/实现漂移
 
 1. `pime-core/schema/manifest.schema.json` 的 `role` 枚举仍是旧值

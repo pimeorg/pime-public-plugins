@@ -1,0 +1,11 @@
+name: escape-clears
+event: { type: key, keycode: 27, modifiers: 0, action: 0 }
+workspace:
+  plugin/pime-keymap-default/action: escape
+state: { buf: hel }
+expect:
+  handled: true
+  state: { buf: "" }
+  commands:
+    - { type: set_composition, text: "", cursor: 0 }
+    - { type: hide_candidates }

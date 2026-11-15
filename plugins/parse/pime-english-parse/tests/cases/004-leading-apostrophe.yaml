@@ -1,0 +1,5 @@
+name: leading-apostrophe-ignored
+event: { type: text, text: "'" }
+expect:
+  handled: false
+  state: { buf: "" }

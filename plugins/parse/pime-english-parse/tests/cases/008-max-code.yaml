@@ -1,0 +1,7 @@
+name: max-code-stops
+event: { type: text, text: z }
+state: { buf: abcdefgh }
+settings: { max_code: 8 }
+expect:
+  handled: false
+  state: { buf: abcdefgh }

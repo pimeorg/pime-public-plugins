@@ -26,7 +26,8 @@ struct Candidate {
 };
 
 const char* const kSources[] = {"pime-pinyin-translate", "pime-wubi-translate",
-                                "pime-cangjie-translate", "pime-t9-translate"};
+                                "pime-cangjie-translate", "pime-t9-translate",
+                                "pime-english-translate"};
 
 uint32_t read_candidates(const Frame& frame, Candidate* out) {
     for (const char* id : kSources) {

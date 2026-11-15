@@ -1,0 +1,8 @@
+name: empty-raw
+event: { type: text, text: "" }
+workspace:
+  plugin/pime-english-parse/raw: ""
+expect:
+  handled: false
+  workspace:
+    - { k: candidates, v: [] }

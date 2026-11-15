@@ -1,0 +1,22 @@
+api: 1
+id: latin
+description: 英文链（原码优先、前缀补全、拼写建议）
+core: ">=1.0.0"
+
+plugins:
+  - { id: pime-keymap-default, role: preprocess }
+  - { id: pime-english-parse, role: parse }
+  - { id: pime-english-translate, role: translate }
+  - { id: pime-candidates-format, role: format }
+  - { id: pime-learn-frequency, role: learn }
+
+workspace:
+  - { key: plugin/pime-keymap-default/action,
+      from: pime-keymap-default, to: [pime-english-parse] }
+  - { key: plugin/pime-english-parse/raw,
+      from: pime-english-parse,
+      to: [pime-english-translate, pime-candidates-format] }
+  - { key: plugin/pime-english-translate/candidates,
+      from: pime-english-translate, to: [pime-candidates-format] }
+  - { key: plugin/pime-candidates-format/committed,
+      from: pime-candidates-format, to: [pime-learn-frequency] }

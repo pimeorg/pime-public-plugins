@@ -1,0 +1,7 @@
+name: case-kept
+event: { type: text, text: GitHub }
+expect:
+  handled: true
+  state: { buf: GitHub }
+  workspace:
+    - { k: raw, v: GitHub }
