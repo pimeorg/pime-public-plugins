@@ -1,0 +1,12 @@
+name: code-profile-boosts-term
+settings: { profile: code }
+event: { type: text, text: hanshu }
+workspace:
+  plugin/pime-pinyin-parse/raw: hanshu
+  plugin/pime-pinyin-translate/candidates:
+    - { text: 函树, score: 500000, source: dict, words: 1 }
+    - { text: 函数, score: 500000, source: dict, words: 1 }
+# 代码领域词表给“函数”加分，并标注“领域”。
+expect:
+  handled: false
+  first_candidate: { text: 函数, comment: 领域 }

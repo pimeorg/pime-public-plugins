@@ -1,0 +1,17 @@
+name: recent-choice-boosted
+steps:
+  - event: { type: candidate, index: 1 }
+    workspace:
+      plugin/pime-pinyin-parse/raw: nihao
+      plugin/pime-pinyin-translate/candidates:
+        - { text: 你好, score: 500000, source: dict, words: 1 }
+        - { text: 拟好, score: 499500, source: dict, words: 1 }
+  - event: { type: text, text: nihaoma }
+    workspace:
+      plugin/pime-pinyin-parse/raw: nihaoma
+      plugin/pime-pinyin-translate/candidates:
+        - { text: 你好, score: 500000, source: dict, words: 1 }
+        - { text: 拟好, score: 499500, source: dict, words: 1 }
+# 不同读音之间靠“最近使用”生效：刚选过的“拟好”获得近期加分并标注“最近”。
+    expect:
+      first_candidate: { text: 拟好, comment: 最近 }

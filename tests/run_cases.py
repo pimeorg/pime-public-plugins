@@ -151,7 +151,17 @@ def main() -> int:
             case_settings.update(case.get("settings") or {})
             init = cbor.dumps({"settings": case_settings, "assets": {},
                                "abi": {"major": 1, "minor": 0}})
-            payload = cbor.dumps(frame_for(case, case_settings))
+            if "steps" in case:
+                frames = []
+                previous_state = {}
+                for step in case["steps"]:
+                    frame = frame_for(step, case_settings)
+                    if "state" not in step and previous_state:
+                        frame["state"] = previous_state
+                    frames.append(frame)
+                payload = cbor.dumps(frames)
+            else:
+                payload = cbor.dumps(frame_for(case, case_settings))
             result = subprocess.run(
                 [str(binary), "--assets", str(manifest_path.parent / "assets"),
                  "--init", init.hex()],
@@ -162,12 +172,27 @@ def main() -> int:
                 failures += 1
                 continue
             try:
-                output = cbor.loads(result.stdout)
+                raw = cbor.loads(result.stdout)
+                if "steps" in case:
+                    outputs = [cbor.loads(bytes(item)) for item in raw]
+                else:
+                    outputs = [raw]
             except Exception as exc:  # noqa: BLE001
                 print(f"FAIL {plugin_id}/{case_path.name}: bad output CBOR ({exc})")
                 failures += 1
                 continue
-            problems = compare(case, output)
+            steps = case.get("steps") or [case]
+            if len(outputs) != len(steps):
+                print(f"FAIL {plugin_id}/{case_path.name}: "
+                      f"{len(outputs)} output(s) for {len(steps)} step(s)")
+                failures += 1
+                continue
+            problems = []
+            for index, (step, output) in enumerate(zip(steps, outputs)):
+                for problem in compare(step, output):
+                    label = f"step[{index}] " if len(steps) > 1 else ""
+                    problems.append(label + problem)
+                previous_state = output.get("state") or {}
             if problems:
                 failures += 1
                 print(f"FAIL {plugin_id}/{case_path.name}")

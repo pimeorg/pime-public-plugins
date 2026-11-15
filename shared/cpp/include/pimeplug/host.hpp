@@ -45,14 +45,16 @@ inline bool call(uint8_t op, const uint8_t* in, uint32_t in_len, uint8_t* out,
 
 }  // namespace host_detail
 
-/* Reads a text value. Returns false when absent (found=false) or on error. */
-inline bool store_get(const char* key, char* out, uint32_t cap,
-                      uint32_t* out_len, bool* found = nullptr) {
-    uint8_t request[256];
+/* Reads a text value. Returns false when absent (found=false) or on error.
+ * Keys taken from frames are not NUL-terminated, so the length overloads are
+ * the ones dynamic callers should use. */
+inline bool store_get(const char* key, uint32_t key_len, char* out,
+                      uint32_t cap, uint32_t* out_len, bool* found = nullptr) {
+    uint8_t request[512];
     Writer w(request, sizeof(request));
     w.map(1);
     w.key("key");
-    w.text(key);
+    w.text(key, key_len);
     if (!w.ok()) return false;
 
     uint8_t response[1024];
@@ -79,12 +81,13 @@ inline bool store_get(const char* key, char* out, uint32_t cap,
     return true;
 }
 
-inline bool store_set(const char* key, const char* value, uint32_t len) {
+inline bool store_set(const char* key, uint32_t key_len, const char* value,
+                      uint32_t len) {
     uint8_t request[1024];
     Writer w(request, sizeof(request));
     w.map(2);
     w.key("key");
-    w.text(key);
+    w.text(key, key_len);
     w.key("value");
     w.text(value, len);
     if (!w.ok()) return false;
@@ -94,12 +97,12 @@ inline bool store_set(const char* key, const char* value, uint32_t len) {
                              sizeof(response), &response_len);
 }
 
-inline bool store_del(const char* key) {
-    uint8_t request[256];
+inline bool store_del(const char* key, uint32_t key_len) {
+    uint8_t request[512];
     Writer w(request, sizeof(request));
     w.map(1);
     w.key("key");
-    w.text(key);
+    w.text(key, key_len);
     if (!w.ok()) return false;
     uint8_t response[256];
     uint32_t response_len = 0;
@@ -109,12 +112,12 @@ inline bool store_del(const char* key) {
 
 /* Visits {k, v} pairs under `prefix`. The callback returns false to stop. */
 template <class F>
-void store_scan(const char* prefix, uint32_t limit, F&& fn) {
-    uint8_t request[256];
+void store_scan(const char* prefix, uint32_t prefix_len, uint32_t limit, F&& fn) {
+    uint8_t request[512];
     Writer w(request, sizeof(request));
     w.map(2);
     w.key("prefix");
-    w.text(prefix);
+    w.text(prefix, prefix_len);
     w.key("limit");
     w.u64(limit);
     if (!w.ok()) return;
@@ -137,6 +140,23 @@ void store_scan(const char* prefix, uint32_t limit, F&& fn) {
         if (!item.text("v", &value, &value_len)) continue;
         if (!fn(key, key_len, value, value_len)) return;
     }
+}
+
+/* C-string conveniences for literal keys. */
+inline bool store_get(const char* key, char* out, uint32_t cap,
+                      uint32_t* out_len, bool* found = nullptr) {
+    return store_get(key, cstr_len(key), out, cap, out_len, found);
+}
+
+inline bool store_set(const char* key, const char* value, uint32_t len) {
+    return store_set(key, cstr_len(key), value, len);
+}
+
+inline bool store_del(const char* key) { return store_del(key, cstr_len(key)); }
+
+template <class F>
+void store_scan(const char* prefix, uint32_t limit, F&& fn) {
+    store_scan(prefix, cstr_len(prefix), limit, static_cast<F&&>(fn));
 }
 
 /* kind: 0 monotonic ms, 1 wall ms, 2 timezone offset minutes. */

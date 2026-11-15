@@ -1,0 +1,22 @@
+name: backspace-undoes-learning
+steps:
+  - event: { type: candidate, index: 0 }
+    workspace:
+      plugin/pime-pinyin-parse/raw: nihao
+      plugin/pime-pinyin-translate/candidates:
+        - { text: 你好, score: 500000, source: dict, words: 1 }
+        - { text: 拟好, score: 499000, source: dict, words: 1 }
+  - event: { type: key, text: "" }
+    workspace:
+      plugin/pime-keymap-default/action: backspace
+    expect:
+      handled: false
+  - event: { type: text, text: nihao }
+    workspace:
+      plugin/pime-pinyin-parse/raw: nihao
+      plugin/pime-pinyin-translate/candidates:
+        - { text: 你好, score: 500000, source: dict, words: 1 }
+        - { text: 拟好, score: 499000, source: dict, words: 1 }
+# 选词后立刻退格撤销学习记录，再次输入时“拟好”不再有学习加分，回到“你好”。
+    expect:
+      first_candidate: { text: 你好 }

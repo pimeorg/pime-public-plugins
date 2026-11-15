@@ -1,0 +1,19 @@
+name: learned-pick-wins-next-time
+steps:
+  - event: { type: candidate, index: 1 }
+    workspace:
+      plugin/pime-pinyin-parse/raw: nihao
+      plugin/pime-pinyin-translate/candidates:
+        - { text: 你好, score: 500000, source: dict, words: 1 }
+        - { text: 拟好, score: 499000, source: dict, words: 1 }
+    expect:
+      state: { last_raw: nihao, last_text: 拟好 }
+  - event: { type: text, text: nihao }
+    workspace:
+      plugin/pime-pinyin-parse/raw: nihao
+      plugin/pime-pinyin-translate/candidates:
+        - { text: 你好, score: 500000, source: dict, words: 1 }
+        - { text: 拟好, score: 499000, source: dict, words: 1 }
+# 上一次选过“拟好”，下次同一读音时学习分把它顶到首位，并标注“常用”。
+    expect:
+      first_candidate: { text: 拟好, comment: 常用 }

@@ -1,0 +1,11 @@
+name: long-word-cohesion
+event: { type: text, text: weishenme }
+workspace:
+  plugin/pime-pinyin-parse/raw: weishenme
+  plugin/pime-pinyin-translate/candidates:
+    - { text: 我, score: 501000, source: dict, words: 1 }
+    - { text: 为什么, score: 500000, source: dict, words: 1 }
+# 单字靠短词加权仍不敌三字词的长词内聚分。
+expect:
+  handled: false
+  first_candidate: { text: 为什么 }
