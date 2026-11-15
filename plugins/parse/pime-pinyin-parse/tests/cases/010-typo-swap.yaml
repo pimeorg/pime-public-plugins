@@ -3,8 +3,10 @@ event: { type: text, text: zhogn }
 expect:
   handled: true
   workspace:
-    - { k: raw, v: zhong }
+    - { k: raw, v: zhogn }
     - { k: input, v: zhogn }
+    - { k: corrected, v: zhong }
     - { k: marks, v: [ { type: swap, start: 3, end: 5 } ] }
   commands:
-    - { type: set_composition, text: zhong, cursor: 5 }
+    - { type: set_composition, text: zhogn, cursor: 5 }
+# 预编辑保留用户输入，纠正只作为 corrected 提供给翻译阶段。

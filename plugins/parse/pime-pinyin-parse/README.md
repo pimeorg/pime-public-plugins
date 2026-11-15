@@ -37,10 +37,18 @@
 
 | 键 | 类型 | 说明 |
 |---|---|---|
-| `plugin/pime-pinyin-parse/raw` | text | 纠正后的字母串，translate 用它解码 |
-| `plugin/pime-pinyin-parse/input` | text | 用户实际输入的字母串 |
-| `plugin/pime-pinyin-parse/syllables` | array<text> | 纠错串的最大匹配切分，如 `["ni","hao"]` |
+| `plugin/pime-pinyin-parse/raw` | text | **用户实际输入**的字母串（预编辑原样显示，不静默改字） |
+| `plugin/pime-pinyin-parse/input` | text | 同 `raw`（兼容旧消费方） |
+| `plugin/pime-pinyin-parse/corrected` | text | 纠正后的读法（无纠正时为空），translate 拿来比较 |
+| `plugin/pime-pinyin-parse/syllables` | array<text> | 原始输入的最大匹配切分，如 `["ni","hao"]` |
 | `plugin/pime-pinyin-parse/marks` | array<map> | 纠正标记 `{type, start, end}`，偏移相对 `input` |
+
+### 纠正策略
+
+- 预编辑和 `raw` **永远保留用户输入**：`xxie` 就显示 `xxie`，不会变成 `xie`。
+- 纠正结果只写 `corrected` + `marks`；`pime-pinyin-translate` 会同时计算
+  字面读法与纠正读法，只有纠正读法明显更好（分数高 3000 以上）才采用。
+  所以 `xxie` 仍然是「谢谢」（字面缩写），`nihhao` 才纠正成「你好」。
 
 `set_composition.segments[].type`：`0` 正常、`1` 纠正、`2` 半音节/简拼。
 

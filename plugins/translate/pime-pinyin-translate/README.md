@@ -10,7 +10,8 @@
 
 | 键 | 生产者 | 说明 |
 |---|---|---|
-| `plugin/pime-pinyin-parse/raw` | pime-pinyin-parse | 原始字母串（主输入）；翻译不依赖单一预切分 |
+| `plugin/pime-pinyin-parse/raw` | pime-pinyin-parse | 用户输入的原始字母串（主输入）；翻译不依赖单一预切分 |
+| `plugin/pime-pinyin-parse/corrected` | pime-pinyin-parse | 纠错读法（可选）；与字面读法比较后择优 |
 | `plugin/pime-pinyin-parse/syllables` | pime-pinyin-parse | 回退：没有 `raw` 时把各段拼回字母串 |
 
 `pime-pinyin-parse` 仍会输出显示用的切分（完整音节、尾部半音节、单字母），但
@@ -71,6 +72,10 @@ UI 可以把它当作“次优整句”单独提供。
 | `compose` | 多个词合成的整句 |
 | `sentence` | 次优整句（第二条多词路径） |
 | `raw` | 原字母透传（英文/非拼音输入） |
+| `corrected` | 纠正读法的候选（仅在纠正胜出时出现） |
+
+纠正读法只有在比字面读法高 `3000` 分以上才取代字面读法；取代时仍会把字面
+首选附在末尾（`source=raw`/原 source），用户依然可以选回自己输入的那个读法。
 
 `words` 是路径包含的词数，供 rank/format 判断整句与词组。
 

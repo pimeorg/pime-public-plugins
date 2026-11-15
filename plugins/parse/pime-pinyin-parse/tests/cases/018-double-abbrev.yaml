@@ -1,0 +1,7 @@
+name: doubled-letter-abbreviation-correction
+event: { type: text, text: xxiex }
+expect:
+  handled: true
+  workspace:
+    - { k: raw, v: xxiex }
+    - { k: corrected, v: xiex }

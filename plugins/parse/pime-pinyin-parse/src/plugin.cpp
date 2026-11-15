@@ -165,7 +165,8 @@ void consider(const char* buffer, uint32_t len, const Correction& candidate,
 }
 
 bool make_edit(const char* buffer, uint32_t len, uint32_t position,
-               uint8_t kind, char insert, Correction* out) {
+               uint8_t kind, char insert, Correction* out,
+               bool allow_abbrev = false) {
     Buffer b(out->text, sizeof(out->text));
     for (uint32_t i = 0; i < len; ++i) {
         if (kind == 2 && i == position) continue;
@@ -182,7 +183,9 @@ bool make_edit(const char* buffer, uint32_t len, uint32_t position,
     if (b.len == 0 || b.len > kMaxBuffer) return false;
     /* Only a complete reading beats the typed text; a merely "acceptable"
      * reading (trailing initial) can be produced by almost any swap. */
-    if (!fully_segmented(b.data, b.len)) return false;
+    if (!fully_segmented(b.data, b.len) &&
+        !(allow_abbrev && acceptable(b.data, b.len)))
+        return false;
     out->len = b.len;
     out->type = kind;
     out->start = position;
@@ -242,7 +245,9 @@ bool correct(const char* buffer, uint32_t len, const char* neighbour,
     for (uint32_t i = 0; i + 1 < len; ++i) {
         if (!ascii_alpha(buffer[i]) || buffer[i] != buffer[i + 1]) continue;
         Correction candidate;
-        if (make_edit(buffer, len, i, 2, 0, &candidate)) {
+        /* Deleting one copy is the strongest typo signal, so an abbreviation
+         * lattice (xxiex -> xiex = 谢谢) is acceptable here as well. */
+        if (make_edit(buffer, len, i, 2, 0, &candidate, true)) {
             *out = candidate;
             return true;
         }
@@ -361,11 +366,19 @@ pime_status respond(uint8_t* out, uint32_t cap, uint32_t* out_len,
     w.text(original, commit_phase ? 0 : original_len);
 
     w.key("workspace");
-    w.map(4);
+    w.map(5);
     w.key("raw");
     w.text(buffer, len);
     w.key("input");
     w.text(original, original_len);
+    /* The corrected spelling is offered to translate, never substituted into
+     * the preedit: deleting letters under the user's eyes is surprising, and
+     * the literal reading (xxie -> 谢谢) is often the intended one. */
+    w.key("corrected");
+    if (correction && correction->valid)
+        w.text(correction->text, correction->len);
+    else
+        w.text("", 0);
     w.key("syllables");
     w.array(len > 0 ? segment_count : 0);
     for (uint32_t i = 0; i < segment_count && len > 0; ++i)
@@ -501,8 +514,9 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
         }
     }
 
-    /* Correction is applied to the display/translate stream, while state keeps
-     * exactly what was typed so backspace stays predictable. */
+    /* Correction is only advertised through `corrected`/`marks`; the preedit
+     * and `raw` keep exactly what was typed (state already does), so backspace
+     * and the visible composition stay predictable. */
     Correction correction;
     const char* display = buffer;
     uint32_t display_len = len;
@@ -549,14 +563,12 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
     /* u-mode ("umumu") and the glyph filter ("`mu") are component codes, not
      * pinyin; spelling correction would "fix" the leading u into ou. */
     const bool shape_mode = len >= 2 && (buffer[0] == 'u' || buffer[0] == '`');
-    if (g_auto_correct && len > 0 && !shape_mode) {
-        if (correct(buffer, len, neighbour, neighbour_len, &correction)) {
-            display = correction.text;
-            display_len = correction.len;
-        }
-    }
+    if (g_auto_correct && len > 0 && !shape_mode)
+        correct(buffer, len, neighbour, neighbour_len, &correction);
 
-    return respond(out, cap, out_len, display, display_len, buffer, len,
+    (void)display;
+    (void)display_len;
+    return respond(out, cap, out_len, buffer, len, buffer, len,
                    correction.valid ? &correction : nullptr, handled,
                    commit_phase);
 }

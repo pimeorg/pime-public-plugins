@@ -1,0 +1,8 @@
+name: doubled-letter-keeps-typed-raw
+event: { type: text, text: xxie }
+expect:
+  handled: true
+  workspace:
+    - { k: raw, v: xxie }
+    - { k: corrected, v: xie }
+    - { k: marks, v: [ { type: delete, start: 0, end: 1 } ] }

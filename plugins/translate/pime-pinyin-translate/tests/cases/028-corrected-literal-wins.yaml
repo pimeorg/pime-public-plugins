@@ -1,0 +1,13 @@
+name: literal-reading-wins-over-correction
+event: { type: text, text: xxie }
+workspace:
+  plugin/pime-pinyin-parse/raw: xxie
+  plugin/pime-pinyin-parse/corrected: xie
+expect:
+  handled: true
+  workspace:
+    - k: candidates
+      v:
+        - { text: 谢谢, source: dict }
+  candidates_include: [xxie]
+# xxie 的字面缩写读法就是「谢谢」，不能被纠正成 xie。

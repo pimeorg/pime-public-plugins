@@ -3,5 +3,6 @@ event: { type: text, text: nihhao }
 expect:
   handled: true
   workspace:
-    - { k: raw, v: nihao }
+    - { k: raw, v: nihhao }
+    - { k: corrected, v: nihao }
     - { k: marks, v: [ { type: delete, start: 2, end: 3 } ] }

@@ -641,6 +641,95 @@ uint32_t read_input(const Frame& frame) {
     return g_input_len;
 }
 
+
+/* ------------------------------------------------------ corrected reading */
+
+constexpr int32_t kCorrectionMargin = 3000;
+
+struct Built {
+    Candidate list[kMaxCandidates];
+    uint32_t count = 0;
+    uint32_t best = 0;
+};
+
+bool has_text(const Candidate* list, uint32_t count, const char* text,
+              uint32_t len) {
+    for (uint32_t i = 0; i < count; ++i) {
+        if (list[i].len == len &&
+            Frame::equal(list[i].text, list[i].len, text, len))
+            return true;
+    }
+    return false;
+}
+
+uint32_t read_corrected(const Frame& frame, char* out, uint32_t cap) {
+    WorkspaceKey key = full_key(kParseId, "corrected");
+    const char* text = nullptr;
+    uint32_t len = 0;
+    if (!span_text(frame.workspace_value(key.text), &text, &len)) return 0;
+    if (len == 0 || len >= cap) return 0;
+    for (uint32_t i = 0; i < len; ++i) out[i] = lower_ascii(text[i]);
+    out[len] = '\0';
+    return len;
+}
+
+/* Collects candidates from the current g_input beam. */
+void build_candidates(Built* out, bool allow_raw) {
+    out->count = 0;
+    out->best = 0;
+    const bool pure = all_syllables(g_input, g_input_len);
+    const bool offer_raw = allow_raw && g_english_passthrough &&
+                           (!pure || g_beam_count[g_input_len] == 0);
+    uint32_t limit =
+        g_max_candidates < kMaxCandidates ? g_max_candidates : kMaxCandidates;
+    if (offer_raw && limit > 1) --limit;
+    for (uint32_t i = 0; i < g_beam_count[g_input_len] && out->count < limit;
+         ++i) {
+        const Path& path = g_beam[g_input_len][i];
+        int64_t score = static_cast<int64_t>(path.score) + kScoreBase;
+        if (score < 0) score = 0;
+        Candidate& candidate = out->list[out->count++];
+        for (uint32_t k = 0; k < path.len; ++k) candidate.text[k] = path.text[k];
+        candidate.len = path.len;
+        candidate.score = static_cast<uint32_t>(score);
+        candidate.source = path.words > 1 ? "compose" : "dict";
+        candidate.words = path.words;
+        if (candidate.score > out->best) out->best = candidate.score;
+    }
+    for (uint32_t i = 1; i < out->count; ++i) {
+        if (out->list[i].words > 1) {
+            out->list[i].source = "sentence";
+            break;
+        }
+    }
+    if (g_tail_len > 0) {
+        for (uint32_t i = 0; i < out->count; ++i) {
+            if (out->list[i].len + g_tail_len >= kPathBytes) continue;
+            for (uint32_t k = 0; k < g_tail_len; ++k)
+                out->list[i].text[out->list[i].len + k] = g_tail[k];
+            out->list[i].len += g_tail_len;
+        }
+        if (out->count >= g_max_candidates && out->count > 0) --out->count;
+        {
+            Candidate& mixed = out->list[out->count++];
+            for (uint32_t k = 0; k < g_mixed_raw_len; ++k)
+                mixed.text[k] = g_mixed_raw[k];
+            mixed.len = g_mixed_raw_len;
+            mixed.score = 1;
+            mixed.source = "mixed";
+            mixed.words = 1;
+        }
+    }
+    if (offer_raw && g_tail_len == 0 && out->count < g_max_candidates) {
+        Candidate& raw = out->list[out->count++];
+        for (uint32_t k = 0; k < g_input_len; ++k) raw.text[k] = g_input[k];
+        raw.len = g_input_len;
+        raw.score = 1;
+        raw.source = "raw";
+        raw.words = 1;
+    }
+}
+
 }  // namespace
 
 extern "C" {
@@ -696,68 +785,50 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
 
     Candidate candidates[kMaxCandidates];
     uint32_t count = 0;
+
+    Built literal;
     if (read_input(frame) > 0) {
         compose();
-        /* English / non-pinyin input: the raw letters are a legitimate
-         * candidate. Only offered when the string is not pure pinyin, so a
-         * normal composition never shows its own letters as a choice, and one
-         * slot is reserved so the option survives a full candidate list. */
-        const bool pure = all_syllables(g_input, g_input_len);
-        const bool offer_raw = g_english_passthrough &&
-                               (!pure || g_beam_count[g_input_len] == 0);
-        uint32_t limit =
-            g_max_candidates < kMaxCandidates ? g_max_candidates : kMaxCandidates;
-        if (offer_raw && limit > 1) --limit;
-        for (uint32_t i = 0; i < g_beam_count[g_input_len] && count < limit;
-             ++i) {
-            const Path& path = g_beam[g_input_len][i];
-            int64_t score = static_cast<int64_t>(path.score) + kScoreBase;
-            if (score < 0) score = 0;
-            Candidate& candidate = candidates[count++];
-            for (uint32_t k = 0; k < path.len; ++k) candidate.text[k] = path.text[k];
-            candidate.len = path.len;
-            candidate.score = static_cast<uint32_t>(score);
-            candidate.source = path.words > 1 ? "compose" : "dict";
-            candidate.words = path.words;
-        }
+        build_candidates(&literal, true);
+    }
 
-        /* The second multi-word reading is a different sentence, not another
-         * word; tag it so the UI can offer "next sentence" separately. */
-        for (uint32_t i = 1; i < count; ++i) {
-            if (candidates[i].words > 1) {
-                candidates[i].source = "sentence";
-                break;
-            }
+    /* Auto-correction is an alternative reading, not a rewrite: the literal
+     * keys have their own lattice ("xxie" -> 谢谢), and the corrected spelling
+     * only takes over when it is clearly better. */
+    Built fixed;
+    char corrected[kMaxInputBytes];
+    const uint32_t corrected_len = read_corrected(frame, corrected,
+                                                  sizeof(corrected));
+    if (corrected_len > 0 &&
+        !(corrected_len == g_input_len &&
+          Frame::equal(corrected, corrected_len, g_input, g_input_len))) {
+        g_input_len = 0;
+        g_tail_len = 0;
+        g_mixed_raw_len = 0;
+        for (uint32_t i = 0; i < corrected_len; ++i)
+            append_letter(corrected[i]);
+        if (g_input_len > 0) {
+            compose();
+            build_candidates(&fixed, false);
+            for (uint32_t i = 0; i < fixed.count; ++i)
+                fixed.list[i].source = "corrected";
         }
+    }
 
-        if (g_tail_len > 0) {
-            for (uint32_t i = 0; i < count; ++i) {
-                if (candidates[i].len + g_tail_len >= kPathBytes) continue;
-                for (uint32_t k = 0; k < g_tail_len; ++k)
-                    candidates[i].text[candidates[i].len + k] = g_tail[k];
-                candidates[i].len += g_tail_len;
-            }
-            /* The mixed raw string always survives a full list. */
-            if (count >= g_max_candidates && count > 0) --count;
-            {
-                Candidate& mixed = candidates[count++];
-                for (uint32_t k = 0; k < g_mixed_raw_len; ++k)
-                    mixed.text[k] = g_mixed_raw[k];
-                mixed.len = g_mixed_raw_len;
-                mixed.score = 1;
-                mixed.source = "mixed";
-                mixed.words = 1;
-            }
-        }
+    const bool use_corrected =
+        fixed.count > 0 &&
+        (literal.count == 0 ||
+         static_cast<int32_t>(fixed.best) >
+             static_cast<int32_t>(literal.best) + kCorrectionMargin);
+    const Built& primary = use_corrected ? fixed : literal;
+    for (uint32_t i = 0; i < primary.count && count < kMaxCandidates; ++i)
+        candidates[count++] = primary.list[i];
 
-        if (offer_raw && g_tail_len == 0 && count < g_max_candidates) {
-            Candidate& raw = candidates[count++];
-            for (uint32_t k = 0; k < g_input_len; ++k) raw.text[k] = g_input[k];
-            raw.len = g_input_len;
-            raw.score = 1;
-            raw.source = "raw";
-            raw.words = 1;
-        }
+    /* Keep the typed reading selectable next to a winning correction. */
+    if (use_corrected && literal.count > 0 && count < kMaxCandidates &&
+        !has_text(candidates, count, literal.list[0].text,
+                  literal.list[0].len)) {
+        candidates[count++] = literal.list[0];
     }
 
     Writer w(out, cap);

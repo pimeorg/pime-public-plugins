@@ -1,0 +1,12 @@
+name: corrected-abbreviation-wins
+event: { type: text, text: xxiex }
+workspace:
+  plugin/pime-pinyin-parse/raw: xxiex
+  plugin/pime-pinyin-parse/corrected: xiex
+expect:
+  handled: true
+  workspace:
+    - k: candidates
+      v:
+        - { text: 谢谢, source: corrected }
+  candidates_include: [下谢谢]
