@@ -1,6 +1,6 @@
 description: 语音识别：PCM 经 ml.infer 得到候选（离线）
 id: pime-speech-ncnn
-version: 1.0.0
+version: 1.1.0
 abi: { major: 1, minor: 0 }
 min_core: "1.0.0"
 state_schema: 1
@@ -31,3 +31,8 @@ limits:
   scratch_bytes: 16384
   max_frame_bytes: 65536
 budget: { sync_us: 300, async_ms: 120 }
+settings:
+  - { key: vad_threshold, type: int, default: 300, min: 0, max: 20000 }
+  - { key: two_pass, type: bool, default: true }
+  - { key: hotword_boost, type: int, default: 12000, min: 0, max: 1000000 }
+  - { key: max_candidates, type: int, default: 8, min: 1, max: 8 }

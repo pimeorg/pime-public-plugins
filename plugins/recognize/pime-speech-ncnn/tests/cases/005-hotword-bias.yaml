@@ -1,0 +1,14 @@
+name: hotword-bias-and-extension
+steps:
+  - event:
+      type: hotword.update
+      payload: "你\t500\n你好\t700\n"
+    expect:
+      workspace:
+        - { k: hotwords, v: 2 }
+  - event: { type: audio.end }
+    state:
+      pcm: !!binary "AQIDBA=="
+    expect:
+      handled: true
+      candidates_include: [你, 你好]

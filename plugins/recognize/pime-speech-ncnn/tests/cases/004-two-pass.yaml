@@ -1,0 +1,10 @@
+name: two-pass-recognition
+event: { type: audio.end }
+state:
+  pcm: !!binary "AQIDBA=="
+expect:
+  handled: true
+  workspace:
+    - { k: passes, v: 2 }
+    - { k: speech_ms, v: 10 }
+  first_candidate: { text: 你 }

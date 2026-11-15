@@ -1,16 +1,16 @@
 description: 手写识别：笔迹点经 ml.infer 得到候选（离线）
 id: pime-handwriting-ncnn
-version: 1.0.0
+version: 1.1.0
 abi: { major: 1, minor: 0 }
 min_core: "1.0.0"
-state_schema: 1
+state_schema: 2
 store_schema: 1
 runtime: wasm
 role: recognize
 platforms: [windows-x64, windows-arm64, macos-x64, macos-arm64,
             linux-x64, linux-arm64, android-arm64, android-x64, ios-arm64, ios-x64, harmony-arm64, harmony-x64]
 entry: pime_process
-capabilities: [ml.infer, asset.read, workspace]
+capabilities: [ml.infer, asset.read, workspace, store.kv]
 requires: [ml.infer@1]
 assets: [labels.txt]
 models:

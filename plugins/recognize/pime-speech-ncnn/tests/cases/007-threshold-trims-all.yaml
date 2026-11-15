@@ -1,0 +1,9 @@
+name: high-threshold-removes-voice
+settings: { vad_threshold: 20000 }
+event: { type: audio.end }
+state:
+  pcm: !!binary "AQIDBA=="
+expect:
+  handled: true
+  workspace:
+    - { k: candidates, v: [] }

@@ -1,0 +1,8 @@
+name: groups-come-from-touch-events
+steps:
+  - event: { type: touch, x: 10, y: 20, group: 0 }
+  - event: { type: touch, x: 40, y: 60, group: 1 }
+  - event: { type: touch.end }
+    expect:
+      handled: true
+      first_candidate: { text: 你你, comment: 连写 }

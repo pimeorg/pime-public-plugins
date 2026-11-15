@@ -1,35 +1,48 @@
 # pime-handwriting-ncnn
 
-`recognize`（WASM）：离线手写识别。笔迹点由宿主采集，模型经 `ml.infer` 运行；
-插件本身不带 Runtime，只带模型与标签表。
+`recognize`（WASM）：离线手写识别，笔迹经 `ml.infer` 得到候选。
 
 ## 事件
 
 | 事件 | 行为 |
 |---|---|
-| `touch {x, y}` | 追加一个点（0..255），最多 128 点 |
-| `touch.end` | 编码张量 → `ml.run` → 标签映射 → 候选；清空笔迹 |
+| `touch {x, y, group?}` | 追加笔迹点；`group` 是字槽编号（默认 0） |
+| `touch.end` | 按字槽分组、归一化、逐组推理，输出候选 |
+| `handwriting.correct {wrong, right}` | 记录纠正样本 |
+
+## 算法
+
+1. **归一化**：每组点按包围盒缩放到 0..255；退化包围盒保持原坐标。
+2. **多字连写/叠写分组**：`group` 不同的点分别推理，每组取 top-1 拼成一个
+   「连写」候选排在首位；同时保留单字候选。
+3. **纠正样本学习**：`handwriting.correct` 写 `fix/<wrong>\x1f<right>` 计数；
+   下次模型返回 `wrong` 时，纠正结果以「纠正」注释排到首位。
 
 ## Workspace
 
-| 键 | 类型 | 说明 |
-|---|---|---|
-| `plugin/pime-handwriting-ncnn/candidates` | array<map> | `{text, score, source:"ml"}` |
+| 方向 | 键 |
+|---|---|
+| 写 | `plugin/pime-handwriting-ncnn/candidates`（`source=ml`，注释可选）、`plugin/pime-handwriting-ncnn/groups`（本次字槽数） |
 
-## 模型
+## 存储
 
-- `models: handwriting`，engine `ncnn`，输入 `u8 [1,128,2,1]`，输出 `u32` 标签 id。
-- 权重不入库，由 `models.lock` 分发；`hash` 当前为 `sha256:unfetched`，发布前必须替换。
-- backend 缺失 → `pime_process` 返回 `PIME_UNSUPPORTED`，不静默降级。
+| 键 | 值 |
+|---|---|
+| `fix/<wrong>\x1f<right>` | 纠正次数 |
 
-## 资产
+## State
 
-`assets/labels.txt`：`<id>\t<char>`，UTF-8。
+`{ pts, groups }`：未完成的笔迹点与字槽，`state_schema: 2`。
+
+## 资产与模型
+
+- `assets/labels.txt`：`<label id>\t<char>`。
+- `models/handwriting.ncnn`：按 `models.lock` 拉取，不入库。
 
 ## 预算
 
-`sync_us: 200`；张量编码为 256 字节，向量拷贝即可。
+`sync_us: 200`；最多 128 点、4 个字符槽、8 条候选。
 
 ## 用例
 
-`tests/cases/`：单点累积、`touch.end` 识别（模拟器返回固定标签）。
+`tests/cases/`：采点、单字识别、多槽连写、包围盒归一化、纠正样本、touch 事件分组。

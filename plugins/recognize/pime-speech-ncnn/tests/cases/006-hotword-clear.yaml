@@ -1,0 +1,14 @@
+name: hotword-clear
+steps:
+  - event:
+      type: hotword.update
+      payload: "你\t500\n"
+  - event: { type: hotword.clear }
+  - event: { type: audio.end }
+    state:
+      pcm: !!binary "AQIDBA=="
+    expect:
+      handled: true
+      workspace:
+        - { k: hotwords, v: 0 }
+      first_candidate: { text: 你 }

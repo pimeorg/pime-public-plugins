@@ -1,0 +1,9 @@
+name: correction-sample-wins
+steps:
+  - event: { type: handwriting.correct, wrong: 你, right: 尼 }
+  - event: { type: touch.end }
+    state:
+      pts: !!binary "AAECAwQFCgc="
+    expect:
+      handled: true
+      first_candidate: { text: 尼, comment: 纠正, source: ml }

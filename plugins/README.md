@@ -22,8 +22,8 @@
 | `preprocess` | `pime-shuangpin-standard` | wasm | 1.1.0 | 双拼四方案（小鹤/自然码/微软/搜狗）：两键合成音节 |
 | `rank` | `pime-pinyin-rank` | wasm | 1.2.0 | 拼音候选重排：短词加权后按分数降序 |
 | `rank` | `pime-rank-default` | wasm | 1.0.0 | 通用重排：按分数降序、过滤低分、截断 |
-| `recognize` | `pime-handwriting-ncnn` | wasm | 1.0.0 | 手写识别：笔迹点经 ml.infer 得到候选（离线） |
-| `recognize` | `pime-speech-ncnn` | wasm | 1.0.0 | 语音识别：PCM 经 ml.infer 得到候选（离线） |
+| `recognize` | `pime-handwriting-ncnn` | wasm | 1.1.0 | 手写识别：笔迹点经 ml.infer 得到候选（离线） |
+| `recognize` | `pime-speech-ncnn` | wasm | 1.1.0 | 语音识别：PCM 经 ml.infer 得到候选（离线） |
 | `service` | `pime-cloud-hotwords` | lua | 1.0.0 | 服务：Ed25519 签名热词，只下载不上传 |
 | `service` | `pime-cloud-sync` | lua | 1.0.0 | 服务：词频表增量同步（HTTP，可关闭） |
 | `service` | `pime-dict-packs` | wasm | 1.0.0 | 服务：专业词库包按需启停 |

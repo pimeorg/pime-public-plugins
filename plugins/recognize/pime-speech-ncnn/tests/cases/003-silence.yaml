@@ -1,0 +1,10 @@
+name: silence-produces-no-candidates
+event: { type: audio.end }
+state:
+  pcm: !!binary "AAAAAAAAAAA="
+expect:
+  handled: true
+  workspace:
+    - { k: candidates, v: [] }
+    - { k: passes, v: 0 }
+    - { k: speech_ms, v: 0 }

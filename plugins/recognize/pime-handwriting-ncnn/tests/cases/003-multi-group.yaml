@@ -1,0 +1,10 @@
+name: multi-character-groups
+event: { type: touch.end }
+state:
+  pts: !!binary "ChQeKA=="
+  groups: !!binary "AAE="
+expect:
+  handled: true
+  workspace:
+    - { k: groups, v: 2 }
+  first_candidate: { text: 你你, comment: 连写, source: ml }

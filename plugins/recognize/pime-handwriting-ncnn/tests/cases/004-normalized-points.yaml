@@ -1,0 +1,8 @@
+name: bounding-box-normalisation
+event: { type: touch.end }
+state:
+  pts: !!binary "ChQAXsg="
+  groups: !!binary "AA=="
+expect:
+  handled: true
+  first_candidate: { text: 你, source: ml }
