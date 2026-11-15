@@ -88,7 +88,7 @@ Lua 插件目前没有运行时模拟器，只做静态检查。
 
 ## 状态
 
-首批 21 个插件、8 条产品链、信任根与校验工具均已落地。WASM 插件已用 NDK
+首批 22 个插件、9 条产品链、信任根与校验工具均已落地。WASM 插件已用 NDK
 工具链产出真实 `.wasm`，并在 pime-core + WAMR 宿主上跑通默认拼音链；
 `tests/host/main.cpp`（链接真实 core）仍按 core 包是否可见决定是否编译。
 进度见 [`PROGRESS.md`](PROGRESS.md)，任务见 [`TASK.md`](TASK.md)。

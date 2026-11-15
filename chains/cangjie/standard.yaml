@@ -1,0 +1,26 @@
+api: 1
+id: standard
+description: 仓颉链（字母码，最多五码）
+core: ">=1.0.0"
+
+plugins:
+  - { id: pime-keymap-default, role: preprocess }
+  - { id: pime-cangjie-parse, role: parse }
+  - { id: pime-cangjie-translate, role: translate }
+  - { id: pime-rank-default, role: rank }
+  - { id: pime-candidates-format, role: format }
+  - { id: pime-learn-frequency, role: learn }
+
+workspace:
+  - { key: plugin/pime-keymap-default/action,
+      from: pime-keymap-default, to: [pime-cangjie-parse] }
+  - { key: plugin/pime-cangjie-parse/code,
+      from: pime-cangjie-parse,
+      to: [pime-cangjie-translate, pime-candidates-format] }
+  - { key: plugin/pime-cangjie-translate/candidates,
+      from: pime-cangjie-translate,
+      to: [pime-rank-default, pime-candidates-format] }
+  - { key: plugin/pime-rank-default/candidates,
+      from: pime-rank-default, to: [pime-candidates-format] }
+  - { key: plugin/pime-candidates-format/committed,
+      from: pime-candidates-format, to: [pime-learn-frequency] }

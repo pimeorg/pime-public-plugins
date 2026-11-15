@@ -1,0 +1,7 @@
+name: five-code-word
+event: { type: text, text: onfvnd }
+workspace:
+  plugin/pime-cangjie-parse/code: onfvnd
+expect:
+  handled: true
+  first_candidate: { text: 你好, score: 28000 }

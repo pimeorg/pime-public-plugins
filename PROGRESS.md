@@ -338,6 +338,22 @@ WeaveText 的 `refresh_wubi` / `Schema::Wubi86` 包含四项行为，本轮按�
 6. 两个插件升到 1.1.0；wubi 链锁重生成；新增 8 条用例（parse 4、translate 5，
    其中 2 条改写），全仓 129 条通过。
 
+## 仓颉码表翻译（2026-11-15）
+
+仓颉原先只有 parse，没有翻译阶段；本轮补上端到端：
+
+1. **`pime-cangjie-translate`（translate，新增）**：读
+   `plugin/pime-cangjie-parse/code`，整码命中在前（+10000），短码补全在后，
+   注释显示剩余编码，分数 `freq - 200 * 剩余码长`。码长上限仍由 parse 的
+   `max_code`（默认 5）决定，翻译阶段不做截断。
+2. **`data/cangjie/cangjie.dict`**：starter 码表（24 个基本字母 + 常用整码），
+   格式与五笔一致。
+3. **`chains/cangjie/standard.yaml`**：keymap → cangjie-parse → cangjie-translate
+   → rank-default → candidates-format → learn-frequency，锁已生成。
+4. **format / rank-default** 的候选源补上 cangjie（rank 同时补上 t9），README
+   读表同步。
+5. 新增 6 条 translate 用例，全仓 135 条通过；插件数 22、链 9。
+
 ## 发现的 core 文档/实现漂移
 
 1. `pime-core/schema/manifest.schema.json` 的 `role` 枚举仍是旧值

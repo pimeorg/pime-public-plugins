@@ -1,0 +1,9 @@
+name: completion-off
+event: { type: text, text: on }
+workspace:
+  plugin/pime-cangjie-parse/code: "on"
+settings: { completion: false }
+expect:
+  handled: false
+  workspace:
+    - { k: candidates, v: [] }

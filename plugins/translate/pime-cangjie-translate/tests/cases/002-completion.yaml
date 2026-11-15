@@ -1,0 +1,7 @@
+name: completion-shows-remaining-code
+event: { type: text, text: on }
+workspace:
+  plugin/pime-cangjie-parse/code: "on"
+expect:
+  handled: true
+  first_candidate: { text: 你, comment: f, source: completion }

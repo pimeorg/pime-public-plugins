@@ -5,7 +5,9 @@
 ## 规则
 
 1. 依次尝试读取 `plugin/pime-pinyin-translate/candidates`、
-   `plugin/pime-wubi-translate/candidates`，取第一个非空数组。
+   `plugin/pime-wubi-translate/candidates`、
+   `plugin/pime-cangjie-translate/candidates`、`plugin/pime-t9-translate/candidates`，
+   取第一个非空数组。
 2. 丢弃 `score < min_score` 的候选。
 3. 按分数降序稳定排序，截断到 `max_candidates`。
 
@@ -15,6 +17,8 @@
 |---|---|
 | 读 | `plugin/pime-pinyin-translate/candidates` |
 | 读 | `plugin/pime-wubi-translate/candidates` |
+| 读 | `plugin/pime-cangjie-translate/candidates` |
+| 读 | `plugin/pime-t9-translate/candidates` |
 | 写 | `plugin/pime-rank-default/candidates` |
 
 ## Settings

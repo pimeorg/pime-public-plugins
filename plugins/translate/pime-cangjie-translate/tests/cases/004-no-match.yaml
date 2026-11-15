@@ -1,0 +1,8 @@
+name: no-match
+event: { type: text, text: qqqq }
+workspace:
+  plugin/pime-cangjie-parse/code: qqqq
+expect:
+  handled: false
+  workspace:
+    - { k: candidates, v: [] }

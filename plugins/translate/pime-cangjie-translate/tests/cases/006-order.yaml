@@ -1,0 +1,7 @@
+name: exact-before-completion
+event: { type: text, text: l }
+workspace:
+  plugin/pime-cangjie-parse/code: l
+expect:
+  handled: true
+  first_candidate: { text: 中, source: dict }

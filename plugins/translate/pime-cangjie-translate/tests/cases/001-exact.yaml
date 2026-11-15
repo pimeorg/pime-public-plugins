@@ -1,0 +1,7 @@
+name: exact-code
+event: { type: text, text: ab }
+workspace:
+  plugin/pime-cangjie-parse/code: ab
+expect:
+  handled: true
+  first_candidate: { text: 明, score: 32000, source: dict }

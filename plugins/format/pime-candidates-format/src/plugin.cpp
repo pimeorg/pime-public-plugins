@@ -39,6 +39,7 @@ const char* const kCandidateSources[] = {
     "pime-rank-default",
     "pime-pinyin-translate",
     "pime-wubi-translate",
+    "pime-cangjie-translate",
     "pime-t9-translate",
     "pime-english-translate",
     "pime-shortcuts",

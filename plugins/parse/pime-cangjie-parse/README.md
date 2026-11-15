@@ -18,7 +18,10 @@
 |---|---|---|
 | `plugin/pime-cangjie-parse/code` | text | 当前仓颉码 |
 
-消费者：`pime-candidates-format`（读取 `plugin/pime-cangjie-parse/code`）。
+读取：`plugin/pime-keymap-default/action`（`backspace` / `escape`）。
+
+消费者：`pime-cangjie-translate`、`pime-candidates-format`（读取
+`plugin/pime-cangjie-parse/code`）。
 
 ## Settings
 

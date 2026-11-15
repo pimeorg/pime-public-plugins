@@ -18,7 +18,8 @@
 候选按顺序从以下 workspace 键读取，取第一个非空数组：
 `plugin/pime-special-candidates/candidates`、`plugin/pime-pinyin-rank/candidates`、
 `plugin/pime-rank-default/candidates`、`plugin/pime-pinyin-translate/candidates`、
-`plugin/pime-wubi-translate/candidates`、`plugin/pime-t9-translate/candidates`、
+`plugin/pime-wubi-translate/candidates`、
+`plugin/pime-cangjie-translate/candidates`、`plugin/pime-t9-translate/candidates`、
 `plugin/pime-english-translate/candidates`、`plugin/pime-shortcuts/candidates`、
 `plugin/pime-predict-context/candidates`、`plugin/pime-handwriting-ncnn/candidates`、
 `plugin/pime-speech-ncnn/candidates`。
@@ -40,6 +41,7 @@
 | `plugin/pime-rank-default/candidates` | pime-rank-default |
 | `plugin/pime-pinyin-translate/candidates` | pime-pinyin-translate |
 | `plugin/pime-wubi-translate/candidates` | pime-wubi-translate |
+| `plugin/pime-cangjie-translate/candidates` | pime-cangjie-translate |
 | `plugin/pime-t9-translate/candidates` | pime-t9-translate |
 | `plugin/pime-english-translate/candidates` | pime-english-translate |
 | `plugin/pime-shortcuts/candidates` | pime-shortcuts |
