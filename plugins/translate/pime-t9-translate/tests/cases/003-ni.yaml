@@ -1,0 +1,6 @@
+name: single-syllable-ni
+event: { type: text, text: "64" }
+workspace:
+  plugin/pime-t9-parse/raw: "64"
+expect:
+  first_candidate: { text: 你 }

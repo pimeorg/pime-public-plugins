@@ -1,0 +1,6 @@
+name: nine-rejects-letters
+event: { type: text, text: "abc" }
+expect:
+  handled: false
+  workspace:
+    - { k: raw, v: "" }

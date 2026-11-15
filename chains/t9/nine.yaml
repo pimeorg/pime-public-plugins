@@ -1,0 +1,21 @@
+api: 1
+id: nine
+description: 九键链（2–9，1 为音节分隔）
+core: ">=1.0.0"
+
+plugins:
+  - { id: pime-keymap-default, role: preprocess }
+  - { id: pime-t9-parse, role: parse, settings: { grouping: nine } }
+  - { id: pime-t9-translate, role: translate, settings: { grouping: nine } }
+  - { id: pime-candidates-format, role: format }
+  - { id: pime-learn-frequency, role: learn }
+
+workspace:
+  - { key: plugin/pime-keymap-default/action,
+      from: pime-keymap-default, to: [pime-t9-parse] }
+  - { key: plugin/pime-t9-parse/raw,
+      from: pime-t9-parse, to: [pime-t9-translate, pime-candidates-format] }
+  - { key: plugin/pime-t9-translate/candidates,
+      from: pime-t9-translate, to: [pime-candidates-format] }
+  - { key: plugin/pime-candidates-format/committed,
+      from: pime-candidates-format, to: [pime-learn-frequency] }

@@ -1,0 +1,6 @@
+name: composes-xian-and-xian
+event: { type: text, text: "9426" }
+workspace:
+  plugin/pime-t9-parse/raw: "9426"
+expect:
+  candidates_include: [先, 西安]

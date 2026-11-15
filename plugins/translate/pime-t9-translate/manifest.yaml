@@ -1,0 +1,29 @@
+description: 九键/14 键翻译：键码串按音节编码匹配词表，产出候选
+id: pime-t9-translate
+version: 1.0.0
+abi: { major: 1, minor: 0 }
+min_core: "1.0.0"
+state_schema: 1
+store_schema: 1
+runtime: wasm
+role: translate
+platforms: [windows-x64, windows-arm64, macos-x64, macos-arm64,
+            linux-x64, linux-arm64, android-arm64, android-x64, ios-arm64, ios-x64, harmony-arm64, harmony-x64]
+entry: pime_process
+capabilities: [workspace, asset.read, output.emit]
+requires: [pime-t9-parse@^1.0]
+assets: [pinyin.dict]
+limits:
+  memory_mb: 32
+  instructions: 10000000
+  time_ms: 8
+  state_kb: 8
+  workspace_kb: 128
+  candidates_max: 32
+  scratch_bytes: 16384
+  max_frame_bytes: 65536
+budget: { sync_us: 200, async_ms: 20 }
+settings:
+  - { key: grouping, type: enum, values: [nine, fourteen],
+      default: nine }
+  - { key: max_candidates, type: int, default: 8, min: 1, max: 32 }

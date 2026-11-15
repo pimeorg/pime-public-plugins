@@ -1,0 +1,6 @@
+name: partial-syllable-zhong
+event: { type: text, text: "94664" }
+workspace:
+  plugin/pime-t9-parse/raw: "94664"
+expect:
+  first_candidate: { text: 中 }

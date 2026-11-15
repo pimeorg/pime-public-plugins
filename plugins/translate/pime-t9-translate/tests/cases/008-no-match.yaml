@@ -1,0 +1,8 @@
+name: no-match
+event: { type: text, text: "22222222" }
+workspace:
+  plugin/pime-t9-parse/raw: "22222222"
+expect:
+  handled: false
+  workspace:
+    - { k: candidates, v: [] }

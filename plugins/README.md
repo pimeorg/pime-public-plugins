@@ -8,6 +8,7 @@
 | `learn` | `pime-learn-frequency` | lua | 1.0.0 | 学习：按提交记录词频，写入插件私有 KV |
 | `parse` | `pime-cangjie-parse` | wasm | 1.0.0 | 仓颉：累积字母码并写入 workspace |
 | `parse` | `pime-pinyin-parse` | wasm | 1.1.0 | 全拼解析：音节切分、自动纠错、触点邻键纠正与预编辑 |
+| `parse` | `pime-t9-parse` | wasm | 1.0.0 | 九键/14 键：累积键码（1 为音节分隔）并写入 workspace |
 | `parse` | `pime-wubi-parse` | wasm | 1.0.0 | 五笔：累积字母码并写入 workspace 供词表翻译 |
 | `predict` | `pime-predict-context` | wasm | 1.0.0 | 预测：按光标前文本匹配短语表，产出下一词候选 |
 | `preprocess` | `pime-keymap-default` | wasm | 1.2.0 | 默认键位：把控制键映射为链内动作，文本键放行 |
@@ -22,4 +23,5 @@
 | `service` | `pime-user-dict` | lua | 1.0.0 | 服务：用户词库记录、查询与删除 |
 | `translate` | `pime-pinyin-translate` | wasm | 1.1.0 | 全拼词典翻译：音节串查词典，产出候选与分数 |
 | `translate` | `pime-special-candidates` | wasm | 1.0.0 | 特殊候选：v 数字/算式、日期时间星期、正文算式直接出结果 |
+| `translate` | `pime-t9-translate` | wasm | 1.0.0 | 九键/14 键翻译：键码串按音节编码匹配词表，产出候选 |
 | `translate` | `pime-wubi-translate` | wasm | 1.0.0 | 五笔词典翻译：字母码查词表，产出候选与分数 |

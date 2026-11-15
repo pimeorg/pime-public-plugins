@@ -1,0 +1,6 @@
+name: single-syllable-wo
+event: { type: text, text: "96" }
+workspace:
+  plugin/pime-t9-parse/raw: "96"
+expect:
+  first_candidate: { text: 我, words: 1 }

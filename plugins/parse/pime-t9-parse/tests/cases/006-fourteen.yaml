@@ -1,0 +1,9 @@
+name: fourteen-key-codes
+event: { type: text, text: "khemhhde" }
+settings: { grouping: fourteen }
+expect:
+  handled: true
+  workspace:
+    - { k: raw, v: "khemhhde" }
+  commands:
+    - { type: set_composition, text: "khemhhde", cursor: 8 }

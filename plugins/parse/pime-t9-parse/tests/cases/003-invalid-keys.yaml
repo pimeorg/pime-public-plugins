@@ -1,0 +1,6 @@
+name: invalid-keys-ignored
+event: { type: text, text: "9a4x6" }
+expect:
+  handled: true
+  workspace:
+    - { k: raw, v: "946" }

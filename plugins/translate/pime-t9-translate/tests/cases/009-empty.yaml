@@ -1,0 +1,6 @@
+name: empty-input
+event: { type: reset }
+expect:
+  handled: false
+  workspace:
+    - { k: candidates, v: [] }

@@ -1,0 +1,19 @@
+name: separator-collapses
+steps:
+  - event: { type: text, text: "94" }
+    expect:
+      workspace:
+        - { k: raw, v: "94" }
+  - event: { type: text, text: "1" }
+    expect:
+      workspace:
+        - { k: raw, v: "941" }
+  - event: { type: text, text: "1" }
+    expect:
+      workspace:
+        - { k: raw, v: "941" }
+  - event: { type: text, text: "486" }
+    expect:
+      handled: true
+      workspace:
+        - { k: raw, v: "941486" }

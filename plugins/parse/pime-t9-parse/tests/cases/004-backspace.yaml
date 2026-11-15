@@ -1,0 +1,15 @@
+name: backspace-drops-last-code
+steps:
+  - event: { type: text, text: "946" }
+  - event: { type: text, text: "4" }
+  - event: { type: key, keycode: 8 }
+    workspace: { plugin/pime-keymap-default/action: backspace }
+    expect:
+      handled: true
+      workspace:
+        - { k: raw, v: "946" }
+  - event: { type: key, keycode: 8 }
+    workspace: { plugin/pime-keymap-default/action: backspace }
+    expect:
+      workspace:
+        - { k: raw, v: "94" }

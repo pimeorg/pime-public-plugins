@@ -43,7 +43,7 @@
 | 规范数据源与锁说明 | `data/` |
 | 信任根与吊销列表 | `trust/` |
 
-### 插件（18 个，全部含 manifest / README / CHANGELOG / CMakeLists / 源码 / 用例）
+### 插件（首批 18 个，全部含 manifest / README / CHANGELOG / CMakeLists / 源码 / 用例）
 
 | role | 插件 | runtime |
 |---|---|---|
@@ -292,6 +292,31 @@ case，而是自己批量构造输入、统计命中率，再修系统性问题�
 5. **链**：`chains/pinyin/{default,shuangpin}.yaml` 在 rank 之后插入
    special，workspace 增加 parse/raw、rank/candidates 的消费与 special/candidates
    的产出，锁文件已重生成。
+
+## 九键 / 14 键（2026-11-15）
+
+WeaveText 的 `t9.rs` 把数字键盘（或 14 键布局）的键码当作歧义拼音串处理。本轮
+按同一思路拆成 parse + translate 两个插件：
+
+1. **`pime-t9-parse`（parse，新增）**：累积键码，`1` 在九键下作音节分隔（不能
+   打头、不能连打）；键码上限 `max_codes`，超限返回 `UNSUPPORTED`。状态在
+   `buf`，同时写 `raw` 与 `input`；提交阶段与其它 parse 插件同契约（清状态、
+   保留 workspace 里的码串）。14 键允许 a–n 字母，`grouping` 设置切换。
+2. **`shared/cpp/include/pimeplug/t9.hpp`**：九键 `abc/def/ghi/…/wxyz` 与 14 键
+   `qw er ty ui op as df gh jk l zx cv bn m` 两张表，提供 `t9_encode`、
+   `t9_letter_code`、`t9_is_code`、`t9_grouping_from_text`。
+3. **`pime-t9-translate`（translate，新增）**：把码串切成若干段（`1` 分段），
+   每段在词表上做音节格 + 束搜索（与 `pime-pinyin-translate` 同构）：词条按首
+   音节编码的首字符分桶，匹配时把音节编码成键码再与输入数字块比较；评分沿用
+   `score - kContextLog - cost + kWordBonus*(len-1)`，支持简写（只打首码）与
+   全码两种对齐。多段结果按段序拼接。资产复用 `pinyin.dict`。
+4. **链**：`chains/t9/{nine,fourteen}.yaml`，keymap → t9-parse → t9-translate →
+   candidates-format → learn-frequency，锁已生成。
+5. **format**：候选源与 workspace 读表补上 `pime-t9-parse/raw` 与
+   `pime-t9-translate/candidates`。
+6. **用例**：parse 7 条（九键、14 键、分隔符、上限、提交、无状态整串），
+   translate 9 条（单段、多段、简写、14 键、无匹配、上限、分组切换等），
+   全仓 120 条通过。
 
 ## 发现的 core 文档/实现漂移
 

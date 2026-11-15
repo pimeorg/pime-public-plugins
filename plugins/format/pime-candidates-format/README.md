@@ -34,6 +34,7 @@
 | `plugin/pime-pinyin-parse/raw` | pime-pinyin-parse |
 | `plugin/pime-wubi-parse/code` | pime-wubi-parse |
 | `plugin/pime-cangjie-parse/code` | pime-cangjie-parse |
+| `plugin/pime-t9-parse/raw` | pime-t9-parse |
 | `plugin/pime-special-candidates/candidates` | pime-special-candidates |
 | `plugin/pime-pinyin-rank/candidates` | pime-pinyin-rank |
 | `plugin/pime-rank-default/candidates` | pime-rank-default |

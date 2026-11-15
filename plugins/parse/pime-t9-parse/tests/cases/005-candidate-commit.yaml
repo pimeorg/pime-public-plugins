@@ -1,0 +1,11 @@
+name: candidate-commit-clears-state
+steps:
+  - event: { type: text, text: "94664486" }
+    expect:
+      state: { buf: "94664486" }
+  - event: { type: candidate, index: 0 }
+    expect:
+      handled: false
+      state: { buf: "" }
+      workspace:
+        - { k: raw, v: "94664486" }

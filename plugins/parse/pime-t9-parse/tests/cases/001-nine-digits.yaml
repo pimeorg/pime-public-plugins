@@ -1,0 +1,9 @@
+name: nine-accumulate
+event: { type: text, text: "94664486" }
+expect:
+  handled: true
+  workspace:
+    - { k: raw, v: "94664486" }
+    - { k: input, v: "94664486" }
+  commands:
+    - { type: set_composition, text: "94664486", cursor: 8 }

@@ -1,0 +1,9 @@
+name: grouping-mismatch-yields-nothing
+event: { type: text, text: "94664486" }
+settings: { grouping: fourteen }
+workspace:
+  plugin/pime-t9-parse/raw: "94664486"
+expect:
+  handled: false
+  workspace:
+    - { k: candidates, v: [] }

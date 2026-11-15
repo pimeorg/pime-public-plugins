@@ -1,0 +1,7 @@
+name: fourteen-key-decode
+event: { type: text, text: "khemhhde" }
+settings: { grouping: fourteen }
+workspace:
+  plugin/pime-t9-parse/raw: "khemhhde"
+expect:
+  first_candidate: { text: 中国 }
