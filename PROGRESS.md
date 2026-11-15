@@ -589,3 +589,23 @@ WeaveText 的 `refresh_wubi` / `Schema::Wubi86` 包含四项行为，本轮按�
   `pime-model-manager` 是 service 事件驱动，宿主 UI 还没有对应入口；
 - 中英混输的大写片段：MuMu + adb 连点 Shift 不可靠，未能稳定复现。
 这些路径仍由 native 用例覆盖，实机接线留待宿主补 surrounding / 事件入口。
+
+## 错拼纠正改为“候选层比较”（用户反馈）
+
+用户实测反馈：`xxie` 显示成 `xie`、`xxiex` 却保持 `xxiex`，而且候选不对。
+
+根因：parse 的“多键纠正”直接把结果写进了预编辑和 `raw`，translate 只看到纠正后的
+`xie`。但 `xxie` 的字面缩写读法恰好是「谢谢」（515119 分）比 `xie` 的「写」
+（508675）更好；`xxiex` 又因为 `xiex` 不是“完整音节串”而没触发纠正，于是出现
+“有时删、有时不删”的不一致。
+
+修复（对齐 WeaveText 的 typo_margin 思路）：
+
+- `pime-pinyin-parse` 1.1.2：预编辑与 `raw` 永远保留用户输入；纠正只写
+  `corrected` + `marks`。重复字母删除允许缩写格（`xxiex → xiex`）。
+- `pime-pinyin-translate` 1.2.1：同时计算字面读法与纠正读法，纠正读法需高出
+  3000 分才胜出；胜出时把字面首选附在末尾，用户仍可选回。
+- 结果：`xxie → 谢谢`（不删字）、`xxiex → 谢谢`（纠正）、`nihhao → 你好`
+  （并保留「你好好」），`xiee → 邪恶`（字面更像整词）。
+- 新增 parse 017/018 与 translate 028/029/030 用例，更新 010/011/013 的契约；
+  全仓 268 条用例通过，MuMu 上已复验 `xxie` / `xxiex` / `nihhao`。
