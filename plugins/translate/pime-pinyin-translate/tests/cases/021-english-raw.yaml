@@ -1,0 +1,9 @@
+name: english-raw-candidate
+event: { type: text, text: hello }
+workspace:
+  plugin/pime-pinyin-parse/raw: hello
+# hello 不是完整拼音串，除了拼音解释外还要保留原字母候选；即使候选满额，
+# 也会为它预留一个位置。
+expect:
+  handled: true
+  candidates_include: [hello]

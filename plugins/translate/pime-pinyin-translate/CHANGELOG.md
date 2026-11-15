@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1.0
+
+- 新增字符二元搭配模型：`pinyin.collocations` 资产（由词表生成，14k 字对），
+  在词边界按搭配词频加分，`collocation_weight` 可调（0 关闭）。
+- 次优整句：束搜索第二条多词路径标记为 `source: "sentence"`。
+- 非纯拼音输入保留原字母候选（`source: "raw"`），并预留候选名额，
+  `english_passthrough` 可关闭；纯拼音输入不受影响。
+- 候选新增 `words` 字段，供 rank/format 区分整句与词组。
+- 新增 `tools/collocations/build.py` 生成搭配表。
+- 新增 4 条用例：搭配开/关排序、英文原字母、关闭透传。
+
 ## 1.0.0
 
 - 首个版本：音节串前缀查词典、精确命中加权、workspace 候选输出。

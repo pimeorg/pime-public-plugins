@@ -49,11 +49,34 @@ score = log2(freq) - 26500 - 简拼/模糊罚分 + 9000 * (覆盖字母数 - 1)
 半音节（这），不会被拆成 `z` + `h` 的“之后”。没有整词时也能拼出“我是中国人”
 这类多词组合。
 
+## 字符搭配与次优整句
+
+词与词的接缝处再加一层字符二元搭配分：路径最后一个字与下一个词的第一个字
+在 `pinyin.collocations` 中有记录时，按搭配词频给奖励（`collocation_weight`
+缩放，封顶 9000，不会压过整词内聚奖励）。这样“你好 + 嘛”会比“年 + 好吗”
+更自然地排到前面；把 `collocation_weight` 设为 `0` 即可退回纯词频模型。
+
+束搜索的第二条多词路径标记为 `source: "sentence"`，与普通 `compose` 区分，
+UI 可以把它当作“次优整句”单独提供。
+
 ## 输出
 
 写入 `plugin/pime-pinyin-translate/candidates`：`array<map>`，每项
-`{ text: str, score: uint, source: "dict" | "compose" }`，按分数降序，最多
-`settings.max_candidates` 条。`source` 为 `compose` 表示由多个词合成。
+`{ text: str, score: uint, source: str, words: uint }`，按分数降序，最多
+`settings.max_candidates` 条。`source` 取值：
+
+| 值 | 含义 |
+|---|---|
+| `dict` | 单个词典词 |
+| `compose` | 多个词合成的整句 |
+| `sentence` | 次优整句（第二条多词路径） |
+| `raw` | 原字母透传（英文/非拼音输入） |
+
+`words` 是路径包含的词数，供 rank/format 判断整句与词组。
+
+当输入不是完整拼音串（如 `hello`、`iiii`）且 `english_passthrough` 开启时，
+原字母作为最后一条候选追加，并为其预留一个名额，保证英文可以直接上屏；
+纯拼音输入不会出现这种候选。
 
 ## 资产
 
@@ -73,6 +96,8 @@ score = log2(freq) - 26500 - 简拼/模糊罚分 + 9000 * (覆盖字母数 - 1)
 |---|---|---|---|
 | `max_candidates` | int | 8 | 输出条数上限（1–32） |
 | `fuzzy` | bool | true | 模糊音开关 |
+| `collocation_weight` | int | 500 | 字符搭配分缩放（0 关闭，最大 2000） |
+| `english_passthrough` | bool | true | 非纯拼音输入保留原字母候选 |
 
 ## 预算
 
@@ -87,4 +112,5 @@ score = log2(freq) - 26500 - 简拼/模糊罚分 + 9000 * (覆盖字母数 - 1)
 模糊音/关闭模糊音、半音节前缀、无命中；网格保留多重切分的 `ysh`（有时候
 可见）、`xian`（西安可见）、`deg`（第二个可见）；以及无上下文排序的
 `zsh` → 早上好、`gz` → 广州、`sz` → 深圳、`yiqichifanba` → 一起吃饭吧、
-`wozaijia` → 我在家。
+`wozaijia` → 我在家；字符搭配开关（`nihaoma` 第三候选 `你好嘛` vs `年好吗`）、
+英文原字母候选（`hello`、`iiii`）与关闭透传。

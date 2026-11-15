@@ -28,6 +28,8 @@
 #include <pimeplug/cbor.hpp>
 #include <pimeplug/dict.hpp>
 #include <pimeplug/memory.hpp>
+#include <pimeplug/pinyin.hpp>
+#include <pimeplug/utf8.hpp>
 #include <pimeplug/workspace.hpp>
 
 using namespace pimeplug;
@@ -43,6 +45,8 @@ constexpr uint32_t kMaxCandidates = 32;
 constexpr uint32_t kBeam = 16;
 constexpr uint32_t kEdgesPerSpan = 24;
 constexpr uint32_t kPathBytes = 96;
+constexpr uint32_t kCollocationBytes = 512 * 1024;
+constexpr uint32_t kCollocationSlots = 32768;
 
 /* Scoring is a small unigram model over the dictionary. Frequencies are
  * counts, so each word contributes log2(freq); subtracting a corpus-scale
@@ -55,6 +59,8 @@ constexpr int32_t kAbbrevCost = 300;   /* per omitted letter */
 constexpr int32_t kFuzzyCost = 2000;   /* per fuzzy initial/final */
 constexpr int32_t kWordBonus = 9000;   /* compound-word cohesion per extra letter */
 constexpr int32_t kScoreBase = 500000;
+constexpr int32_t kCollocationFloor = 14000; /* ignore rare pairs */
+constexpr int32_t kCollocationCap = 9000;   /* never outweigh word cohesion */
 
 const char kParseId[] = "pime-pinyin-parse";
 
@@ -63,7 +69,22 @@ alignas(8) uint8_t g_dict[kDictBytes];
 uint32_t g_dict_len = 0;
 bool g_dict_loaded = false;
 bool g_fuzzy = true;
+bool g_english_passthrough = true;
 uint32_t g_max_candidates = 8;
+uint32_t g_collocation_weight = 500;
+
+/* Character collocations: adjacent-character log weight, hashed by
+ * (left << 32) | right. Key 0 marks an empty slot; codepoint 0 is never
+ * stored, so no separate occupancy array is needed. */
+struct CollocationSlot {
+    uint64_t key;
+    int32_t score;
+};
+
+alignas(8) uint8_t g_collocation_buf[kCollocationBytes];
+CollocationSlot g_collocations[kCollocationSlots];
+uint32_t g_collocation_count = 0;
+bool g_collocations_loaded = false;
 
 struct Entry {
     const char* key;
@@ -90,6 +111,8 @@ struct Edge {
     const char* text;
     uint32_t text_len;
     int32_t score;
+    uint32_t first_cp;
+    uint32_t last_cp;
     uint8_t next;
 };
 
@@ -100,6 +123,7 @@ struct Path {
     char text[kPathBytes];
     uint32_t len;
     int32_t score;
+    uint32_t last_cp;
     uint8_t words;
 };
 
@@ -111,6 +135,7 @@ struct Candidate {
     uint32_t len;
     uint32_t score;
     const char* source;
+    uint8_t words;
 };
 
 uint32_t log2_score(uint32_t value) {
@@ -128,6 +153,115 @@ uint32_t log2_score(uint32_t value) {
 uint8_t bucket_of(char c) {
     if (c >= 'a' && c <= 'z') return static_cast<uint8_t>(c - 'a');
     return 26;
+}
+
+uint32_t first_codepoint(const char* text, uint32_t len) {
+    uint32_t used = 0;
+    return utf8_decode(text, len, &used);
+}
+
+uint32_t last_codepoint(const char* text, uint32_t len) {
+    uint32_t last = 0;
+    uint32_t i = 0;
+    while (i < len) {
+        uint32_t used = 0;
+        const uint32_t cp = utf8_decode(text + i, len - i, &used);
+        if (used == 0) return last;
+        last = cp;
+        i += used;
+    }
+    return last;
+}
+
+uint32_t collocation_slot(uint64_t key) {
+    return static_cast<uint32_t>((key * 0x9E3779B97F4A7C15ull) >> 33) &
+           (kCollocationSlots - 1);
+}
+
+void collocation_insert(uint64_t key, int32_t score) {
+    uint32_t slot = collocation_slot(key);
+    for (uint32_t probes = 0; probes < kCollocationSlots; ++probes) {
+        CollocationSlot& entry = g_collocations[slot];
+        if (entry.key == key) {
+            if (score > entry.score) entry.score = score;
+            return;
+        }
+        if (entry.key == 0) {
+            entry.key = key;
+            entry.score = score;
+            ++g_collocation_count;
+            return;
+        }
+        slot = (slot + 1) & (kCollocationSlots - 1);
+    }
+}
+
+int32_t collocation_score(uint32_t left, uint32_t right) {
+    if (left == 0 || right == 0 || g_collocation_weight == 0) return 0;
+    const uint64_t key = (static_cast<uint64_t>(left) << 32) | right;
+    uint32_t slot = collocation_slot(key);
+    for (uint32_t probes = 0; probes < kCollocationSlots; ++probes) {
+        const CollocationSlot& entry = g_collocations[slot];
+        if (entry.key == key) {
+            int32_t bonus = static_cast<int32_t>(
+                static_cast<int64_t>(entry.score) * g_collocation_weight / 1000);
+            return bonus > kCollocationCap ? kCollocationCap : bonus;
+        }
+        if (entry.key == 0) return 0;
+        slot = (slot + 1) & (kCollocationSlots - 1);
+    }
+    return 0;
+}
+
+/* Loads the character bigram table once. A weight of 0 disables the model and
+ * skips the asset; any other weight requires the asset to be present because
+ * the manifest declares it (a missing asset is a broken package, not a reason
+ * to silently rank without the model). */
+bool load_collocations() {
+    if (g_collocations_loaded) return true;
+    g_collocations_loaded = true;
+    if (g_collocation_weight == 0) return true;
+
+    AssetHandle handle;
+    if (!asset_open("pinyin.collocations", &handle)) return false;
+    uint32_t size = 0;
+    bool ok = asset_size(handle, &size) && size > 0 &&
+              size + 64 <= sizeof(g_collocation_buf);
+    uint32_t got = 0;
+    if (ok)
+        ok = asset_read(handle, 0, size, g_collocation_buf,
+                        sizeof(g_collocation_buf), &got) &&
+             got > 0;
+    asset_close(handle);
+    if (!ok) return false;
+
+    const char* data = reinterpret_cast<const char*>(g_collocation_buf);
+    const uint32_t len = got;
+    uint32_t i = 0;
+    while (i < len) {
+        const char* line = data + i;
+        uint32_t n = 0;
+        while (i + n < len && data[i + n] != '\n' && data[i + n] != '\r') ++n;
+        i += n;
+        while (i < len && (data[i] == '\n' || data[i] == '\r')) ++i;
+        if (n == 0 || line[0] == '#') continue;
+
+        uint32_t used = 0;
+        const uint32_t left = utf8_decode(line, n, &used);
+        if (used == 0 || used >= n) continue;
+        uint32_t used2 = 0;
+        const uint32_t right = utf8_decode(line + used, n - used, &used2);
+        if (used2 == 0) continue;
+        const uint32_t pos = used + used2;
+        if (pos >= n || line[pos] != '\t') continue;
+        uint32_t weight = 0;
+        if (!dict_parse_freq(line + pos + 1, n - pos - 1, &weight)) continue;
+        const int32_t score =
+            static_cast<int32_t>(log2_score(weight)) - kCollocationFloor;
+        if (score <= 0) continue;
+        collocation_insert((static_cast<uint64_t>(left) << 32) | right, score);
+    }
+    return g_collocation_count > 0;
 }
 
 bool load_dict() {
@@ -268,7 +402,8 @@ bool match_chunk(const char* chunk, uint32_t chunk_len,
 }
 
 void insert_edge(uint32_t position, uint32_t syllables, const Entry& entry,
-                 uint32_t next, int32_t score) {
+                 uint32_t next, int32_t score, uint32_t first_cp,
+                 uint32_t last_cp) {
     Edge* edges = g_edges[position][syllables];
     uint32_t& count = g_edge_count[position][syllables];
     for (uint32_t i = 0; i < count; ++i) {
@@ -293,6 +428,8 @@ void insert_edge(uint32_t position, uint32_t syllables, const Entry& entry,
     edges[slot].text = entry.text;
     edges[slot].text_len = entry.text_len;
     edges[slot].score = score;
+    edges[slot].first_cp = first_cp;
+    edges[slot].last_cp = last_cp;
     edges[slot].next = static_cast<uint8_t>(next);
     if (count < kEdgesPerSpan) ++count;
 }
@@ -305,7 +442,9 @@ void add_edge(uint32_t position, const Entry& entry, uint32_t next,
      * that split it into z+h, while a three-syllable phrase still beats three
      * single characters. */
     score += kWordBonus * static_cast<int32_t>(next - position - 1);
-    insert_edge(position, entry.syllables, entry, next, score);
+    insert_edge(position, entry.syllables, entry, next, score,
+                first_codepoint(entry.text, entry.text_len),
+                last_codepoint(entry.text, entry.text_len));
 }
 
 /* Try every way this entry can cover the raw letters from `start`: each
@@ -407,7 +546,14 @@ void compose() {
                         next.text[base.len + k] = edge.text[k];
                     next.len = base.len + edge.text_len;
                     next.words = static_cast<uint8_t>(base.words + 1);
-                    insert_path(edge.next, next, base.score + edge.score);
+                    next.last_cp = edge.last_cp;
+                    /* A word boundary is where the character bigram model
+                     * applies: 他 + 们 is a natural pair, 他 + 猫 is not. */
+                    const int32_t join =
+                        base.len ? collocation_score(base.last_cp,
+                                                     edge.first_cp)
+                                 : 0;
+                    insert_path(edge.next, next, base.score + edge.score + join);
                 }
             }
         }
@@ -418,6 +564,22 @@ void append_letter(char c) {
     if (g_input_len >= kMaxInputBytes) return;
     if (c >= 'A' && c <= 'Z') c = static_cast<char>(c - 'A' + 'a');
     if (c >= 'a' && c <= 'z') g_input[g_input_len++] = c;
+}
+
+/* True when the whole raw string splits into complete syllables, i.e. it can
+ * only be pinyin and a raw-letters candidate would be noise. */
+bool all_syllables(const char* text, uint32_t len) {
+    bool reachable[kMaxInputBytes + 1] = {};
+    reachable[0] = true;
+    for (uint32_t i = 0; i < len; ++i) {
+        if (!reachable[i]) continue;
+        uint32_t limit = len - i;
+        if (limit > 6) limit = 6;
+        for (uint32_t n = 1; n <= limit; ++n) {
+            if (is_syllable(text + i, n)) reachable[i + n] = true;
+        }
+    }
+    return reachable[len];
 }
 
 uint32_t read_input(const Frame& frame) {
@@ -455,7 +617,15 @@ PIME_EXPORT pime_status pime_init(const uint8_t* config, uint32_t len) {
     g_entry_count = 0;
     g_input_len = 0;
     g_fuzzy = true;
+    g_english_passthrough = true;
     g_max_candidates = 8;
+    g_collocation_weight = 500;
+    g_collocation_count = 0;
+    g_collocations_loaded = false;
+    for (uint32_t i = 0; i < kCollocationSlots; ++i) {
+        g_collocations[i].key = 0;
+        g_collocations[i].score = 0;
+    }
     if (!config || !len) return PIME_OK;
     MapView root = MapView::of(Span{config, config + len});
     MapView settings = MapView::of(root.get("settings"));
@@ -463,8 +633,13 @@ PIME_EXPORT pime_status pime_init(const uint8_t* config, uint32_t len) {
         uint64_t value = 0;
         if (settings.uint("max_candidates", &value) && value >= 1 && value <= 32)
             g_max_candidates = static_cast<uint32_t>(value);
+        if (settings.uint("collocation_weight", &value) && value <= 2000)
+            g_collocation_weight = static_cast<uint32_t>(value);
         bool fuzzy = true;
         if (settings.boolean("fuzzy", &fuzzy)) g_fuzzy = fuzzy;
+        bool passthrough = true;
+        if (settings.boolean("english_passthrough", &passthrough))
+            g_english_passthrough = passthrough;
     }
     return PIME_OK;
 }
@@ -477,13 +652,22 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
     if (!frame.parse(in, in_len)) return PIME_CORRUPT;
 
     if (!load_dict()) return PIME_NOT_FOUND;
+    if (!load_collocations()) return PIME_NOT_FOUND;
 
     Candidate candidates[kMaxCandidates];
     uint32_t count = 0;
     if (read_input(frame) > 0) {
         compose();
-        const uint32_t limit =
+        /* English / non-pinyin input: the raw letters are a legitimate
+         * candidate. Only offered when the string is not pure pinyin, so a
+         * normal composition never shows its own letters as a choice, and one
+         * slot is reserved so the option survives a full candidate list. */
+        const bool pure = all_syllables(g_input, g_input_len);
+        const bool offer_raw = g_english_passthrough &&
+                               (!pure || g_beam_count[g_input_len] == 0);
+        uint32_t limit =
             g_max_candidates < kMaxCandidates ? g_max_candidates : kMaxCandidates;
+        if (offer_raw && limit > 1) --limit;
         for (uint32_t i = 0; i < g_beam_count[g_input_len] && count < limit;
              ++i) {
             const Path& path = g_beam[g_input_len][i];
@@ -494,6 +678,25 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
             candidate.len = path.len;
             candidate.score = static_cast<uint32_t>(score);
             candidate.source = path.words > 1 ? "compose" : "dict";
+            candidate.words = path.words;
+        }
+
+        /* The second multi-word reading is a different sentence, not another
+         * word; tag it so the UI can offer "next sentence" separately. */
+        for (uint32_t i = 1; i < count; ++i) {
+            if (candidates[i].words > 1) {
+                candidates[i].source = "sentence";
+                break;
+            }
+        }
+
+        if (offer_raw && count < g_max_candidates) {
+            Candidate& raw = candidates[count++];
+            for (uint32_t k = 0; k < g_input_len; ++k) raw.text[k] = g_input[k];
+            raw.len = g_input_len;
+            raw.score = 1;
+            raw.source = "raw";
+            raw.words = 1;
         }
     }
 
@@ -506,13 +709,15 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
     w.key("candidates");
     w.array(count);
     for (uint32_t i = 0; i < count; ++i) {
-        w.map(3);
+        w.map(4);
         w.key("text");
         w.text(candidates[i].text, candidates[i].len);
         w.key("score");
         w.u64(candidates[i].score);
         w.key("source");
         w.text(candidates[i].source);
+        w.key("words");
+        w.u64(candidates[i].words);
     }
     w.key("handled");
     w.boolean(count > 0);
@@ -545,6 +750,8 @@ PIME_EXPORT void pime_shutdown(void) {
     g_dict_len = 0;
     g_entry_count = 0;
     g_input_len = 0;
+    g_collocation_count = 0;
+    g_collocations_loaded = false;
 }
 
 PIME_EXPORT uint32_t pime_scratch_ptr(void) {

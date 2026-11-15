@@ -1,9 +1,9 @@
-name: no-match-passes
+name: no-dict-match-keeps-raw
 event: { type: text, text: iiii }
 workspace:
   plugin/pime-pinyin-parse/raw: iiii
-# 没有音节以 i 开头，整条输入无法被任何词典条目覆盖。
+# 没有音节以 i 开头，词典无法覆盖整条输入；它不是纯拼音，因此保留原字母
+# 作为最后候选，用户可以直接上屏英文/符号串。
 expect:
-  handled: false
-  workspace:
-    - { k: candidates, v: [] }
+  handled: true
+  first_candidate: { text: iiii, source: raw }
