@@ -21,6 +21,8 @@ plugins:
   - { id: pime-app-mode, role: learn }
   - { id: pime-learn-frequency, role: learn }
   - { id: pime-user-dict, role: service }
+  - { id: pime-dict-packs, role: service }
+  - { id: pime-personal-merge, role: service }
 
 workspace:
   - { key: plugin/pime-keymap-default/action,

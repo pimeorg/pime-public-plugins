@@ -57,3 +57,9 @@ plugins:
 - id: pime-user-dict
   version: 1.0.0
   code_hash: sha256:unbuilt
+- id: pime-dict-packs
+  version: 1.0.0
+  code_hash: sha256:unbuilt
+- id: pime-personal-merge
+  version: 1.0.0
+  code_hash: sha256:unbuilt

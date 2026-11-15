@@ -404,3 +404,90 @@ WeaveText 的 `refresh_wubi` / `Schema::Wubi86` 包含四项行为，本轮按�
   starter 规模。
 - 仓库许可证待定；拼音词表数据来源的 CC BY 4.0 署名见
   `data/pinyin/SOURCES.md`。
+
+## 用户学习、四档联想与模式记忆（2026-11-15）
+
+用户要求继续完成 WeaveText 能力迁移。本轮先补 WeaveText `userdict.rs` /
+`predict.rs` / `session.rs` 三块，并明确插件边界带来的取舍：
+
+1. **`pime-learn-user-dict`（learn，新增）**：从 `pime-candidates-format/committed`
+   观察提交，写追加式日志（`log/<seq>`，撤销写 `undo` 墓碑）、计数衰减
+   （值格式 `<count>:<day>`，每过 `decay_days` 折半）、MRU 近期选择、退格撤销
+   （时间窗内回退计数）、连续造词（单字连续提交拼成新词，按拼接码串存储）、
+   用户二元组（`next/<w1>\x1f<w2>`），并输出 `candidates` / `next` / `recent` /
+   `last`。它必须跑在 format 之后才能看到提交，所以同码串召回仍由
+   `pime-pinyin-rank`（原本就有 `pick/<raw>` 学习）负责。
+2. **`pime-predict-context` 升 1.1.0**：联想从单一短语表改为四档——
+   用户二元组（读 learn 的 `next`）、接续表（`assets/continuation.tsv`，4/3/2/1
+   字最长后缀）、搭配模型（`assets/collocations.tsv` 取末字后继）、末字续字
+   （内置表）。它跑在 format 之后，直接发 `show_candidates`；组合进行中
+   （任一 parse 还有码串）保持安静，不抢真正候选。
+3. **`pime-app-mode`（learn，新增）**：按 `context.app` 记中/英模式；按键观察
+   （英文 parse → `en`，全拼/五笔/仓颉/九键 → `zh`）覆盖并写回 `app/<id>`，
+   focus/context 事件恢复；输出 `mode` / `app`。
+
+## 快捷短语、繁简转换、验证码与表情（2026-11-15）
+
+1. **`pime-shortcuts`（translate，新增）**：`assets/shortcuts.tsv` 精确码匹配，
+   支持 `{date}` `{time}` `{weekday}` `{iso}` 模板；短语候选在前，后面拼接上游
+   候选（special/rank/translate），所以快捷码不遮住词典结果。
+2. **`pime-hans-hant`（translate，新增）**：`assets/hans-hant.tsv` 简→繁，
+   词组长键优先（最多 6 码点）；没有任何转换时输出空数组，format 继续用上游候选。
+3. **`pime-clip-code`（predict，新增）**：从光标前后文本与 `context.clipboard`
+   提取完整 4–8 位数字串，长数字不截断；附近验证码关键词只加分。
+4. **`pime-emoji-suggest`（predict，新增）**：按上下文末词最长后缀匹配
+   `assets/emoji.tsv`，无 surrounding 时退回 learn 的 `last`。
+5. **format 升 1.3.0**：候选源顺序改为 shape → shortcuts → hans-hant → special →
+   rank → … → emoji → clip-code → predict，保证“合并视图”类插件优先、联想类插件
+   只在词典源为空时生效。
+
+## 标点转 WASM、拆字与字形筛选（2026-11-15）
+
+1. **`pime-punctuation-zh` 1.2.0（Lua → WASM）**：把原本无法跑用例的 Lua 标点
+   插件改写为 C++，行为纳入 native 模拟器。新增 `braces`（全角花括号 / `「」`）
+   与 `multi_char`（`^` → `……`、`_` → `——`）；修正 Shift 修饰的 `?` `:` 能正常
+   转换，只放行 Ctrl/Alt/Meta。命令 ABI 没有“提交后移动光标”，成对标点做成对
+   映射，不做近似插入。
+2. **`pime-shape-parse`（parse，新增）**：识别 `u`（拆字）与反引号（字形筛选）
+   前缀，输出 `mode` / `code`；普通码串原样放行。
+3. **`pime-shape-translate`（translate，新增）**：拆字模式整码命中 + 前缀补全；
+   字形模式按组名（`` `mu ``）或当前首选字的字形组（`` ` ``）列出同组字。
+   两张 starter 表 `shape.tsv` / `glyphs.tsv`。
+
+## 服务插件（2026-11-15）
+
+1. **`pime-dict-packs`（service，新增）**：14 个专业词库包的默认状态来自
+   `assets/packs.tsv`，用户开关写 `pack/<id>`，`settings.disabled` 可部署期强制
+   关闭；输出 `active` / `count` / `changed` / `enabled`。
+2. **`pime-personal-merge`（service，新增）**：`entry/<key>` =
+   `<lamport>\x1f<value>`；Lamport 大者胜，相同则按值字节序收敛并计冲突；
+   只合并 `personal.merge` 事件里的下载数据，不上传。
+3. **`pime-cloud-hotwords`（service，Lua，新增）**：定时 HTTPS 拉取，响应体为
+   `<hex ed25519 签名>\n<payload>`，用 `crypto.verify` 验签后才写 `hotwords/latest`；
+   没有上传路径。
+4. **`pime-translate-online`（service，Lua，新增）**：`translate.request` →
+   `net.http` POST → `commit` 译文；只发送宿主给出的待译文本。
+5. 新增可选服务链 `chains/services/extras.yaml`，并把 dict-packs / personal-merge
+   挂到默认拼音链尾部。
+
+## 本轮实测与规模
+
+- 插件 **36** 个（新增 12：learn-user-dict、app-mode、shortcuts、hans-hant、
+  clip-code、emoji-suggest、shape-parse、shape-translate、dict-packs、
+  personal-merge、cloud-hotwords、translate-online；2 个增强：predict-context、
+  punctuation-zh；format 增强候选源）。
+- 产品链 **11** 条，全部 `chainc --check` 通过，锁已重新生成。
+- native 用例 **236/236** 通过（本轮 +84），覆盖学习/联想/模式/短语/繁简/
+  验证码/表情/标点/拆字/服务合并。
+- `check_plugins`：0 error / 2 warning（手写、语音模型权重未入库）。
+
+## 本轮踩到的坑
+
+1. `Writer` 的 map 头计数必须与实际写入字段严格一致：`write_state` 把 `recent`
+   计了两次，整个后续 CBOR 错位，模拟器报 “truncated head”。
+2. 借用 frame 内的字符串不能当 NUL 结尾的 C 串用（`source` 指向 CBOR 文本体），
+   候选结构统一改成“字符数组 + 长度”。
+3. 单引号多字节字符字面量（`'年'`）在 MinGW 下退化为最后一个字节，日期模板一度
+   输出非法 UTF-8；多字节一律用字符串字面量。
+4. Lua 插件没有模拟器，所以标点插件改成 WASM；网络/加密类服务保留 Lua，只做
+   静态检查，并在文档里标明。
