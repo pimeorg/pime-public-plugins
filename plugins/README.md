@@ -24,7 +24,11 @@
 | `rank` | `pime-rank-default` | wasm | 1.0.0 | 通用重排：按分数降序、过滤低分、截断 |
 | `recognize` | `pime-handwriting-ncnn` | wasm | 1.0.0 | 手写识别：笔迹点经 ml.infer 得到候选（离线） |
 | `recognize` | `pime-speech-ncnn` | wasm | 1.0.0 | 语音识别：PCM 经 ml.infer 得到候选（离线） |
+| `service` | `pime-cloud-hotwords` | lua | 1.0.0 | 服务：Ed25519 签名热词，只下载不上传 |
 | `service` | `pime-cloud-sync` | lua | 1.0.0 | 服务：词频表增量同步（HTTP，可关闭） |
+| `service` | `pime-dict-packs` | wasm | 1.0.0 | 服务：专业词库包按需启停 |
+| `service` | `pime-personal-merge` | wasm | 1.0.0 | 服务：个人资料跨设备合并（Lamport 版本） |
+| `service` | `pime-translate-online` | lua | 1.0.0 | 服务：在线翻译能力接入 |
 | `service` | `pime-update` | lua | 1.0.0 | 服务：检查新版本（HTTP 源，包签名由 core 校验） |
 | `service` | `pime-user-dict` | lua | 1.0.0 | 服务：用户词库记录、查询与删除 |
 | `translate` | `pime-cangjie-translate` | wasm | 1.0.0 | 仓颉词典翻译：字母码查词表，整码在前、补全在后 |

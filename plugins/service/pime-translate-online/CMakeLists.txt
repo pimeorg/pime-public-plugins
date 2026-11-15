@@ -1,0 +1,1 @@
+pime_add_lua_plugin(pime_translate_online)

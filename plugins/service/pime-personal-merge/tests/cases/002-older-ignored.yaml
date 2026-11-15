@@ -1,0 +1,15 @@
+name: older-version-ignored
+steps:
+  - event:
+      type: personal.merge
+      entries:
+        - { key: name, value: 张三, lamport: 5 }
+  - event:
+      type: personal.merge
+      entries:
+        - { key: name, value: 李四, lamport: 3 }
+    expect:
+      handled: false
+      workspace:
+        - { k: merged, v: 0 }
+        - { k: total, v: 1 }

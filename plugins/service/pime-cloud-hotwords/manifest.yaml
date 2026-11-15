@@ -1,0 +1,31 @@
+description: 服务：Ed25519 签名热词，只下载不上传
+id: pime-cloud-hotwords
+version: 1.0.0
+abi: { major: 1, minor: 0 }
+min_core: "1.0.0"
+state_schema: 1
+store_schema: 1
+runtime: lua
+role: service
+platforms: [windows-x64, windows-arm64, macos-x64, macos-arm64,
+            linux-x64, linux-arm64, android-arm64, android-x64, ios-arm64, ios-x64, harmony-arm64, harmony-x64]
+entry: plugin.lua
+capabilities: [net.http, crypto.verify, store.kv, timer, log]
+requires: []
+limits:
+  memory_mb: 16
+  instructions: 400000
+  time_ms: 5
+  state_kb: 16
+  workspace_kb: 8
+  store_mb: 8
+  candidates_max: 8
+  max_frame_bytes: 65536
+  net_concurrency: 1
+  net_bytes: 1048576
+budget: { sync_us: 40, async_ms: 500 }
+settings:
+  - { key: enabled, type: bool, default: true }
+  - { key: url, type: string, default: "" }
+  - { key: public_key, type: string, default: "" }
+  - { key: interval_ms, type: int, default: 21600000, min: 60000, max: 86400000 }

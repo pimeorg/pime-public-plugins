@@ -1,0 +1,7 @@
+name: unknown-pack
+event: { type: dictpack, id: nope, enabled: true }
+expect:
+  handled: false
+  workspace:
+    - { k: changed, v: "" }
+    - { k: count, v: 1 }

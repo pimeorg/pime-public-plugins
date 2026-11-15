@@ -1,0 +1,7 @@
+name: no-merge-event
+event: { type: focus }
+expect:
+  handled: false
+  workspace:
+    - { k: merged, v: 0 }
+    - { k: total, v: 0 }

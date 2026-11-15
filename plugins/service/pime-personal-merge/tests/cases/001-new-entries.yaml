@@ -1,0 +1,11 @@
+name: merge-new-entries
+event:
+  type: personal.merge
+  entries:
+    - { key: name, value: 张三, lamport: 1 }
+    - { key: city, value: 上海, lamport: 2 }
+expect:
+  handled: false
+  workspace:
+    - { k: merged, v: 2 }
+    - { k: total, v: 2 }

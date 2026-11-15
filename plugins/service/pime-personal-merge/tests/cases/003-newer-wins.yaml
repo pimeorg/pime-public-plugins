@@ -1,0 +1,15 @@
+name: newer-version-wins
+steps:
+  - event:
+      type: personal.merge
+      entries:
+        - { key: name, value: 张三, lamport: 3 }
+  - event:
+      type: personal.merge
+      entries:
+        - { key: name, value: 李四, lamport: 5 }
+    expect:
+      handled: false
+      workspace:
+        - { k: merged, v: 1 }
+        - { k: total, v: 1 }

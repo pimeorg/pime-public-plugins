@@ -1,0 +1,12 @@
+api: 1
+id: extras
+description: 可选服务链：词库包、个人资料合并、签名热词、在线翻译
+core: ">=1.0.0"
+
+plugins:
+  - { id: pime-dict-packs, role: service }
+  - { id: pime-personal-merge, role: service }
+  - { id: pime-cloud-hotwords, role: service }
+  - { id: pime-translate-online, role: service }
+
+workspace: []

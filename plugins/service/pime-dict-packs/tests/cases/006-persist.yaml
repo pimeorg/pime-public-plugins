@@ -1,0 +1,9 @@
+name: persistence-across-calls
+steps:
+  - event: { type: dictpack, id: medical, enabled: true }
+  - event: { type: focus }
+    expect:
+      handled: false
+      workspace:
+        - { k: count, v: 2 }
+        - { k: active, v: [medical, it] }

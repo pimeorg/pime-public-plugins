@@ -1,0 +1,8 @@
+name: toggle-pack
+event: { type: dictpack, id: medical, enabled: true }
+expect:
+  handled: false
+  workspace:
+    - { k: changed, v: medical }
+    - { k: enabled, v: true }
+    - { k: count, v: 2 }

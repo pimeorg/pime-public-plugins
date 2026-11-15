@@ -1,0 +1,31 @@
+description: 服务：在线翻译能力接入
+id: pime-translate-online
+version: 1.0.0
+abi: { major: 1, minor: 0 }
+min_core: "1.0.0"
+state_schema: 1
+store_schema: 1
+runtime: lua
+role: service
+platforms: [windows-x64, windows-arm64, macos-x64, macos-arm64,
+            linux-x64, linux-arm64, android-arm64, android-x64, ios-arm64, ios-x64, harmony-arm64, harmony-x64]
+entry: plugin.lua
+capabilities: [net.http, store.kv, log]
+requires: []
+limits:
+  memory_mb: 16
+  instructions: 300000
+  time_ms: 5
+  state_kb: 8
+  workspace_kb: 8
+  store_mb: 2
+  candidates_max: 8
+  max_frame_bytes: 65536
+  net_concurrency: 2
+  net_bytes: 524288
+budget: { sync_us: 30, async_ms: 500 }
+settings:
+  - { key: endpoint, type: string, default: "" }
+  - { key: from, type: string, default: auto }
+  - { key: to, type: string, default: zh }
+  - { key: timeout_ms, type: int, default: 8000, min: 1000, max: 60000 }

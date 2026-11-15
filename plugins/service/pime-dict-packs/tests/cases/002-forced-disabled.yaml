@@ -1,0 +1,8 @@
+name: deployment-disabled
+settings: { disabled: it }
+event: { type: focus }
+expect:
+  handled: false
+  workspace:
+    - { k: count, v: 0 }
+    - { k: changed, v: "" }

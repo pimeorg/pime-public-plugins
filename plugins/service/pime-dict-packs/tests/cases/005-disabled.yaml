@@ -1,0 +1,8 @@
+name: disabled-plugin
+settings: { enabled: false }
+event: { type: dictpack, id: medical, enabled: true }
+expect:
+  handled: false
+  workspace:
+    - { k: changed, v: "" }
+    - { k: count, v: 1 }

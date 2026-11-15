@@ -1,0 +1,15 @@
+name: equal-lamport-conflict
+steps:
+  - event:
+      type: personal.merge
+      entries:
+        - { key: name, value: a, lamport: 4 }
+  - event:
+      type: personal.merge
+      entries:
+        - { key: name, value: b, lamport: 4 }
+    expect:
+      handled: false
+      workspace:
+        - { k: conflicts, v: 1 }
+        - { k: merged, v: 1 }
