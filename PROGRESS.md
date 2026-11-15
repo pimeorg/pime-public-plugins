@@ -518,11 +518,9 @@ WeaveText 的 `refresh_wubi` / `Schema::Wubi86` 包含四项行为，本轮按�
 5. **模型目录（`pime-model-manager` 1.0.0，新增）**：`models.tsv` 目录
    （engine/path/声明哈希）、`model.enable` 启停、`model.verify` 声明哈希比对与
    状态回报；真正的权重校验仍由 core 在 `ml.infer` 加载时完成。
-6. **CI（`.github/workflows/ci.yml`）**：两个 job——Ubuntu 原生跑
-   `check_plugins` / 全部链 `chainc --check` / native 用例 / conformance；
-   Ubuntu + `nttld/setup-ndk`（r27b）用 `cmake/toolchains/wasm32-ndk.cmake` 构建
-   真实 wasm 包，检查 `plugin.wasm` 数量，用真实包重算锁后再 `--check`，并上传
-   artifact。pime-core 以兄弟目录 checkout（`vars.PIME_CORE_REPO`，默认同 owner）。
+6. **CI**：本轮曾提交 `.github/workflows/ci.yml`（原生校验 + NDK wasm32 真实包
+   构建），随后按用户要求**撤回**，仓库当前不包含 CI 配置。NDK 构建方式仍由
+   `cmake/toolchains/wasm32-ndk.cmake` 与 README 记录，可在需要时重新接入。
 
 ## 本轮实测与规模
 
@@ -530,8 +528,7 @@ WeaveText 的 `refresh_wubi` / `Schema::Wubi86` 包含四项行为，本轮按�
 - native 用例 **261/261** 通过（本轮 +15）。
 - `check_plugins` 0 error / 2 warning（模型权重未入库）；所有链锁已重生成并通过
   `chainc --check`。
-- 新增工作区文件 `.github/workflows/ci.yml`（YAML 已本地解析校验；Runner 上首跑
-  仍待仓库验证）。
+- 仓库不含 CI 配置（`.github/workflows/ci.yml` 已按用户要求撤回）。
 
 ## 本轮踩到的坑
 

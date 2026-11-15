@@ -1,12 +1,11 @@
 # TASK
 
-> 开工前检查：上一轮遗留的 5 项已在本轮全部处理。剩余未勾项只有无法在本机完成的
-> “首次在托管环境跑通 CI”。
+> 开工前检查：上一轮遗留的 5 项中 4 项已落地；CI 按用户要求撤回，重新列为待办。
 
 ## 本轮：收尾 WeaveText 迁移的 5 项遗留
 
 环境：Windows 11 + MinGW-w64（native 用例）、Python 3 + PyYAML（仓库校验）、
-pime-core 1.0.0（ABI 1.0）。本机无 Android NDK，wasm 产物与 CI 需在托管环境验证。
+pime-core 1.0.0（ABI 1.0）。本机无 Android NDK，wasm 产物需在具备 NDK 的环境验证。
 
 需求：用户要求“继续，还有 5 项”，即上一轮 TASK 遗留的 5 项。
 
@@ -60,7 +59,7 @@ pime-core 1.0.0（ABI 1.0）。本机无 Android NDK，wasm 产物与 CI 需在�
 - [x] `check_plugins`、`chainc --check`、native 用例、conformance 全绿
 - [x] 更新 README / PROGRESS / 能力矩阵
 - [x] 分批提交
-- [x] CI 接入 NDK wasm32 工具链与真实包构建（`.github/workflows/ci.yml`）
+- [ ] CI 接入 NDK wasm32 工具链与真实包构建（已按用户要求撤回，见遗留）
 
 ## 当前规模
 
@@ -70,8 +69,8 @@ pime-core 1.0.0（ABI 1.0）。本机无 Android NDK，wasm 产物与 CI 需在�
 
 ## 遗留 / 已知限制
 
-- [ ] CI 首次在托管环境运行（本机无 NDK、无 GitHub Runner；workflow 已提交，
-      需要在仓库里跑一次确认 `nttld/setup-ndk` 与 pime-core 兄弟仓库路径）
+- [ ] CI 接入 NDK wasm32 工具链与真实包构建：本轮提交过的
+      `.github/workflows/ci.yml` 已按用户要求撤回，仓库当前没有 CI；需要时重新设计
 - Lua 插件无运行时模拟器，`pime-cloud-hotwords` / `pime-translate-online` 只做
   静态检查，网络与签名路径由宿主联调覆盖
 - 热词/用户词/学习数据都落在各插件自己的 `store.kv`；跨插件共享靠
