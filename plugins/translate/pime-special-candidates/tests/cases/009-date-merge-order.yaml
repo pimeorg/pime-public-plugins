@@ -1,0 +1,17 @@
+name: date-merge-order
+event: { type: text, text: rq }
+time: { now_ms: 1790478360000, tz_min: 480 }
+workspace:
+  plugin/pime-pinyin-parse/raw: rq
+  plugin/pime-pinyin-rank/candidates:
+    - { text: 日期, score: 20000, source: dict }
+expect:
+  handled: true
+  workspace:
+    - k: candidates
+      v:
+        - { text: 日期, source: dict }
+        - { text: 2026年9月27日, source: special }
+        - { text: "2026-09-27", source: special }
+        - { text: 2026年9月27日 星期日, source: special }
+        - { text: "2026/09/27", source: special }

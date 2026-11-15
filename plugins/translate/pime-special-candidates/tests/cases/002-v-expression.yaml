@@ -1,0 +1,12 @@
+name: v-expression
+event: { type: text, text: v(128+32)*4 }
+workspace:
+  plugin/pime-pinyin-parse/raw: v(128+32)*4
+expect:
+  handled: true
+  workspace:
+    - k: candidates
+      v:
+        - { text: "640", source: special, comment: 计算结果 }
+        - { text: "(128+32)*4=640", source: special, comment: 算式 }
+        - { text: 陆佰肆拾元整, source: special, comment: 大写金额 }

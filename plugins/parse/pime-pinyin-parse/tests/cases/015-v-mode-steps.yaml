@@ -1,0 +1,11 @@
+name: v-mode-typed-key-by-key
+steps:
+  - event: { type: text, text: v }
+  - event: { type: text, text: "1" }
+  - event: { type: text, text: "+" }
+  - event: { type: text, text: "2" }
+    expect:
+      handled: true
+      workspace:
+        - { k: raw, v: "v1+2" }
+        - { k: syllables, v: ["v1+2"] }

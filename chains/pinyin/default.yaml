@@ -8,6 +8,7 @@ plugins:
   - { id: pime-pinyin-parse, role: parse }
   - { id: pime-pinyin-translate, role: translate, settings: { max_candidates: 8 } }
   - { id: pime-pinyin-rank, role: rank }
+  - { id: pime-special-candidates, role: translate }
   - { id: pime-candidates-format, role: format, settings: { page_size: 5 } }
   - { id: pime-learn-frequency, role: learn }
   - { id: pime-user-dict, role: service }
@@ -17,13 +18,17 @@ workspace:
       from: pime-keymap-default, to: [pime-pinyin-parse] }
   - { key: plugin/pime-pinyin-parse/raw,
       from: pime-pinyin-parse,
-      to: [pime-pinyin-translate, pime-candidates-format] }
+      to: [pime-pinyin-translate, pime-special-candidates,
+            pime-candidates-format] }
   - { key: plugin/pime-pinyin-parse/syllables,
       from: pime-pinyin-parse, to: [pime-pinyin-translate] }
   - { key: plugin/pime-pinyin-translate/candidates,
       from: pime-pinyin-translate, to: [pime-pinyin-rank] }
   - { key: plugin/pime-pinyin-rank/candidates,
-      from: pime-pinyin-rank, to: [pime-candidates-format] }
+      from: pime-pinyin-rank,
+      to: [pime-special-candidates, pime-candidates-format] }
+  - { key: plugin/pime-special-candidates/candidates,
+      from: pime-special-candidates, to: [pime-candidates-format] }
   - { key: plugin/pime-candidates-format/committed,
       from: pime-candidates-format,
       to: [pime-learn-frequency, pime-user-dict] }

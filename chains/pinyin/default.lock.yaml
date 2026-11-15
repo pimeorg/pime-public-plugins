@@ -18,6 +18,9 @@ plugins:
 - id: pime-pinyin-rank
   version: 1.1.0
   code_hash: sha256:unbuilt
+- id: pime-special-candidates
+  version: 1.0.0
+  code_hash: sha256:unbuilt
 - id: pime-candidates-format
   version: 1.1.0
   code_hash: sha256:unbuilt

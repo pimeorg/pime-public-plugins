@@ -53,6 +53,59 @@ std::vector<uint8_t> hex_to_bytes(const std::string& text) {
     return out;
 }
 
+/* Batch mode: a frame without its own "state" inherits the previous call's
+ * output state, which is what the host does between calls. Returns false when
+ * the frame cannot be re-encoded (the caller then uses it unchanged). */
+bool inject_state(const uint8_t* p, const uint8_t* e, pimeplug::Span state,
+                  std::vector<uint8_t>* out) {
+    using namespace pimeplug;
+    MapView map = MapView::of(Span{p, e});
+    if (!map.valid) return false;
+    struct Pair {
+        Span key;
+        Span value;
+    };
+    Pair pairs[32];
+    uint32_t count = 0;
+    bool has_state = false;
+    const uint8_t* q = map.body;
+    for (uint64_t i = 0; i < map.count; ++i) {
+        if (count >= 32) return false;
+        const uint8_t* key_start = q;
+        uint8_t major = 0;
+        uint64_t key_len = 0;
+        if (!read_head(&q, map.end, &major, &key_len)) return false;
+        if (major != 3 || key_len > static_cast<uint64_t>(map.end - q))
+            return false;
+        const uint8_t* key_end = q + key_len;
+        Span value;
+        if (!value_span(key_end, map.end, &value)) return false;
+        pairs[count].key = Span{key_start, key_end};
+        pairs[count].value = value;
+        if (key_len == 5 && std::memcmp(q, "state", 5) == 0) has_state = true;
+        ++count;
+        q = value.e;
+    }
+    if (has_state) return false;
+
+    out->resize(65536);
+    Writer w(out->data(), static_cast<uint32_t>(out->size()));
+    w.map(count + 1);
+    for (uint32_t i = 0; i < count; ++i) {
+        w.raw(pairs[i].key.p, pairs[i].key.size());
+        w.raw(pairs[i].value.p, pairs[i].value.size());
+    }
+    w.key("state");
+    if (state.valid()) {
+        w.raw(state.p, state.size());
+    } else {
+        w.map(0);
+    }
+    if (!w.ok()) return false;
+    out->resize(w.size());
+    return true;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -123,16 +176,34 @@ int main(int argc, char** argv) {
     if (frames.valid) {
         std::vector<std::vector<uint8_t>> results;
         results.reserve(static_cast<size_t>(frames.count));
+        std::vector<uint8_t> previous_state(1, 0xa0); /* empty map */
         for (uint64_t i = 0; i < frames.count; ++i) {
             pimeplug::Span frame = frames.at(i);
+            const pimeplug::Span state{previous_state.data(),
+                                       previous_state.data() + previous_state.size()};
+            std::vector<uint8_t> adjusted;
+            const uint8_t* data = frame.p;
+            uint32_t data_len = static_cast<uint32_t>(frame.e - frame.p);
+            if (inject_state(frame.p, frame.e, state, &adjusted)) {
+                data = adjusted.data();
+                data_len = static_cast<uint32_t>(adjusted.size());
+            }
             std::vector<uint8_t> result;
-            const pime_status st =
-                call(frame.p, static_cast<uint32_t>(frame.e - frame.p), &result);
+            const pime_status st = call(data, data_len, &result);
             if (st != PIME_OK) {
                 std::fprintf(stderr, "process[%llu]=%d\n",
                              static_cast<unsigned long long>(i),
                              static_cast<int>(st));
                 return 12;
+            }
+            const pimeplug::Span whole{result.data(),
+                                       result.data() + result.size()};
+            const pimeplug::Span next_state =
+                pimeplug::MapView::of(whole).get("state");
+            if (next_state.valid()) {
+                previous_state.assign(next_state.p, next_state.e);
+            } else {
+                previous_state.assign(1, 0xa0);
             }
             results.push_back(std::move(result));
         }

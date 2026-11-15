@@ -1,0 +1,14 @@
+name: sj-time
+event: { type: text, text: sj }
+time: { now_ms: 1790478360000, tz_min: 480 }
+workspace:
+  plugin/pime-pinyin-parse/raw: sj
+expect:
+  handled: true
+  workspace:
+    - k: candidates
+      v:
+        - { text: "11:06", source: special, comment: 时间 }
+        - { text: "2026-09-27 11:06", source: special, comment: 时间 }
+        - { text: 11点06分, source: special, comment: 时间 }
+        - { text: "11:06:00", source: special, comment: 时间 }

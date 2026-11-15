@@ -1,0 +1,9 @@
+name: date-off
+event: { type: text, text: rq }
+settings: { date: false }
+workspace:
+  plugin/pime-pinyin-parse/raw: rq
+expect:
+  handled: false
+  workspace:
+    - { k: candidates, v: [] }

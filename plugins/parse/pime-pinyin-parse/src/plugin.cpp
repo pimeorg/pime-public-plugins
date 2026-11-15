@@ -291,7 +291,16 @@ bool append(char* buffer, uint32_t* len, const char* text, uint32_t text_len) {
     for (uint32_t i = 0; i < text_len && *len < kMaxBuffer; ++i) {
         char c = text[i];
         if (c >= 'A' && c <= 'Z') c = static_cast<char>(c - 'A' + 'a');
-        if ((c >= 'a' && c <= 'z') || c == '\'') {
+        const bool letter = (c >= 'a' && c <= 'z') || c == '\'';
+        /* v-mode: after a leading `v` the composition is a number or an
+         * arithmetic expression, so digits and operators belong to it. The
+         * special-candidate translator consumes the buffer verbatim. */
+        const bool v_body = *len > 0 && buffer[0] == 'v' &&
+                            ((c >= '0' && c <= '9') ||
+                             (c == '+' || c == '-' || c == '*' || c == '/' ||
+                              c == '(' || c == ')' || c == '%' || c == '^' ||
+                              c == '.' || c == '='));
+        if (letter || v_body) {
             buffer[(*len)++] = c;
             changed = true;
         }
@@ -320,8 +329,23 @@ pime_status respond(uint8_t* out, uint32_t cap, uint32_t* out_len,
                     bool handled, bool commit_phase) {
     Segment segments[kMaxSegments];
     bool complete = false;
-    const uint32_t segment_count =
+    uint32_t segment_count =
         segment(buffer, len, segments, kMaxSegments, &complete);
+    /* v-mode (v123, v1+2) is not pinyin: show one plain segment instead of
+     * pretending every digit is an incomplete syllable. */
+    bool plain = true;
+    for (uint32_t i = 0; i < len; ++i) {
+        if (!ascii_alpha(buffer[i]) && buffer[i] != '\'') {
+            plain = false;
+            break;
+        }
+    }
+    if (!plain) {
+        segment_count = len > 0 ? 1 : 0;
+        segments[0].start = 0;
+        segments[0].end = len;
+        segments[0].type = 0;
+    }
 
     Writer w(out, cap);
     w.map(4);
@@ -494,10 +518,19 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
         uint32_t incoming_len = 0;
         if (frame.event_text(&incoming, &incoming_len) && incoming_len > 0 &&
             incoming_len <= kMaxBuffer) {
+            /* A whole composition may also be a v-mode number/expression
+             * ("v123", "v1+2"), whose body is not made of letters. */
             bool pure = true;
+            const bool v_body = lower_ascii(incoming[0]) == 'v';
             for (uint32_t i = 0; i < incoming_len; ++i) {
                 const char c = lower_ascii(incoming[i]);
-                if (!ascii_alpha(c) && c != '\'') {
+                const bool ok =
+                    (ascii_alpha(c) || c == '\'') ||
+                    (v_body && i > 0 &&
+                     ((c >= '0' && c <= '9') || c == '+' || c == '-' ||
+                      c == '*' || c == '/' || c == '%' || c == '^' ||
+                      c == '(' || c == ')' || c == '.' || c == '='));
+                if (!ok) {
                     pure = false;
                     break;
                 }

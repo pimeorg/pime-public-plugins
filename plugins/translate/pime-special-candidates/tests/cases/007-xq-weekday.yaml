@@ -1,0 +1,11 @@
+name: xq-weekday
+event: { type: text, text: xq }
+time: { now_ms: 1790478360000, tz_min: 480 }
+workspace:
+  plugin/pime-pinyin-parse/raw: xq
+expect:
+  handled: true
+  workspace:
+    - k: candidates
+      v:
+        - { text: 星期日, source: special, comment: 星期 }

@@ -30,14 +30,17 @@ bool g_commit_raw = true;
 bool g_show_labels = true;
 bool g_show_comments = true;
 
+/* Special candidates come first: they are a merged view of the ranked list
+ * (dates keep the ordinary first candidate), so preferring them never hides
+ * anything the other arrays hold. */
 const char* const kCandidateSources[] = {
+    "pime-special-candidates",
     "pime-pinyin-rank",
     "pime-rank-default",
     "pime-pinyin-translate",
     "pime-wubi-translate",
     "pime-t9-translate",
     "pime-english-translate",
-    "pime-special-candidates",
     "pime-shortcuts",
     "pime-predict-context",
     "pime-handwriting-ncnn",

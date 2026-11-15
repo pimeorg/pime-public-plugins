@@ -1,0 +1,5 @@
+name: editor-word-boundary
+event: { type: surrounding, before: "abc1+2=", after: "" }
+expect:
+  handled: false
+  commands: []

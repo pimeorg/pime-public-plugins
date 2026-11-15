@@ -1,0 +1,9 @@
+name: editor-expression
+event: { type: surrounding, before: "12*3=", after: "" }
+expect:
+  handled: true
+  commands:
+    - type: show_candidates
+      items:
+        - { text: "36", comment: 计算结果 }
+        - { text: "12*3=36", comment: 算式 }

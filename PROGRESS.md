@@ -265,6 +265,34 @@ case，而是自己批量构造输入、统计命中率，再修系统性问题�
 联调确认了 `AssetHandle` 必须保持 64 位：core 的资产句柄是
 `(generation << 32) | index`，SDK 早期截成 32 位后所有读操作都返回 `STALE`。
 
+## 特殊候选与候选格式增强（2026-11-15）
+
+用户要求“继续做完，不要挤牙膏”：把 WeaveText 剩余的核心能力成批补齐。本轮先落
+`special.rs` 与候选显示/选词：
+
+1. **`pime-special-candidates`（translate，新增）**：
+   - `v` 模式数字与算式：`+ - * / % ^`、括号、一元负号；结果为有限值时给出
+     结果、`原式=结果`、结果的大写金额；数字给出原样、大写金额、中文数字
+     （小数读作“点”）与千分位。对齐 WeaveText 的 `format_number`、
+     `money_upper`、`chinese_number`、`thousands`（含“一十”→“十”、
+     “零元整”、角/分零位规则）。wasm 无 libm，`^` 只接受整数指数。
+   - 日期键 `rq/riqi/jintian/mingtian/zuotian`、`sj/shijian/xianzai`、
+     `xq/xingqi/zhouji`：四种日期格式、四种时间格式与星期；本地时间来自
+     `time` 能力（墙钟毫秒 + 时区分钟），不碰平台 API。
+   - 日期候选插在已有首位候选之后，普通候选顺延，所以“日期”这个词本身仍可选。
+   - 正文算式：`surrounding` 事件里光标前文本以 `=` 结尾且前面是纯算式时，
+     直接发出 `show_candidates`；算式前紧邻字母则不接管。
+2. **parse v 模式**：`v` 之后保留数字与运算符，显示为单一纯文本段；无 state 的
+   整串 `v1+2` 也能直接接受。
+3. **format**：候选源顺序把 `pime-special-candidates` 放最前（它是合并视图，
+   优先采用不会丢候选）；README 补齐分页、数字选词、原码提交与显示开关。
+4. **测试脚手架**：用例可带 `time: {now_ms, tz_min}`；`steps:` 的状态改为由
+   模拟器自动接力（帧内没有 `state` 时继承上一次输出），runner 不再伪造空
+   state。新增 16 条用例（special 14 条 + parse 2 条），全仓 104 条通过。
+5. **链**：`chains/pinyin/{default,shuangpin}.yaml` 在 rank 之后插入
+   special，workspace 增加 parse/raw、rank/candidates 的消费与 special/candidates
+   的产出，锁文件已重生成。
+
 ## 发现的 core 文档/实现漂移
 
 1. `pime-core/schema/manifest.schema.json` 的 `role` 枚举仍是旧值

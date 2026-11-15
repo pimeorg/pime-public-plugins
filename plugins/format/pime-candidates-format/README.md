@@ -6,17 +6,25 @@
 
 | 事件 | 行为 |
 |---|---|
-| `key` + `action=space` | 提交第一个候选，发 `commit` |
+| `key` + `action=space` | 提交当前页第一个候选，发 `commit` |
 | `key` + `action=enter` | `commit_on_enter` 时提交第一个候选 |
+| `key` + `action=digit` | 选 `page * page_size + digit - 1` |
+| `key` + `action=pagedown/down` | 下一页（`end` 跳末页） |
+| `key` + `action=pageup/up` | 上一页（`home` 回首页） |
 | `key` + `action=escape` | `hide_candidates` |
 | `candidate {index}` | 提交第 `index` 个候选 |
 | 其他 | 只展示候选 |
 
 候选按顺序从以下 workspace 键读取，取第一个非空数组：
-`plugin/pime-pinyin-rank/candidates`、`plugin/pime-rank-default/candidates`、
-`plugin/pime-pinyin-translate/candidates`、`plugin/pime-wubi-translate/candidates`、
+`plugin/pime-special-candidates/candidates`、`plugin/pime-pinyin-rank/candidates`、
+`plugin/pime-rank-default/candidates`、`plugin/pime-pinyin-translate/candidates`、
+`plugin/pime-wubi-translate/candidates`、`plugin/pime-t9-translate/candidates`、
+`plugin/pime-english-translate/candidates`、`plugin/pime-shortcuts/candidates`、
 `plugin/pime-predict-context/candidates`、`plugin/pime-handwriting-ncnn/candidates`、
 `plugin/pime-speech-ncnn/candidates`。
+
+`pime-special-candidates` 排在最前：它输出的是合并视图（日期键保留原有首位候选），
+所以优先采用它不会丢掉其它数组里的内容。
 
 ## 读取的 Workspace
 
@@ -26,10 +34,14 @@
 | `plugin/pime-pinyin-parse/raw` | pime-pinyin-parse |
 | `plugin/pime-wubi-parse/code` | pime-wubi-parse |
 | `plugin/pime-cangjie-parse/code` | pime-cangjie-parse |
+| `plugin/pime-special-candidates/candidates` | pime-special-candidates |
 | `plugin/pime-pinyin-rank/candidates` | pime-pinyin-rank |
 | `plugin/pime-rank-default/candidates` | pime-rank-default |
 | `plugin/pime-pinyin-translate/candidates` | pime-pinyin-translate |
 | `plugin/pime-wubi-translate/candidates` | pime-wubi-translate |
+| `plugin/pime-t9-translate/candidates` | pime-t9-translate |
+| `plugin/pime-english-translate/candidates` | pime-english-translate |
+| `plugin/pime-shortcuts/candidates` | pime-shortcuts |
 | `plugin/pime-predict-context/candidates` | pime-predict-context |
 | `plugin/pime-handwriting-ncnn/candidates` | pime-handwriting-ncnn |
 | `plugin/pime-speech-ncnn/candidates` | pime-speech-ncnn |
@@ -46,8 +58,11 @@
 
 | key | 类型 | 默认 | 说明 |
 |---|---|---|---|
-| `page_size` | int | 5 | context 未给 `page_size` 时的展示条数 |
+| `page_size` | int | 5 | context 未给 `page_size` 时的每页条数（1..9） |
 | `commit_on_enter` | bool | true | Enter 是否提交首候选 |
+| `commit_raw` | bool | true | 没有候选时用原码上屏（英文透传） |
+| `show_labels` | bool | true | 候选前显示 1..9 选词键 |
+| `show_comments` | bool | true | 显示 `comment` / `pinyin` 注释 |
 
 ## 预算
 
@@ -55,4 +70,5 @@
 
 ## 用例
 
-`tests/cases/`：空格提交首候选、Esc 隐藏、方向数字选词（candidate 事件）。
+`tests/cases/`：空格提交首候选、Esc 隐藏、翻页、数字选词、候选事件选词、
+原码提交与关闭原码提交。

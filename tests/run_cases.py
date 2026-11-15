@@ -8,6 +8,7 @@ Each case (tests/cases/*.yaml) describes one call:
     state: { buf: ni }               # optional plugin state
     workspace: { plugin/x/y: ... }   # optional input workspace
     context: { locale: zh-CN }       # optional
+    time: { now_ms: 1790478360000, tz_min: 480 }   # optional wall clock
     expect:
       handled: true
       commands: [ ... ]              # exact list, each an exact map
@@ -22,6 +23,7 @@ sources; see tests/host/sim_main.cpp.
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -58,14 +60,18 @@ def defaults(manifest: dict) -> dict:
 
 
 def frame_for(case: dict, settings: dict) -> dict:
-    return {
+    frame = {
         "event": case.get("event") or {"type": "reset"},
-        "state": case.get("state") or {},
         "workspace": case.get("workspace") or {},
         "context": case.get("context") or {},
         "config": {"settings": settings},
         "assets": {},
     }
+    # Leave `state` out when the case has none: the simulator then carries the
+    # previous step's state over, like the host does between calls.
+    if case.get("state"):
+        frame["state"] = case["state"]
+    return frame
 
 
 def compare(case: dict, output: dict) -> list[str]:
@@ -149,6 +155,12 @@ def main() -> int:
             case = yaml.safe_load(case_path.read_text(encoding="utf-8")) or {}
             case_settings = dict(settings)
             case_settings.update(case.get("settings") or {})
+            env = dict(os.environ)
+            clock = case.get("time") or {}
+            if "now_ms" in clock:
+                env["SIM_NOW_MS"] = str(clock["now_ms"])
+            if "tz_min" in clock:
+                env["SIM_TZ_MIN"] = str(clock["tz_min"])
             init = cbor.dumps({"settings": case_settings, "assets": {},
                                "abi": {"major": 1, "minor": 0}})
             if "steps" in case:
@@ -165,7 +177,7 @@ def main() -> int:
             result = subprocess.run(
                 [str(binary), "--assets", str(manifest_path.parent / "assets"),
                  "--init", init.hex()],
-                input=payload, capture_output=True)
+                input=payload, capture_output=True, env=env)
             if result.returncode != 0:
                 print(f"FAIL {plugin_id}/{case_path.name}: "
                       f"exit {result.returncode} {result.stderr.decode(errors='replace').strip()}")

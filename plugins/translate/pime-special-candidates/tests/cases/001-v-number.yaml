@@ -1,0 +1,13 @@
+name: v-number
+event: { type: text, text: v1234 }
+workspace:
+  plugin/pime-pinyin-parse/raw: v1234
+expect:
+  handled: true
+  workspace:
+    - k: candidates
+      v:
+        - { text: "1234", source: special }
+        - { text: 壹仟贰佰叁拾肆元整, source: special, comment: 大写金额 }
+        - { text: 一千二百三十四, source: special, comment: 中文数字 }
+        - { text: "1,234", source: special, comment: 千分位 }

@@ -1,0 +1,13 @@
+name: v-decimal
+event: { type: text, text: v1004.5 }
+workspace:
+  plugin/pime-pinyin-parse/raw: v1004.5
+expect:
+  handled: true
+  workspace:
+    - k: candidates
+      v:
+        - { text: "1004.5", source: special }
+        - { text: 壹仟零肆元伍角, source: special, comment: 大写金额 }
+        - { text: 一千零四点五, source: special, comment: 中文数字 }
+        - { text: "1,004.5", source: special, comment: 千分位 }

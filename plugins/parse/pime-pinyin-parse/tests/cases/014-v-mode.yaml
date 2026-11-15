@@ -1,0 +1,9 @@
+name: v-mode-keeps-digits-and-operators
+event: { type: text, text: "v1+2" }
+expect:
+  handled: true
+  workspace:
+    - { k: raw, v: "v1+2" }
+    - { k: syllables, v: ["v1+2"] }
+  commands:
+    - { type: set_composition, text: "v1+2", cursor: 4 }
