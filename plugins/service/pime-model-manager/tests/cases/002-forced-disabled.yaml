@@ -1,0 +1,7 @@
+name: deployment-disabled
+settings: { disabled: handwriting }
+event: { type: focus }
+expect:
+  handled: false
+  workspace:
+    - { k: count, v: 1 }

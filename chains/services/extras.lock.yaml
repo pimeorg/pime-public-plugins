@@ -12,6 +12,9 @@ plugins:
 - id: pime-personal-merge
   version: 1.0.0
   code_hash: sha256:unbuilt
+- id: pime-model-manager
+  version: 1.0.0
+  code_hash: sha256:unbuilt
 - id: pime-cloud-hotwords
   version: 1.0.0
   code_hash: sha256:unbuilt

@@ -16,7 +16,7 @@
 | 离线手写 | `handwriting/offline.yaml` | 笔迹 → ml.infer → 格式化 |
 | 语音 | `speech/online.yaml` | 当前批次以离线识别（`pime-speech-ncnn`）兜底；在线 `net.wss` 插件未列入首批 |
 | 标点 | `punctuation/zh.yaml` | 键位 → 中文标点替换 |
-| 可选服务 | `services/extras.yaml` | 词库包、个人资料合并、签名热词、在线翻译（由宿主按需挂载） |
+| 可选服务 | `services/extras.yaml` | 词库包、模型目录、个人资料合并、签名热词、在线翻译（由宿主按需挂载） |
 
 锁文件固定精确 `(id, version, code_hash)`；未构建的包写 `sha256:unbuilt`，
 `chainc --check` 在包缺失时接受该占位值。

@@ -1,0 +1,8 @@
+name: disabled-plugin
+settings: { enabled: false }
+event: { type: model.enable, id: lm, enabled: true }
+expect:
+  handled: false
+  workspace:
+    - { k: changed, v: "" }
+    - { k: count, v: 2 }

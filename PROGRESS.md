@@ -491,3 +491,54 @@ WeaveText 的 `refresh_wubi` / `Schema::Wubi86` 包含四项行为，本轮按�
    输出非法 UTF-8；多字节一律用字符串字面量。
 4. Lua 插件没有模拟器，所以标点插件改成 WASM；网络/加密类服务保留 Lua，只做
    静态检查，并在文档里标明。
+
+## 收尾 5 项遗留（中英混输、用户词典、识别增强、模型目录、CI）
+
+用户提出“继续，还有 5 项”。本轮把上一轮 TASK 的 5 项全部落地：
+
+1. **中英混输分段（`pime-pinyin-translate` 1.2.0）**：raw 末尾的大写字母串（≥2，且
+   前缀含小写）作为英文片段保留，逐候选追加（`nihaoABC` → `你好ABC`），并保留整串
+   原码候选（`source=mixed`）；全大写输入仍按拼音处理。`mixed_uppercase` 可关。
+2. **共享用户词典层（`pime-pinyin-rank` 1.2.0）**：把“看得到选择 + 能出候选”的
+   学习放到 rank，跨词统计留在 `pime-learn-user-dict`，解决了 `store.kv` 按插件
+   隔离导致学习词无法重现的问题：
+   - `usr/<raw>\x1f<text>` = `<count>:<day>`，按码串注入/加权，注释「自造」；
+   - 连续造词：连续单字提交按拼接码串写入；
+   - space / enter / 数字提交也学习，分页规则与 format 对齐（`effective page` 在
+     重置前取值）；
+   - 合并视图（shape/shortcuts/hans-hant/special）存在时不学习，避免槽位错配；
+   - 退格撤销同时回退 `usr/` 计数；
+   - 热词偏置：`hotword.update { payload: "<词>\t<权重>" }` 写 `hot/<词>`，
+     解释器按权重加分；`hotword.clear` 清空。
+3. **手写增强（`pime-handwriting-ncnn` 1.1.0）**：字槽 `group` 分组 → 每组归一化到
+   0..255 并各自推理，拼成「连写」候选；`handwriting.correct` 写
+   `fix/<wrong>\x1f<right>`，下次纠正结果排首位。
+4. **语音增强（`pime-speech-ncnn` 1.1.0）**：10ms 帧 RMS 端点检测（静音不产候选）、
+   两遍识别（`passes`/`speech_ms`）、个人热词加权与「热词为识别前缀」扩展。
+5. **模型目录（`pime-model-manager` 1.0.0，新增）**：`models.tsv` 目录
+   （engine/path/声明哈希）、`model.enable` 启停、`model.verify` 声明哈希比对与
+   状态回报；真正的权重校验仍由 core 在 `ml.infer` 加载时完成。
+6. **CI（`.github/workflows/ci.yml`）**：两个 job——Ubuntu 原生跑
+   `check_plugins` / 全部链 `chainc --check` / native 用例 / conformance；
+   Ubuntu + `nttld/setup-ndk`（r27b）用 `cmake/toolchains/wasm32-ndk.cmake` 构建
+   真实 wasm 包，检查 `plugin.wasm` 数量，用真实包重算锁后再 `--check`，并上传
+   artifact。pime-core 以兄弟目录 checkout（`vars.PIME_CORE_REPO`，默认同 owner）。
+
+## 本轮实测与规模
+
+- 插件 **37** 个，产品链 **11** 条（`services/extras.yaml` 增加模型目录）。
+- native 用例 **261/261** 通过（本轮 +15）。
+- `check_plugins` 0 error / 2 warning（模型权重未入库）；所有链锁已重生成并通过
+  `chainc --check`。
+- 新增工作区文件 `.github/workflows/ci.yml`（YAML 已本地解析校验；Runner 上首跑
+  仍待仓库验证）。
+
+## 本轮踩到的坑
+
+1. 分页：format 在计算提交槽位时用的是“重置前的 page”，rank 若先重置再取槽位就会
+   提交错误候选。改为 `update_page` 返回有效页、重置只影响持久化的 state。
+2. 学习分 20000 抵不过测试里 100000 的分数差，用例需要把候选分数拉近；这不是实现
+   问题，但提醒“学习加分要能压过词典小差距”。
+3. 手写连写候选最初排在单字之后，`first_candidate` 仍是单字；改为把拼接候选插到
+   队首，并给单字候选去重。
+4. 语音 VAD 返回裁剪长度但没返回起点，取音频指针时算错；改为额外输出 start 偏移。

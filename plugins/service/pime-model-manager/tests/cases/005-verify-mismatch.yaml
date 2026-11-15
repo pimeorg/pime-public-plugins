@@ -1,0 +1,6 @@
+name: verify-mismatching-hash
+event: { type: model.verify, id: speech, hash: "sha256:deadbeef" }
+expect:
+  handled: false
+  workspace:
+    - { k: status, v: mismatch }

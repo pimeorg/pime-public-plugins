@@ -1,0 +1,9 @@
+name: default-catalog
+event: { type: focus }
+expect:
+  handled: false
+  workspace:
+    - { k: count, v: 2 }
+    - k: models
+      v:
+        - { id: handwriting, engine: ncnn, enabled: true, status: declared }

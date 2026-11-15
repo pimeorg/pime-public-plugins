@@ -1,0 +1,127 @@
+# CI: repository checks, native simulator cases, and real wasm32 packages.
+#
+# The plugin repository expects pime-core as a sibling checkout. In CI the
+# sibling comes from `${github.repository_owner}/pime-core`; set the
+# PIME_CORE_REPO variable if your fork lives elsewhere.
+name: ci
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PIME_CORE_REPO: ${{ vars.PIME_CORE_REPO || format('{0}/pime-core', github.repository_owner) }}
+
+jobs:
+  native:
+    name: checks + native simulator cases
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout plugins
+        uses: actions/checkout@v4
+        with:
+          path: plugins
+
+      - name: Checkout pime-core
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.PIME_CORE_REPO }}
+          path: pime-core
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python deps
+        run: python -m pip install --disable-pip-version-check pyyaml
+
+      - name: Repository checks
+        working-directory: plugins
+        run: |
+          python tools/check_plugins
+          for chain in $(find chains -name '*.yaml' ! -name '*.lock.yaml'); do
+            python tools/chainc "$chain" --check
+          done
+
+      - name: Build native simulator
+        working-directory: plugins
+        run: |
+          cmake -S . -B build/native \
+                -DPIME_CORE_DIR="${{ github.workspace }}/pime-core" \
+                -DPIME_BUILD_TESTS=ON
+          cmake --build build/native -j"$(nproc)"
+
+      - name: Plugin behaviour cases
+        working-directory: plugins
+        run: python tests/run_cases.py --sim-dir build/native/sim
+
+      - name: Conformance
+        working-directory: plugins
+        run: python tests/conformance/run.py
+
+  wasm:
+    name: wasm32 packages (Android NDK clang)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout plugins
+        uses: actions/checkout@v4
+        with:
+          path: plugins
+
+      - name: Checkout pime-core
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.PIME_CORE_REPO }}
+          path: pime-core
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python deps
+        run: python -m pip install --disable-pip-version-check pyyaml
+
+      - name: Install Android NDK (wasm-capable clang + wasm-ld)
+        uses: nttld/setup-ndk@v1
+        id: ndk
+        with:
+          ndk-version: r27b
+          add-to-path: false
+
+      - name: Build every wasm plugin package
+        working-directory: plugins
+        env:
+          ANDROID_NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+        run: |
+          cmake -S . -B build/wasm-ndk \
+                -DCMAKE_TOOLCHAIN_FILE="$PWD/cmake/toolchains/wasm32-ndk.cmake" \
+                -DANDROID_NDK_HOME="$ANDROID_NDK_HOME" \
+                -DPIME_CORE_DIR="${{ github.workspace }}/pime-core"
+          cmake --build build/wasm-ndk -j"$(nproc)"
+
+      - name: Verify packages and chain locks against them
+        working-directory: plugins
+        run: |
+          count=$(find build/wasm-ndk/package -name plugin.wasm | wc -l)
+          echo "built $count wasm modules"
+          test "$count" -gt 0
+          # Recompute code hashes from the real packages, then verify the locks.
+          for chain in $(find chains -name '*.yaml' ! -name '*.lock.yaml'); do
+            python tools/chainc "$chain" --lock --packages build/wasm-ndk/package
+            python tools/chainc "$chain" --check --packages build/wasm-ndk/package
+          done
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: wasm-packages
+          path: plugins/build/wasm-ndk/package
+          if-no-files-found: error

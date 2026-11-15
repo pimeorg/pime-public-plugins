@@ -19,15 +19,15 @@ WeaveText 能力对应哪个 pime 插件、落在哪个 role、状态如何。
 | `graph.rs` | 错拼纠正（颠倒/漏/多/换）、触点邻键纠正 | `pime-pinyin-parse` | parse | 新增 |
 | `decoder.rs` | 词图、束搜索、整句、次优整句 | `pime-pinyin-translate` | translate | 增强 |
 | `gram.rs` | 字符搭配模型（n-gram） | `pime-pinyin-translate` / `pime-pinyin-rank` | translate/rank | 新增 |
-| `decoder.rs` | 中英混输、原码候选 | `pime-pinyin-translate` / `pime-english-translate` | translate | 增强（整串原码；分段英文片段待做） |
+| `decoder.rs` | 中英混输、原码候选 | `pime-pinyin-translate` / `pime-english-translate` | translate | 增强（大写英文片段、整串原码） |
 | `shuangpin.rs` | 小鹤/自然码/微软/搜狗双拼 | `pime-shuangpin-standard` | preprocess | 增强 |
 | `t9.rs` | 九键、14 键歧义解码 | `pime-t9-parse` + `pime-t9-translate` | parse/translate | 新增 |
 | `table.rs` | 五笔/英文码表、精确+补全+纠错 | `pime-wubi-translate` | translate | 增强 |
 | `table.rs` | 五笔 `z` 拼音反查 | `pime-wubi-translate` | translate | 新增 |
 | `session.rs` | 96 字母组合上限、提交语义 | `pime-pinyin-parse` | parse | 增强 |
 | `weave-dict/shape.rs` | 字形筛选、`u` 模式拆字 | `pime-shape-parse` + `pime-shape-translate` | parse/translate | 新增 |
-| `weave-dict/hand*.rs` | 手写模板/笔画归一化/多字 | `pime-handwriting-ncnn` | recognize | 接口已有，增强待做 |
-| `asr.rs` | 端点检测、两遍识别、热词 | `pime-speech-ncnn` | recognize | 接口已有，增强待做 |
+| `weave-dict/hand*.rs` | 手写模板/笔画归一化/多字 | `pime-handwriting-ncnn` | recognize | 增强（归一化、字槽分组、纠正样本） |
+| `asr.rs` | 端点检测、两遍识别、热词 | `pime-speech-ncnn` | recognize | 增强（VAD、两遍、个人热词） |
 
 ## 2 排序、学习、联想
 
@@ -42,7 +42,7 @@ WeaveText 能力对应哪个 pime 插件、落在哪个 role、状态如何。
 | `personal.rs` | 已选/降权、Lamport 合并 | `pime-personal-merge` | service | 新增 |
 | — | 快捷短语与日期模板 | `pime-shortcuts` | translate | 新增 |
 | — | 候选注音 | `pime-candidates-format` | format | 增强 |
-| `cloud.rs` | 热词偏置进入排序 | `pime-pinyin-rank` | rank | 待做（热词服务已就绪，跨插件存储不共享，需要共享用户词典层） |
+| `cloud.rs` | 热词偏置进入排序 | `pime-pinyin-rank` | rank | 新增（`hotword.update` 事件 + `hot/<词>` 偏置） |
 
 ## 3 输出与特殊输入
 
@@ -62,7 +62,7 @@ WeaveText 能力对应哪个 pime 插件、落在哪个 role、状态如何。
 |---|---|---|---|---|
 | `dictpacks.json` | 14 个专业词库按需启停 | `pime-dict-packs` | service | 新增 |
 | `cloud.rs` | Ed25519 签名热词、只下载 | `pime-cloud-hotwords` | service | 新增 |
-| `models/catalog.json` | 语音/手写模型目录与校验 | `pime-model-manager` | service | 待做（当前由构建期 `models.lock` + core 校验承担） |
+| `models/catalog.json` | 语音/手写模型目录与校验 | `pime-model-manager` | service | 新增（目录/启停/声明哈希；权重校验仍由 core 完成） |
 | `translate/` | 在线翻译 | `pime-translate-online` | service | 新增 |
 | `weave-link` | 跨设备文字/文件 | — | — | 不迁移：伴随服务，非输入行为 |
 
@@ -78,10 +78,10 @@ WeaveText 能力对应哪个 pime 插件、落在哪个 role、状态如何。
 
 ## 6 架构约束带来的取舍
 
-1. **存储按插件隔离**：`store.kv` 不能跨插件读。用户学习的跨词统计在
-   `pime-learn-user-dict`，同码串召回与最近选择加分在 `pime-pinyin-rank`
-   （只有它既看得到选择、又在格式化之前产出候选）。连续造词写进学习插件，
-   要作为候选重现需要共享用户词典层（与热词偏置同一前置）。
+1. **存储按插件隔离**：`store.kv` 不能跨插件读。需要“看选择 + 出候选”的用户词典
+   与热词偏置因此放在 `pime-pinyin-rank`（`usr/`、`hot/`），跨词统计（日志、
+   衰减、MRU、二元组、联想）放在 `pime-learn-user-dict`；云端热词由
+   `pime-cloud-hotwords` 验签后，宿主用 `hotword.update` 事件转给 rank。
 2. **命令 ABI 无“提交后移动光标”**：成对标点只做成对映射；自动补全括号并居中
    光标不做近似插入。
 3. **Lua 无运行时模拟器**：`pime-cloud-hotwords` / `pime-translate-online` 只做

@@ -1,0 +1,7 @@
+name: verify-matching-hash
+event: { type: model.verify, id: speech, hash: "sha256:unfetched" }
+expect:
+  handled: false
+  workspace:
+    - { k: changed, v: speech }
+    - { k: status, v: ok }

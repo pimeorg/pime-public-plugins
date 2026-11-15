@@ -1,0 +1,8 @@
+name: enable-model
+event: { type: model.enable, id: lm, enabled: true }
+expect:
+  handled: false
+  workspace:
+    - { k: changed, v: lm }
+    - { k: status, v: enabled }
+    - { k: count, v: 3 }
