@@ -35,7 +35,7 @@
 | `translate` | `pime-cangjie-translate` | wasm | 1.0.0 | 仓颉词典翻译：字母码查词表，整码在前、补全在后 |
 | `translate` | `pime-english-translate` | wasm | 1.0.0 | 英文翻译：原码在前，前缀补全与拼写建议，保留输入大小写 |
 | `translate` | `pime-hans-hant` | wasm | 1.0.0 | 简→繁转换：词组优先最长匹配，重写候选文本 |
-| `translate` | `pime-pinyin-translate` | wasm | 1.2.1 | 全拼词典翻译：音节串查词典，产出候选与分数 |
+| `translate` | `pime-pinyin-translate` | wasm | 1.2.2 | 全拼词典翻译：音节串查词典，产出候选与分数 |
 | `translate` | `pime-shape-translate` | wasm | 1.0.0 | 拆字查字与字形筛选：u 模式部件码、反引号同组字 |
 | `translate` | `pime-shortcuts` | wasm | 1.0.0 | 快捷短语与 {date} {time} {weekday} 模板展开 |
 | `translate` | `pime-special-candidates` | wasm | 1.0.0 | 特殊候选：v 数字/算式、日期时间星期、正文算式直接出结果 |

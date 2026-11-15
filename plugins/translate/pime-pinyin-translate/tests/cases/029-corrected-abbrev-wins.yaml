@@ -9,4 +9,3 @@ expect:
     - k: candidates
       v:
         - { text: 谢谢, source: corrected }
-  candidates_include: [下谢谢]

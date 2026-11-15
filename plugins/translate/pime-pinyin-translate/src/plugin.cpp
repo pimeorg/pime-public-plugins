@@ -644,7 +644,10 @@ uint32_t read_input(const Frame& frame) {
 
 /* ------------------------------------------------------ corrected reading */
 
-constexpr int32_t kCorrectionMargin = 3000;
+/* Correcting a fragmented literal reading (你好好 for nihhao) changes the number
+ * of characters, so it needs a much larger gain; a single lexicon entry that
+ * already covers the whole input is protected (WeaveText's typo_margin rule). */
+constexpr int32_t kCorrectionMargin = 6000;
 
 struct Built {
     Candidate list[kMaxCandidates];
@@ -815,21 +818,18 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
         }
     }
 
+    /* A single lexicon entry already covers the whole input: it is deliberate,
+     * never delete letters to turn it into another word. */
+    const bool literal_whole_word =
+        literal.count > 0 && literal.list[0].words == 1;
     const bool use_corrected =
-        fixed.count > 0 &&
+        fixed.count > 0 && !literal_whole_word &&
         (literal.count == 0 ||
          static_cast<int32_t>(fixed.best) >
              static_cast<int32_t>(literal.best) + kCorrectionMargin);
     const Built& primary = use_corrected ? fixed : literal;
     for (uint32_t i = 0; i < primary.count && count < kMaxCandidates; ++i)
         candidates[count++] = primary.list[i];
-
-    /* Keep the typed reading selectable next to a winning correction. */
-    if (use_corrected && literal.count > 0 && count < kMaxCandidates &&
-        !has_text(candidates, count, literal.list[0].text,
-                  literal.list[0].len)) {
-        candidates[count++] = literal.list[0];
-    }
 
     Writer w(out, cap);
     w.map(4);
