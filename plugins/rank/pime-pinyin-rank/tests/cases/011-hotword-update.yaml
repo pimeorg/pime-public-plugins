@@ -1,0 +1,16 @@
+name: hotword-update-biases-ranking
+steps:
+  - event:
+      type: hotword.update
+      payload: "你好\t500\n"
+  - event: { type: text, text: nihao }
+    workspace:
+      plugin/pime-pinyin-parse/raw: nihao
+      plugin/pime-pinyin-translate/candidates:
+        - { text: 拟好, score: 500000, source: dict, words: 1 }
+        - { text: 你好, score: 495000, source: dict, words: 1 }
+    expect:
+      handled: false
+      workspace:
+        - { k: hotwords, v: 1 }
+      first_candidate: { text: 你好, comment: 热词 }

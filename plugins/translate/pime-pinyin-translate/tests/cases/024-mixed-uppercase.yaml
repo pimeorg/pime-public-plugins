@@ -1,0 +1,10 @@
+name: mixed-uppercase-segment
+event: { type: text, text: nihaoABC }
+workspace:
+  plugin/pime-pinyin-parse/raw: nihaoABC
+expect:
+  handled: true
+  workspace:
+    - k: candidates
+      v:
+        - { text: 你好ABC, source: dict }

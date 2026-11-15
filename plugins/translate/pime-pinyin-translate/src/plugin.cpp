@@ -103,6 +103,14 @@ uint32_t g_bucket_begin[28];
 char g_input[kMaxInputBytes];
 uint32_t g_input_len = 0;
 
+/* Mixed input: a trailing run of uppercase letters is kept verbatim and
+ * appended to every pinyin candidate ("nihaoABC" -> 你好ABC). */
+char g_tail[32];
+uint32_t g_tail_len = 0;
+char g_mixed_raw[kMaxInputBytes + 32];
+uint32_t g_mixed_raw_len = 0;
+bool g_mixed_uppercase = true;
+
 /* Edges are bucketed by the number of syllables they cover. Keeping a
  * separate bucket per span length stops a crowd of high-frequency single
  * characters from pruning longer phrases (hbg -> hai bu gou) before the beam
@@ -584,12 +592,38 @@ bool all_syllables(const char* text, uint32_t len) {
 
 uint32_t read_input(const Frame& frame) {
     g_input_len = 0;
+    g_tail_len = 0;
+    g_mixed_raw_len = 0;
 
     WorkspaceKey raw = full_key(kParseId, "raw");
     const char* text = nullptr;
     uint32_t len = 0;
     if (span_text(frame.workspace_value(raw.text), &text, &len)) {
-        for (uint32_t i = 0; i < len; ++i) append_letter(text[i]);
+        uint32_t split = len;
+        if (g_mixed_uppercase) {
+            /* Longest trailing uppercase run, but only when the prefix holds a
+             * lowercase letter: "ABC" alone is not a mixed segment. */
+            while (split > 0 && text[split - 1] >= 'A' &&
+                   text[split - 1] <= 'Z')
+                --split;
+            bool has_lower = false;
+            for (uint32_t i = 0; i < split; ++i) {
+                if (text[i] >= 'a' && text[i] <= 'z') has_lower = true;
+            }
+            if (!has_lower || len - split < 2 || split == 0) split = len;
+        }
+        if (split < len && split > 0 && len - split < sizeof(g_tail) &&
+            len < sizeof(g_mixed_raw)) {
+            for (uint32_t i = 0; i < split; ++i) append_letter(text[i]);
+            g_tail_len = len - split;
+            for (uint32_t i = 0; i < g_tail_len; ++i) g_tail[i] = text[split + i];
+            for (uint32_t i = 0; i < split; ++i) g_mixed_raw[i] = g_input[i];
+            for (uint32_t i = 0; i < g_tail_len; ++i)
+                g_mixed_raw[split + i] = g_tail[i];
+            g_mixed_raw_len = split + g_tail_len;
+        } else {
+            for (uint32_t i = 0; i < len; ++i) append_letter(text[i]);
+        }
         if (g_input_len > 0) return g_input_len;
     }
 
@@ -616,6 +650,9 @@ PIME_EXPORT pime_status pime_init(const uint8_t* config, uint32_t len) {
     g_dict_len = 0;
     g_entry_count = 0;
     g_input_len = 0;
+    g_tail_len = 0;
+    g_mixed_raw_len = 0;
+    g_mixed_uppercase = true;
     g_fuzzy = true;
     g_english_passthrough = true;
     g_max_candidates = 8;
@@ -640,6 +677,9 @@ PIME_EXPORT pime_status pime_init(const uint8_t* config, uint32_t len) {
         bool passthrough = true;
         if (settings.boolean("english_passthrough", &passthrough))
             g_english_passthrough = passthrough;
+        bool mixed = true;
+        if (settings.boolean("mixed_uppercase", &mixed))
+            g_mixed_uppercase = mixed;
     }
     return PIME_OK;
 }
@@ -690,7 +730,27 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
             }
         }
 
-        if (offer_raw && count < g_max_candidates) {
+        if (g_tail_len > 0) {
+            for (uint32_t i = 0; i < count; ++i) {
+                if (candidates[i].len + g_tail_len >= kPathBytes) continue;
+                for (uint32_t k = 0; k < g_tail_len; ++k)
+                    candidates[i].text[candidates[i].len + k] = g_tail[k];
+                candidates[i].len += g_tail_len;
+            }
+            /* The mixed raw string always survives a full list. */
+            if (count >= g_max_candidates && count > 0) --count;
+            {
+                Candidate& mixed = candidates[count++];
+                for (uint32_t k = 0; k < g_mixed_raw_len; ++k)
+                    mixed.text[k] = g_mixed_raw[k];
+                mixed.len = g_mixed_raw_len;
+                mixed.score = 1;
+                mixed.source = "mixed";
+                mixed.words = 1;
+            }
+        }
+
+        if (offer_raw && g_tail_len == 0 && count < g_max_candidates) {
             Candidate& raw = candidates[count++];
             for (uint32_t k = 0; k < g_input_len; ++k) raw.text[k] = g_input[k];
             raw.len = g_input_len;

@@ -1,0 +1,18 @@
+name: digit-selects-page-slot
+steps:
+  - event: { type: key, keycode: 50 }
+    workspace:
+      plugin/pime-keymap-default/action: digit
+      plugin/pime-keymap-default/digit: 2
+      plugin/pime-pinyin-parse/raw: ni
+      plugin/pime-pinyin-translate/candidates:
+        - { text: 你, score: 500000, source: dict, words: 1 }
+        - { text: 泥, score: 495000, source: dict, words: 1 }
+  - event: { type: text, text: ni }
+    workspace:
+      plugin/pime-pinyin-parse/raw: ni
+      plugin/pime-pinyin-translate/candidates:
+        - { text: 你, score: 500000, source: dict, words: 1 }
+        - { text: 泥, score: 495000, source: dict, words: 1 }
+    expect:
+      first_candidate: { text: 泥 }

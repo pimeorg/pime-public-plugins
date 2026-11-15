@@ -8,7 +8,7 @@ plugins:
   - { id: pime-pinyin-parse, role: parse }
   - { id: pime-shape-parse, role: parse }
   - { id: pime-pinyin-translate, role: translate, settings: { max_candidates: 8 } }
-  - { id: pime-pinyin-rank, role: rank }
+  - { id: pime-pinyin-rank, role: rank, settings: { page_size: 5 } }
   - { id: pime-special-candidates, role: translate }
   - { id: pime-shortcuts, role: translate }
   - { id: pime-hans-hant, role: translate }

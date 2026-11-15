@@ -1,0 +1,8 @@
+name: mixed-disabled
+settings: { mixed_uppercase: false }
+event: { type: text, text: nihaoABC }
+workspace:
+  plugin/pime-pinyin-parse/raw: nihaoABC
+expect:
+  handled: true
+  candidates_include: [nihaoabc]

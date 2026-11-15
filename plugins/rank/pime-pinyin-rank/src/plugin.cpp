@@ -44,6 +44,14 @@ uint32_t g_recent_boost = 4000;
 uint32_t g_profile_boost = 3000;
 uint32_t g_max_candidates = 16;
 uint32_t g_profile = 0; /* 0 general, 1 chat, 2 code, 3 formal */
+uint32_t g_page_size = 5;
+uint32_t g_user_boost = 8000;
+uint32_t g_hotword_boost = 12000;
+uint32_t g_decay_days = 30;
+
+/* Owned text for user words injected from the KV store (candidate.text is
+ * otherwise borrowed from the frame). */
+char g_user_texts[kMaxCandidates][kMaxKey];
 
 const char* const kChatTerms[] = {
     "哈哈", "嗯嗯", "好的", "谢谢", "在吗", "拜拜",
@@ -76,6 +84,13 @@ struct LastPick {
     uint32_t text_len;
     uint64_t ms;
     bool valid;
+    /* Selection mapping: the page shown when the user pressed space/digit. */
+    uint32_t page;
+    /* Continuous word creation: consecutive single-character commits. */
+    char chain[kMaxKey];
+    uint32_t chain_len;
+    char chain_raw[kMaxRaw];
+    uint32_t chain_raw_len;
 };
 
 bool text_is(const char* text, uint32_t len, const char* expected) {
@@ -124,6 +139,24 @@ void load_state(const Frame& frame, LastPick* pick) {
     *pick = LastPick{};
     MapView state = MapView::of(frame.root.get("state"));
     if (!state.valid) return;
+    uint64_t page = 0;
+    if (state.uint("page", &page)) pick->page = static_cast<uint32_t>(page);
+    {
+        const char* chain = nullptr;
+        uint32_t chain_len = 0;
+        if (state.text("chain", &chain, &chain_len) && chain_len <= kMaxKey) {
+            for (uint32_t i = 0; i < chain_len; ++i) pick->chain[i] = chain[i];
+            pick->chain_len = chain_len;
+        }
+        const char* chain_raw = nullptr;
+        uint32_t chain_raw_len = 0;
+        if (state.text("chain_raw", &chain_raw, &chain_raw_len) &&
+            chain_raw_len <= kMaxRaw) {
+            for (uint32_t i = 0; i < chain_raw_len; ++i)
+                pick->chain_raw[i] = chain_raw[i];
+            pick->chain_raw_len = chain_raw_len;
+        }
+    }
     const char* raw = nullptr;
     uint32_t raw_len = 0;
     const char* text = nullptr;
@@ -298,25 +331,362 @@ void undo_selection(const LastPick& pick, uint64_t now, LastPick* cleared) {
     *cleared = LastPick{};
 }
 
+
+/* ---------------------------------------------------------- user dictionary */
+
+uint32_t today() {
+    return static_cast<uint32_t>((host_time(1) / 86400000ull) & 0xffffffffu);
+}
+
+void parse_counter(const char* value, uint32_t len, uint32_t* count,
+                   uint32_t* day) {
+    uint64_t c = 0;
+    uint32_t i = 0;
+    while (i < len && ascii_digit(value[i])) {
+        c = c * 10 + static_cast<uint64_t>(value[i] - '0');
+        ++i;
+    }
+    uint64_t d = 0;
+    if (i < len && value[i] == ':') {
+        ++i;
+        while (i < len && ascii_digit(value[i])) {
+            d = d * 10 + static_cast<uint64_t>(value[i] - '0');
+            ++i;
+        }
+    }
+    *count = c > 1000000 ? 1000000 : static_cast<uint32_t>(c);
+    *day = static_cast<uint32_t>(d);
+}
+
+uint32_t decayed(uint32_t count, uint32_t day) {
+    if (g_decay_days == 0 || count <= 1) return count;
+    const uint32_t now = today();
+    if (now <= day) return count;
+    uint32_t periods = (now - day) / g_decay_days;
+    while (periods > 0 && count > 1) {
+        count = (count + 1) / 2;
+        --periods;
+    }
+    return count;
+}
+
+uint32_t make_pair_key(const char* prefix, const char* raw, uint32_t raw_len,
+                       const char* text, uint32_t text_len, char* out) {
+    uint32_t n = 0;
+    for (const char* p = prefix; *p && n < kMaxKey - 2; ++p) out[n++] = *p;
+    for (uint32_t i = 0; i < raw_len && n < kMaxKey - 2; ++i) out[n++] = raw[i];
+    if (text) {
+        if (n < kMaxKey - 2) out[n++] = '\x1f';
+        for (uint32_t i = 0; i < text_len && n < kMaxKey - 1; ++i)
+            out[n++] = text[i];
+    }
+    out[n] = '\0';
+    return n;
+}
+
+void decrement_counter(const char* key, uint32_t key_len) {
+    char value[32];
+    uint32_t value_len = 0;
+    bool found = false;
+    if (!store_get(key, key_len, value, sizeof(value), &value_len, &found) ||
+        !found)
+        return;
+    uint32_t count = 0;
+    uint32_t day = 0;
+    parse_counter(value, value_len, &count, &day);
+    count = decayed(count, day);
+    if (count > 0) --count;
+    char out[32];
+    uint32_t n = format_uint(count, out, sizeof(out));
+    out[n++] = ':';
+    n += format_uint(today(), out + n, sizeof(out) - n);
+    store_set(key, key_len, out, n);
+}
+
+void bump_counter(const char* key, uint32_t key_len, uint32_t add) {
+    char value[32];
+    uint32_t value_len = 0;
+    bool found = false;
+    uint32_t count = 0;
+    uint32_t day = 0;
+    if (store_get(key, key_len, value, sizeof(value), &value_len, &found) &&
+        found)
+        parse_counter(value, value_len, &count, &day);
+    count = (found ? decayed(count, day) : 0) + add;
+    if (count > 1000000) count = 1000000;
+    char out[32];
+    uint32_t n = format_uint(count, out, sizeof(out));
+    out[n++] = ':';
+    n += format_uint(today(), out + n, sizeof(out) - n);
+    store_set(key, key_len, out, n);
+}
+
+bool single_han(const char* text, uint32_t len) {
+    return utf8_count(text, len) == 1 &&
+           static_cast<uint8_t>(text[0]) >= 0xe0;
+}
+
+bool ascii_letters(const char* text, uint32_t len) {
+    if (len == 0) return false;
+    for (uint32_t i = 0; i < len; ++i) {
+        const char c = text[i];
+        if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))) return false;
+    }
+    return true;
+}
+
+/* Records a commit: the (raw -> text) pair, plus the continuous word made of
+ * consecutive single-character commits. */
+void user_learn(const char* raw, uint32_t raw_len, const char* text,
+                uint32_t text_len, LastPick* state) {
+    if (raw_len == 0 || text_len == 0 || text_len >= kMaxKey ||
+        raw_len >= kMaxRaw)
+        return;
+    char key[kMaxKey];
+    uint32_t key_len = make_pair_key("usr/", raw, raw_len, text, text_len, key);
+    bump_counter(key, key_len, 1);
+
+    if (single_han(text, text_len) && ascii_letters(raw, raw_len) &&
+        state->chain_len + text_len < kMaxKey &&
+        state->chain_raw_len + raw_len < kMaxRaw) {
+        for (uint32_t i = 0; i < text_len; ++i)
+            state->chain[state->chain_len + i] = text[i];
+        state->chain_len += text_len;
+        for (uint32_t i = 0; i < raw_len; ++i)
+            state->chain_raw[state->chain_raw_len + i] = raw[i];
+        state->chain_raw_len += raw_len;
+        if (utf8_count(state->chain, state->chain_len) >= 2) {
+            key_len = make_pair_key("usr/", state->chain_raw,
+                                    state->chain_raw_len, state->chain,
+                                    state->chain_len, key);
+            bump_counter(key, key_len, 1);
+        }
+    } else {
+        state->chain_len = 0;
+        state->chain_raw_len = 0;
+    }
+}
+
+/* Injects learned words for this reading and boosts ones already present. */
+uint32_t apply_user_words(const char* raw, uint32_t raw_len, Candidate* list,
+                          uint32_t* count, uint32_t max) {
+    if (raw_len == 0) return 0;
+    char prefix[kMaxKey];
+    const uint32_t prefix_len =
+        make_pair_key("usr/", raw, raw_len, nullptr, 0, prefix);
+    uint32_t injected = 0;
+    uint32_t hits = 0;
+    store_scan(prefix, prefix_len, kMaxCandidates,
+               [&](const char* key, uint32_t key_len, const char* value,
+                   uint32_t value_len) {
+                   if (key_len <= prefix_len + 1) return true;
+                   const char* word = key + prefix_len + 1;
+                   const uint32_t word_len = key_len - prefix_len - 1;
+                   if (word_len >= kMaxKey) return true;
+                   uint32_t c = 0;
+                   uint32_t d = 0;
+                   parse_counter(value, value_len, &c, &d);
+                   c = decayed(c, d);
+                   if (c == 0) return true;
+                   const uint32_t boost = g_user_boost + c * 500;
+                   for (uint32_t i = 0; i < *count; ++i) {
+                       if (list[i].len != word_len ||
+                           !Frame::equal(list[i].text, list[i].len, word,
+                                         word_len))
+                           continue;
+                       list[i].score += boost;
+                       if (!list[i].comment) list[i].comment = "自造";
+                       ++hits;
+                       return true;
+                   }
+                   if (*count >= max || injected >= kMaxCandidates) return false;
+                   char* slot = g_user_texts[injected];
+                   for (uint32_t i = 0; i < word_len; ++i) slot[i] = word[i];
+                   Candidate& candidate = list[(*count)++];
+                   candidate.text = slot;
+                   candidate.len = word_len;
+                   candidate.score = boost;
+                   candidate.source = "user";
+                   candidate.source_len = 4;
+                   candidate.words = 1;
+                   candidate.comment = "自造";
+                   ++injected;
+                   ++hits;
+                   return true;
+               });
+    return hits;
+}
+
+uint32_t apply_hotwords(Candidate* list, uint32_t count) {
+    uint32_t hits = 0;
+    for (uint32_t i = 0; i < count; ++i) {
+        if (list[i].len == 0 || list[i].len >= kMaxKey) continue;
+        char key[kMaxKey];
+        uint32_t key_len = 0;
+        const char prefix[] = "hot/";
+        for (const char* p = prefix; *p; ++p) key[key_len++] = *p;
+        for (uint32_t k = 0; k < list[i].len; ++k)
+            key[key_len++] = list[i].text[k];
+        char value[24];
+        uint32_t value_len = 0;
+        bool found = false;
+        if (!store_get(key, key_len, value, sizeof(value), &value_len, &found) ||
+            !found)
+            continue;
+        uint64_t weight = 0;
+        if (!parse_uint(value, value_len, &weight)) continue;
+        list[i].score +=
+            g_hotword_boost +
+            static_cast<uint32_t>(weight > 1000000 ? 1000000 : weight);
+        if (!list[i].comment) list[i].comment = "热词";
+        ++hits;
+    }
+    return hits;
+}
+
+/* Format prefers merged views (shape/shortcuts/hans-hant/special) over this
+ * plugin's array; when one is present the displayed index no longer addresses
+ * this list, so learning must stay silent. */
+bool has_preferred_candidates(const Frame& frame) {
+    static const char* const kIds[] = {
+        "pime-shape-translate", "pime-shortcuts", "pime-hans-hant",
+        "pime-special-candidates",
+    };
+    for (const char* id : kIds) {
+        WorkspaceKey key = full_key(id, "candidates");
+        ArrayView array = ArrayView::of(frame.workspace_value(key.text));
+        if (array.valid && array.count > 0) return true;
+    }
+    return false;
+}
+
+bool is_arrow_action(const char* action, uint32_t len) {
+    return text_is(action, len, "left") || text_is(action, len, "right");
+}
+
+/* Mirrors pime-candidates-format's paging rules so space/digit commits address
+ * the same slot the user saw. */
+/* Returns the page that addresses the *displayed* list for this call (the
+ * value space/digit must use), then applies format's reset rule so the next
+ * composition starts on page 0. */
+uint32_t update_page(LastPick* state, const char* action, uint32_t action_len,
+                     bool is_key, bool is_text, uint32_t total) {
+    const uint32_t page_size = g_page_size == 0 ? 1 : g_page_size;
+    const uint32_t last = total == 0 ? 0 : (total - 1) / page_size;
+    if (state->page > last) state->page = last;
+    bool paging = false;
+    if (is_key) {
+        if (text_is(action, action_len, "pagedown") ||
+            text_is(action, action_len, "down")) {
+            if (state->page < last) ++state->page;
+            paging = true;
+        } else if (text_is(action, action_len, "pageup") ||
+                   text_is(action, action_len, "up")) {
+            if (state->page > 0) --state->page;
+            paging = true;
+        } else if (text_is(action, action_len, "home")) {
+            state->page = 0;
+            paging = true;
+        } else if (text_is(action, action_len, "end")) {
+            state->page = last;
+            paging = true;
+        }
+    }
+    const uint32_t effective = state->page;
+    if ((is_key && !paging && !is_arrow_action(action, action_len)) || is_text)
+        state->page = 0;
+    return effective;
+}
+
+
+/* --------------------------------------------------------------- hotwords */
+
+/* Payload format: one "<word>\t<weight>" per line. Only the words are stored;
+ * the cloud signature was already verified by pime-cloud-hotwords. */
+uint32_t load_hotwords(const char* payload, uint32_t len) {
+    uint32_t loaded = 0;
+    uint32_t i = 0;
+    while (i < len && loaded < 512) {
+        const char* line = payload + i;
+        uint32_t n = 0;
+        while (i + n < len && payload[i + n] != '\n' && payload[i + n] != '\r')
+            ++n;
+        i += n;
+        while (i < len && (payload[i] == '\n' || payload[i] == '\r')) ++i;
+        if (n == 0 || line[0] == '#') continue;
+        uint32_t tab = 0;
+        while (tab < n && line[tab] != '\t') ++tab;
+        if (tab == 0 || tab >= n || tab >= kMaxKey) continue;
+        char key[kMaxKey];
+        uint32_t key_len = 0;
+        const char prefix[] = "hot/";
+        for (const char* p = prefix; *p; ++p) key[key_len++] = *p;
+        for (uint32_t k = 0; k < tab; ++k) key[key_len++] = line[k];
+        const char* weight_text = line + tab + 1;
+        const uint32_t weight_len = n - tab - 1;
+        uint64_t weight = 0;
+        if (!parse_uint(weight_text, weight_len, &weight)) continue;
+        if (weight > 1000000) weight = 1000000;
+        char value[24];
+        const uint32_t value_len = format_uint(weight, value, sizeof(value));
+        store_set(key, key_len, value, value_len);
+        ++loaded;
+    }
+    return loaded;
+}
+
+void clear_hotwords() {
+    char keys[128][kMaxKey];
+    uint32_t lengths[128];
+    uint32_t count = 0;
+    store_scan("hot/", 128, [&](const char* key, uint32_t key_len, const char*,
+                                uint32_t) {
+        if (count >= 128 || key_len >= kMaxKey) return false;
+        for (uint32_t i = 0; i < key_len; ++i) keys[count][i] = key[i];
+        lengths[count] = key_len;
+        ++count;
+        return true;
+    });
+    for (uint32_t i = 0; i < count; ++i) store_del(keys[i], lengths[i]);
+}
+
 pime_status respond(uint8_t* out, uint32_t cap, uint32_t* out_len,
                     const Candidate* list, uint32_t count,
-                    const LastPick* pick) {
+                    const LastPick* pick, uint32_t learned,
+                    uint32_t hotwords) {
     Writer w(out, cap);
     w.map(4);
     w.key("state");
-    if (pick && pick->valid) {
-        w.map(3);
-        w.key("last_raw");
-        w.text(pick->raw, pick->raw_len);
-        w.key("last_text");
-        w.text(pick->text, pick->text_len);
-        w.key("last_ms");
-        w.u64(pick->ms);
-    } else {
-        w.map(0);
+    {
+        uint32_t fields = 0;
+        if (pick && pick->valid) fields += 3;
+        if (pick && pick->page) ++fields;
+        if (pick && pick->chain_len) ++fields;
+        if (pick && pick->chain_raw_len) ++fields;
+        w.map(fields);
+        if (pick && pick->valid) {
+            w.key("last_raw");
+            w.text(pick->raw, pick->raw_len);
+            w.key("last_text");
+            w.text(pick->text, pick->text_len);
+            w.key("last_ms");
+            w.u64(pick->ms);
+        }
+        if (pick && pick->page) {
+            w.key("page");
+            w.u64(pick->page);
+        }
+        if (pick && pick->chain_len) {
+            w.key("chain");
+            w.text(pick->chain, pick->chain_len);
+        }
+        if (pick && pick->chain_raw_len) {
+            w.key("chain_raw");
+            w.text(pick->chain_raw, pick->chain_raw_len);
+        }
     }
     w.key("workspace");
-    w.map(1);
+    w.map(3);
     w.key("candidates");
     w.array(count);
     for (uint32_t i = 0; i < count; ++i) {
@@ -342,6 +712,10 @@ pime_status respond(uint8_t* out, uint32_t cap, uint32_t* out_len,
             w.text(list[i].comment);
         }
     }
+    w.key("learned");
+    w.u64(learned);
+    w.key("hotwords");
+    w.u64(hotwords);
     w.key("handled");
     w.boolean(false);
     w.key("commands");
@@ -362,6 +736,10 @@ PIME_EXPORT pime_status pime_init(const uint8_t* config, uint32_t len) {
     g_profile_boost = 3000;
     g_max_candidates = 16;
     g_profile = 0;
+    g_page_size = 5;
+    g_user_boost = 8000;
+    g_hotword_boost = 12000;
+    g_decay_days = 30;
     if (!config || !len) return PIME_OK;
     MapView root = MapView::of(Span{config, config + len});
     MapView settings = MapView::of(root.get("settings"));
@@ -379,6 +757,14 @@ PIME_EXPORT pime_status pime_init(const uint8_t* config, uint32_t len) {
         g_profile_boost = static_cast<uint32_t>(value);
     if (settings.uint("max_candidates", &value) && value >= 1 && value <= 32)
         g_max_candidates = static_cast<uint32_t>(value);
+    if (settings.uint("page_size", &value) && value >= 1 && value <= 9)
+        g_page_size = static_cast<uint32_t>(value);
+    if (settings.uint("user_boost", &value) && value <= 1000000)
+        g_user_boost = static_cast<uint32_t>(value);
+    if (settings.uint("hotword_boost", &value) && value <= 1000000)
+        g_hotword_boost = static_cast<uint32_t>(value);
+    if (settings.uint("decay_days", &value) && value <= 3650)
+        g_decay_days = static_cast<uint32_t>(value);
     const char* profile = nullptr;
     uint32_t profile_len = 0;
     if (settings.text("profile", &profile, &profile_len)) {
@@ -422,32 +808,90 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
     Candidate candidates[kMaxCandidates];
     uint32_t count = read_candidates(frame, candidates);
 
-    if (!is_candidate && text_is(action, action_len, "backspace"))
+    if (!is_candidate && text_is(action, action_len, "backspace")) {
+        /* Backspace undo covers both the per-reading pick and the user
+         * dictionary entry written by the same commit. */
+        if (pick.valid && now >= pick.ms && now - pick.ms <= kUndoWindowMs &&
+            pick.raw_len > 0 && pick.text_len > 0) {
+            char key[kMaxKey];
+            const uint32_t key_len =
+                make_pair_key("usr/", pick.raw, pick.raw_len, pick.text,
+                              pick.text_len, key);
+            decrement_counter(key, key_len);
+        }
         undo_selection(pick, now, &pick);
+    }
 
-    /* Rank first, learn second. The index on a candidate event addresses the
-     * list that was displayed (this plugin's previous output), so the array
-     * must keep that order in the same call; the new pick only affects the
-     * next composition. */
+    const bool is_text = has_type && text_is(type, type_len, "text");
+    const bool is_key = has_type && text_is(type, type_len, "key");
+
+    /* Hotword payloads arrive from the host/cloud service (pime-cloud-hotwords
+     * verifies the signature; the host forwards the payload here). */
+    uint32_t loaded_hotwords = 0;
+    if (has_type && text_is(type, type_len, "hotword.update")) {
+        const char* payload = nullptr;
+        uint32_t payload_len = 0;
+        if (frame.event.text("payload", &payload, &payload_len))
+            loaded_hotwords = load_hotwords(payload, payload_len);
+    } else if (has_type && text_is(type, type_len, "hotword.clear")) {
+        clear_hotwords();
+    }
+
+    /* The displayed list may be a merged view from an earlier plugin; then the
+     * index/space mapping below does not address this array. */
+    const bool preferred = has_preferred_candidates(frame);
+    const uint32_t effective_page =
+        update_page(&pick, action, action_len, is_key, is_text, count);
+
+    bool commit = false;
+    uint64_t index = 0;
+    if (!preferred) {
+        if (is_key && text_is(action, action_len, "space")) {
+            commit = count > 0;
+            index = static_cast<uint64_t>(effective_page) * g_page_size;
+        } else if (is_key && text_is(action, action_len, "enter")) {
+            commit = count > 0;
+            index = static_cast<uint64_t>(effective_page) * g_page_size;
+        } else if (is_key && text_is(action, action_len, "digit")) {
+            uint64_t digit = 0;
+            if (span_uint(frame.workspace_value("plugin/pime-keymap-default/digit"),
+                          &digit) &&
+                digit >= 1 && digit <= 9) {
+                index =
+                    static_cast<uint64_t>(effective_page) * g_page_size + digit - 1;
+                commit = true;
+            }
+        } else if (is_candidate && frame.event.uint("index", &index)) {
+            commit = true;
+        }
+    }
+
+    /* Rank first, learn second (the index addresses the list displayed by the
+     * previous call, so the order must survive until learning runs). */
     apply_base_boosts(candidates, count);
     apply_learning(raw, raw_len, candidates, count);
+    const uint32_t learned = apply_user_words(raw, raw_len, candidates, &count,
+                                              g_max_candidates);
+    const uint32_t hotword_hits = apply_hotwords(candidates, count);
     apply_recency(candidates, count, now);
     apply_profile(candidates, count);
     sort_candidates(candidates, count);
     if (count > g_max_candidates) count = g_max_candidates;
 
-    if (is_candidate) {
-        uint64_t index = 0;
-        if (frame.event.uint("index", &index))
-            learn_selection(candidates, count, index, raw, raw_len, now, &pick);
+    if (commit && index < count) {
+        learn_selection(candidates, count, index, raw, raw_len, now, &pick);
+        user_learn(raw, raw_len, candidates[index].text, candidates[index].len,
+                   &pick);
+        pick.page = 0;
     }
-    return respond(out, cap, out_len, candidates, count, &pick);
+    return respond(out, cap, out_len, candidates, count, &pick, learned,
+                   hotword_hits);
 }
 
 PIME_EXPORT pime_status pime_on_event(const uint8_t*, uint32_t, uint8_t* out,
                                       uint32_t cap, uint32_t* out_len) {
     if (!out_len) return PIME_INVALID;
-    return respond(out, cap, out_len, nullptr, 0, nullptr);
+    return respond(out, cap, out_len, nullptr, 0, nullptr, 0, 0);
 }
 
 PIME_EXPORT void pime_shutdown(void) {
@@ -458,6 +902,10 @@ PIME_EXPORT void pime_shutdown(void) {
     g_profile_boost = 3000;
     g_max_candidates = 16;
     g_profile = 0;
+    g_page_size = 5;
+    g_user_boost = 8000;
+    g_hotword_boost = 12000;
+    g_decay_days = 30;
 }
 
 PIME_EXPORT uint32_t pime_scratch_ptr(void) {

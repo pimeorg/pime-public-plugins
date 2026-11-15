@@ -1,0 +1,24 @@
+name: continuous-word-injection
+steps:
+  - event: { type: key, keycode: 32 }
+    workspace:
+      plugin/pime-keymap-default/action: space
+      plugin/pime-pinyin-parse/raw: ni
+      plugin/pime-pinyin-translate/candidates:
+        - { text: 你, score: 500000, source: dict, words: 1 }
+  - event: { type: key, keycode: 32 }
+    workspace:
+      plugin/pime-keymap-default/action: space
+      plugin/pime-pinyin-parse/raw: hao
+      plugin/pime-pinyin-translate/candidates:
+        - { text: 好, score: 500000, source: dict, words: 1 }
+  - event: { type: text, text: nihao }
+    workspace:
+      plugin/pime-pinyin-parse/raw: nihao
+      plugin/pime-pinyin-translate/candidates:
+        - { text: 您, score: 500000, source: dict, words: 1 }
+    expect:
+      handled: false
+      workspace:
+        - { k: learned, v: 1 }
+      candidates_include: [你好]

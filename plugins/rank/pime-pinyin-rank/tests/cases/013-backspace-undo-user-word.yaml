@@ -1,0 +1,21 @@
+name: backspace-undoes-user-word
+steps:
+  - event: { type: key, keycode: 32 }
+    workspace:
+      plugin/pime-keymap-default/action: space
+      plugin/pime-pinyin-parse/raw: nihao
+      plugin/pime-pinyin-translate/candidates:
+        - { text: 你好, score: 500000, source: dict, words: 1 }
+  - event: { type: key, keycode: 8 }
+    workspace:
+      plugin/pime-keymap-default/action: backspace
+  - event: { type: text, text: nihao }
+    workspace:
+      plugin/pime-pinyin-parse/raw: nihao
+      plugin/pime-pinyin-translate/candidates:
+        - { text: 拟好, score: 500000, source: dict, words: 1 }
+    expect:
+      handled: false
+      workspace:
+        - { k: learned, v: 0 }
+      first_candidate: { text: 拟好 }

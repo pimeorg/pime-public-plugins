@@ -38,6 +38,12 @@ store，也不发候选。
 | `public_key` | string | "" | 验签公钥 |
 | `interval_ms` | int | 21600000 | 刷新周期（6 小时） |
 
+## 与排序的接线
+
+验签后的 payload 由宿主以 `hotword.update { payload }` 事件转给
+`pime-pinyin-rank`（格式：`<词>	<权重>` 每行一条），排序插件据此做热词偏置；
+`hotword.clear` 清空。本插件自身不直接改候选。
+
 ## 隐私
 
 只发 GET，不带用户词、学习记录、上下文；没有上传路径。
