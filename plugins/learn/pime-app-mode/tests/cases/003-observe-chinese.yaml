@@ -1,0 +1,9 @@
+name: observe-chinese
+event: { type: text, text: n }
+context: { app: com.example.mail }
+workspace:
+  plugin/pime-pinyin-parse/raw: ni
+expect:
+  handled: false
+  workspace:
+    - { k: mode, v: zh }

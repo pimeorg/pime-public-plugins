@@ -1,0 +1,8 @@
+name: default-mode
+event: { type: reset }
+context: {}
+expect:
+  handled: false
+  workspace:
+    - { k: mode, v: zh }
+    - { k: app, v: "" }

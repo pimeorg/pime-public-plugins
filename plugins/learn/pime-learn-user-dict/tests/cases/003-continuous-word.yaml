@@ -1,0 +1,18 @@
+name: continuous-word
+steps:
+  - event: { type: text, text: ni }
+    workspace:
+      plugin/pime-pinyin-parse/raw: ni
+      plugin/pime-candidates-format/committed: 你
+  - event: { type: text, text: hao }
+    workspace:
+      plugin/pime-pinyin-parse/raw: hao
+      plugin/pime-candidates-format/committed: 好
+  - event: { type: text, text: nihao }
+    workspace: { plugin/pime-pinyin-parse/raw: nihao }
+    expect:
+      handled: false
+      workspace:
+        - k: candidates
+          v:
+            - { text: 你好, source: user, comment: 自造 }

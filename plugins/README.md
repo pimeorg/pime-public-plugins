@@ -5,13 +5,15 @@
 | role | id | runtime | version | 说明 |
 |---|---|---|---|---|
 | `format` | `pime-candidates-format` | wasm | 1.1.0 | 候选与组合收尾：展示候选、空格/数字选词、Esc 取消 |
+| `learn` | `pime-app-mode` | wasm | 1.0.0 | 学习：按应用记忆中/英输入模式 |
 | `learn` | `pime-learn-frequency` | lua | 1.0.0 | 学习：按提交记录词频，写入插件私有 KV |
+| `learn` | `pime-learn-user-dict` | wasm | 1.0.0 | 用户学习：追加日志、衰减、近期选择、退格撤销、连续造词、用户二元组 |
 | `parse` | `pime-cangjie-parse` | wasm | 1.0.0 | 仓颉：累积字母码并写入 workspace |
 | `parse` | `pime-english-parse` | wasm | 1.0.0 | 英文：累积字母与撇号，保留原码大小写 |
 | `parse` | `pime-pinyin-parse` | wasm | 1.1.0 | 全拼解析：音节切分、自动纠错、触点邻键纠正与预编辑 |
 | `parse` | `pime-t9-parse` | wasm | 1.0.0 | 九键/14 键：累积键码（1 为音节分隔）并写入 workspace |
 | `parse` | `pime-wubi-parse` | wasm | 1.1.0 | 五笔：累积字母码并写入 workspace 供词表翻译 |
-| `predict` | `pime-predict-context` | wasm | 1.0.0 | 预测：按光标前文本匹配短语表，产出下一词候选 |
+| `predict` | `pime-predict-context` | wasm | 1.1.0 | 预测：用户二元组、接续表、字符搭配模型、末字续字四档联想 |
 | `preprocess` | `pime-keymap-default` | wasm | 1.2.0 | 默认键位：把控制键映射为链内动作，文本键放行 |
 | `preprocess` | `pime-punctuation-zh` | lua | 1.1.0 | 中文标点：半角标点转全角，引号样式可配置 |
 | `preprocess` | `pime-shuangpin-standard` | wasm | 1.1.0 | 双拼四方案（小鹤/自然码/微软/搜狗）：两键合成音节 |

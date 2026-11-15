@@ -1,0 +1,12 @@
+name: switch-language
+steps:
+  - event: { type: text, text: n }
+    context: { app: com.example.chat }
+    workspace: { plugin/pime-english-parse/raw: he }
+  - event: { type: text, text: n }
+    context: { app: com.example.chat }
+    workspace: { plugin/pime-pinyin-parse/raw: ni }
+    expect:
+      handled: false
+      workspace:
+        - { k: mode, v: zh }

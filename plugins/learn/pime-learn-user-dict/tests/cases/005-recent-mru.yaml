@@ -1,0 +1,17 @@
+name: recent-mru
+steps:
+  - event: { type: text, text: nihao }
+    workspace:
+      plugin/pime-pinyin-parse/raw: nihao
+      plugin/pime-candidates-format/committed: 你好
+  - event: { type: text, text: shijie }
+    workspace:
+      plugin/pime-pinyin-parse/raw: shijie
+      plugin/pime-candidates-format/committed: 世界
+    expect:
+      handled: false
+      workspace:
+        - k: recent
+          v: [世界, 你好]
+        - k: last
+          v: 世界

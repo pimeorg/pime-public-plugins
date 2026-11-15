@@ -1,0 +1,10 @@
+name: disabled
+settings: { enabled: false }
+event: { type: text, text: n }
+context: { app: com.example.chat }
+workspace:
+  plugin/pime-english-parse/raw: he
+expect:
+  handled: false
+  workspace:
+    - { k: mode, v: zh }

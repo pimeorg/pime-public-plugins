@@ -11,6 +11,9 @@ plugins:
   - { id: pime-pinyin-rank, role: rank }
   - { id: pime-special-candidates, role: translate }
   - { id: pime-candidates-format, role: format }
+  - { id: pime-learn-user-dict, role: learn }
+  - { id: pime-predict-context, role: predict }
+  - { id: pime-app-mode, role: learn }
   - { id: pime-learn-frequency, role: learn }
 
 workspace:
@@ -35,4 +38,9 @@ workspace:
   - { key: plugin/pime-special-candidates/candidates,
       from: pime-special-candidates, to: [pime-candidates-format] }
   - { key: plugin/pime-candidates-format/committed,
-      from: pime-candidates-format, to: [pime-learn-frequency] }
+      from: pime-candidates-format,
+      to: [pime-learn-user-dict, pime-learn-frequency] }
+  - { key: plugin/pime-learn-user-dict/next,
+      from: pime-learn-user-dict, to: [pime-predict-context] }
+  - { key: plugin/pime-learn-user-dict/last,
+      from: pime-learn-user-dict, to: [pime-predict-context] }

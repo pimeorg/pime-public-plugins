@@ -1,0 +1,11 @@
+name: remember-on-focus
+steps:
+  - event: { type: text, text: n }
+    context: { app: com.example.chat }
+    workspace: { plugin/pime-english-parse/raw: he }
+  - event: { type: focus }
+    context: { app: com.example.chat }
+    expect:
+      handled: false
+      workspace:
+        - { k: mode, v: en }

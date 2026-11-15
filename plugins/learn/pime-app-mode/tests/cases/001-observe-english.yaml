@@ -1,0 +1,10 @@
+name: observe-english
+event: { type: text, text: n }
+context: { app: com.example.chat }
+workspace:
+  plugin/pime-english-parse/raw: he
+expect:
+  handled: false
+  workspace:
+    - { k: mode, v: en }
+    - { k: app, v: com.example.chat }

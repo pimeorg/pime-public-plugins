@@ -5,3 +5,4 @@ expect:
   handled: false
   workspace:
     - { k: candidates, v: [] }
+  commands: []

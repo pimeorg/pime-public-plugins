@@ -1,0 +1,19 @@
+name: backspace-undo
+steps:
+  - event: { type: text, text: nihao }
+    workspace:
+      plugin/pime-pinyin-parse/raw: nihao
+      plugin/pime-candidates-format/committed: 你好
+  - event: { type: key, keycode: 8, text: "" }
+    workspace: { plugin/pime-keymap-default/action: backspace }
+  - event: { type: text, text: nihao }
+    workspace: { plugin/pime-pinyin-parse/raw: nihao }
+    expect:
+      handled: false
+      workspace:
+        - k: candidates
+          v: []
+        - k: recent
+          v: []
+        - k: last
+          v: ""

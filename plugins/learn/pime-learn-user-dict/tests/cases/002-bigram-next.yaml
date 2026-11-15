@@ -1,0 +1,20 @@
+name: bigram-next
+steps:
+  - event: { type: text, text: ni }
+    workspace:
+      plugin/pime-pinyin-parse/raw: ni
+      plugin/pime-candidates-format/committed: 你
+  - event: { type: text, text: hao }
+    workspace:
+      plugin/pime-pinyin-parse/raw: hao
+      plugin/pime-candidates-format/committed: 好
+  - event: { type: text, text: ni }
+    workspace:
+      plugin/pime-pinyin-parse/raw: ni
+      plugin/pime-candidates-format/committed: 你
+    expect:
+      handled: false
+      workspace:
+        - k: next
+          v:
+            - { text: 好, source: user-bigram }
