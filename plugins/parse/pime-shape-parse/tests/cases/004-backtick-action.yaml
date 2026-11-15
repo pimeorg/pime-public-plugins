@@ -1,0 +1,8 @@
+name: backtick-action
+event: { type: key, keycode: 192 }
+workspace: { plugin/pime-keymap-default/action: backtick }
+expect:
+  handled: false
+  workspace:
+    - { k: mode, v: glyph }
+    - { k: code, v: "" }

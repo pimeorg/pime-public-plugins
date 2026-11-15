@@ -1,0 +1,8 @@
+name: backtick-glyph
+event: { type: text, text: "`mu" }
+workspace: { plugin/pime-pinyin-parse/raw: "`mu" }
+expect:
+  handled: false
+  workspace:
+    - { k: mode, v: glyph }
+    - { k: code, v: mu }

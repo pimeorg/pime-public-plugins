@@ -16,7 +16,7 @@
 | 其他 | 只展示候选 |
 
 候选按顺序从以下 workspace 键读取，取第一个非空数组：
-`plugin/pime-shortcuts/candidates`、`plugin/pime-hans-hant/candidates`、
+`plugin/pime-shape-translate/candidates`、`plugin/pime-shortcuts/candidates`、`plugin/pime-hans-hant/candidates`、
 `plugin/pime-special-candidates/candidates`、`plugin/pime-pinyin-rank/candidates`、
 `plugin/pime-rank-default/candidates`、`plugin/pime-pinyin-translate/candidates`、
 `plugin/pime-wubi-translate/candidates`、
@@ -39,6 +39,7 @@
 | `plugin/pime-cangjie-parse/code` | pime-cangjie-parse |
 | `plugin/pime-t9-parse/raw` | pime-t9-parse |
 | `plugin/pime-english-parse/raw` | pime-english-parse |
+| `plugin/pime-shape-translate/candidates` | pime-shape-translate |
 | `plugin/pime-shortcuts/candidates` | pime-shortcuts |
 | `plugin/pime-hans-hant/candidates` | pime-hans-hant |
 | `plugin/pime-special-candidates/candidates` | pime-special-candidates |

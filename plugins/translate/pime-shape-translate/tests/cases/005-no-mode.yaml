@@ -1,0 +1,7 @@
+name: no-mode
+event: { type: text, text: nihao }
+workspace: {}
+expect:
+  handled: false
+  workspace:
+    - { k: candidates, v: [] }

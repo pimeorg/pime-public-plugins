@@ -1,0 +1,13 @@
+name: glyph-first-candidate
+event: { type: text, text: "`" }
+workspace:
+  plugin/pime-shape-parse/mode: glyph
+  plugin/pime-shape-parse/code: ""
+  plugin/pime-pinyin-rank/candidates:
+    - { text: 林, score: 900, source: dict }
+expect:
+  handled: false
+  workspace:
+    - k: candidates
+      v:
+        - { text: 木, source: glyph }

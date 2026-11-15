@@ -1,0 +1,8 @@
+name: u-mode-shape
+event: { type: text, text: umumu }
+workspace: { plugin/pime-pinyin-parse/raw: umumu }
+expect:
+  handled: false
+  workspace:
+    - { k: mode, v: shape }
+    - { k: code, v: mumu }

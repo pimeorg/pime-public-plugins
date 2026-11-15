@@ -1,0 +1,10 @@
+name: disabled
+settings: { enabled: false }
+event: { type: text, text: umumu }
+workspace:
+  plugin/pime-shape-parse/mode: shape
+  plugin/pime-shape-parse/code: mumu
+expect:
+  handled: false
+  workspace:
+    - { k: candidates, v: [] }

@@ -34,6 +34,7 @@ bool g_show_comments = true;
  * (dates keep the ordinary first candidate), so preferring them never hides
  * anything the other arrays hold. */
 const char* const kCandidateSources[] = {
+    "pime-shape-translate",
     "pime-shortcuts",
     "pime-hans-hant",
     "pime-special-candidates",

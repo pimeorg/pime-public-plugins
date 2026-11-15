@@ -1,0 +1,9 @@
+name: unknown-group
+event: { type: text, text: "`zz" }
+workspace:
+  plugin/pime-shape-parse/mode: glyph
+  plugin/pime-shape-parse/code: zz
+expect:
+  handled: false
+  workspace:
+    - { k: candidates, v: [] }

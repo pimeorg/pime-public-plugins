@@ -7,11 +7,13 @@ plugins:
   - { id: pime-keymap-default, role: preprocess }
   - { id: pime-shuangpin-standard, role: preprocess }
   - { id: pime-pinyin-parse, role: parse }
+  - { id: pime-shape-parse, role: parse }
   - { id: pime-pinyin-translate, role: translate }
   - { id: pime-pinyin-rank, role: rank }
   - { id: pime-special-candidates, role: translate }
   - { id: pime-shortcuts, role: translate }
   - { id: pime-hans-hant, role: translate }
+  - { id: pime-shape-translate, role: translate }
   - { id: pime-emoji-suggest, role: predict }
   - { id: pime-clip-code, role: predict }
   - { id: pime-candidates-format, role: format }
@@ -39,19 +41,27 @@ workspace:
   - { key: plugin/pime-pinyin-rank/candidates,
       from: pime-pinyin-rank,
       to: [pime-special-candidates, pime-shortcuts, pime-hans-hant,
-            pime-candidates-format] }
+            pime-shape-translate, pime-candidates-format] }
   - { key: plugin/pime-special-candidates/candidates,
       from: pime-special-candidates,
-      to: [pime-shortcuts, pime-hans-hant, pime-candidates-format] }
+      to: [pime-shortcuts, pime-hans-hant, pime-shape-translate,
+            pime-candidates-format] }
   - { key: plugin/pime-shortcuts/candidates,
       from: pime-shortcuts,
-      to: [pime-hans-hant, pime-candidates-format] }
+      to: [pime-hans-hant, pime-shape-translate, pime-candidates-format] }
   - { key: plugin/pime-hans-hant/candidates,
-      from: pime-hans-hant, to: [pime-candidates-format] }
+      from: pime-hans-hant,
+      to: [pime-shape-translate, pime-candidates-format] }
   - { key: plugin/pime-emoji-suggest/candidates,
       from: pime-emoji-suggest, to: [pime-candidates-format] }
   - { key: plugin/pime-clip-code/candidates,
       from: pime-clip-code, to: [pime-candidates-format] }
+  - { key: plugin/pime-shape-parse/mode,
+      from: pime-shape-parse, to: [pime-shape-translate] }
+  - { key: plugin/pime-shape-parse/code,
+      from: pime-shape-parse, to: [pime-shape-translate] }
+  - { key: plugin/pime-shape-translate/candidates,
+      from: pime-shape-translate, to: [pime-candidates-format] }
   - { key: plugin/pime-candidates-format/committed,
       from: pime-candidates-format,
       to: [pime-learn-user-dict, pime-learn-frequency] }

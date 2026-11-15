@@ -1,0 +1,8 @@
+name: plain-code-passthrough
+event: { type: text, text: nihao }
+workspace: { plugin/pime-pinyin-parse/raw: nihao }
+expect:
+  handled: false
+  workspace:
+    - { k: mode, v: "" }
+    - { k: code, v: "" }

@@ -12,6 +12,9 @@ plugins:
 - id: pime-pinyin-parse
   version: 1.1.0
   code_hash: sha256:unbuilt
+- id: pime-shape-parse
+  version: 1.0.0
+  code_hash: sha256:unbuilt
 - id: pime-pinyin-translate
   version: 1.1.0
   code_hash: sha256:unbuilt
@@ -27,6 +30,9 @@ plugins:
 - id: pime-hans-hant
   version: 1.0.0
   code_hash: sha256:unbuilt
+- id: pime-shape-translate
+  version: 1.0.0
+  code_hash: sha256:unbuilt
 - id: pime-emoji-suggest
   version: 1.0.0
   code_hash: sha256:unbuilt
@@ -34,7 +40,7 @@ plugins:
   version: 1.0.0
   code_hash: sha256:unbuilt
 - id: pime-candidates-format
-  version: 1.2.0
+  version: 1.3.0
   code_hash: sha256:unbuilt
 - id: pime-learn-user-dict
   version: 1.0.0
