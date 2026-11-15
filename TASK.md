@@ -18,6 +18,8 @@ pime-core 1.0.0（ABI 1.0）。本机无 Android NDK，wasm 产物需在具备 N
 - [x] 五笔 86：四码唯一顶屏、补全、`z` 拼音反查、拼写建议
 - [x] 仓颉：码长上限、补全
 - [x] 英文：前缀补全、Damerau–Levenshtein 建议、保留原码与大小写
+- [x] 英文词表：rime-wanxiang 生成 36,345 条（键去撇号、text 保留拼写，
+      `tools/english_dict`）；候选 top-N 收集后再排序，`hel` 不再漏 `hello`
 - [x] 中英混输：合法拼音优先；大写英文片段逐候选追加，整串原码保留
 
 ### 排序、学习与联想

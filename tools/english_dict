@@ -1,0 +1,92 @@
+#!/usr/bin/env python3
+"""Build the English word list from a Rime `en.dict.yaml`.
+
+    python tools/english_dict SOURCE/en.dict.yaml -o data/english/english.dict
+
+The plugin format is `<key>\\t<text>\\t<frequency>`:
+
+- `key` is lowercase with apostrophes removed, because the matcher strips
+  apostrophes from what the user typed (`dont` completes `don't`);
+- `text` keeps its own spelling, so `GitHub`, `WiFi` and `API` survive;
+- only single-token words are kept (letters and apostrophes) — the parser
+  never accumulates spaces or hyphens;
+- words with frequency >= 50 are kept, plus every word whose text carries
+  capitalisation (proper nouns and technical terms often have a low count).
+
+Source used for the shipped file: rime-wanxiang `dicts/en.dict.yaml`
+(CC BY 4.0, https://github.com/amzxyz/rime-wanxiang). Re-run this script after
+updating the source and copy the output to
+`plugins/translate/pime-english-translate/assets/english.dict`.
+"""
+
+from __future__ import annotations
+
+import argparse
+import pathlib
+import re
+
+TOKEN = re.compile(r"[A-Za-z']+")
+MIN_FREQUENCY = 50
+
+HEADER = [
+    "# English dictionary: <word>\\t<text>\\t<frequency>",
+    "# Keys are lowercase with apostrophes removed; text keeps its own spelling.",
+    "# Source: rime-wanxiang dicts/en.dict.yaml (CC BY 4.0, amzxyz/rime-wanxiang).",
+    "# Filtered to single-token words with frequency >= 50, plus any entry whose",
+    "# text carries capitalisation (proper nouns, technical terms).",
+]
+
+
+def read_entries(path: pathlib.Path):
+    entries = []
+    in_body = False
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not in_body:
+            in_body = line.strip() == "..."
+            continue
+        if not line or line.startswith("#"):
+            continue
+        fields = line.split("\t")
+        if len(fields) < 2:
+            continue
+        word, text = fields[0], fields[1]
+        frequency = int(fields[2]) if len(fields) > 2 and fields[2].isdigit() else 0
+        if not TOKEN.fullmatch(word):
+            continue
+        entries.append((word, text, frequency))
+    return entries
+
+
+def build(entries):
+    best = {}
+    for word, text, frequency in entries:
+        key = word.lower().replace("'", "")
+        if not TOKEN.fullmatch(key):
+            continue
+        # Contractions are common even when the upstream count is tiny.
+        if frequency < MIN_FREQUENCY and text == text.lower() and "'" not in text:
+            continue
+        pair = (key, text)
+        if pair not in best or frequency > best[pair]:
+            best[pair] = frequency
+    return sorted(best.items())
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Build english.dict")
+    parser.add_argument("source", type=pathlib.Path, help="Rime en.dict.yaml")
+    parser.add_argument("-o", "--output", type=pathlib.Path, required=True)
+    args = parser.parse_args()
+
+    entries = build(read_entries(args.source))
+    lines = list(HEADER)
+    lines.extend(f"{key}\t{text}\t{frequency}" for (key, text), frequency in entries)
+    data = ("\n".join(lines) + "\n").encode("utf-8")
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_bytes(data)
+    print(f"{args.output}: {len(entries)} entries, {len(data)} bytes")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

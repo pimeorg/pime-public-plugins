@@ -150,18 +150,29 @@ void copy_with_case(const char* word, uint32_t len, bool all_caps, bool cap,
     *out_len = written;
 }
 
+/* Keeps the highest-scoring candidates. The dictionary is sorted, so cutting
+ * the scan at the first N would keep whichever words happen to start earliest
+ * (`hel` filled its slots with `held`/`helen`/... and dropped `hello`) and
+ * made a frequency ranking pointless. */
 void push_candidate(const char* text, uint32_t text_len, int32_t score,
                     const char* source, const char* comment,
                     uint32_t comment_len) {
-    const uint32_t limit =
-        g_max_candidates < kMaxCandidates ? g_max_candidates : kMaxCandidates;
-    if (g_count >= limit) return;
-    Candidate& c = g_candidates[g_count++];
-    c.set_text(text, text_len);
-    c.score = score;
-    c.set_source(source);
-    c.comment_len = 0;
-    if (comment && comment_len) c.set_comment(comment, comment_len);
+    Candidate* slot = nullptr;
+    if (g_count < kMaxCandidates) {
+        slot = &g_candidates[g_count++];
+    } else {
+        uint32_t worst = 0;
+        for (uint32_t i = 1; i < g_count; ++i) {
+            if (g_candidates[i].score < g_candidates[worst].score) worst = i;
+        }
+        if (score <= g_candidates[worst].score) return;
+        slot = &g_candidates[worst];
+    }
+    slot->set_text(text, text_len);
+    slot->score = score;
+    slot->set_source(source);
+    slot->comment_len = 0;
+    if (comment && comment_len) slot->set_comment(comment, comment_len);
 }
 
 bool key_starts_with(const char* key, uint32_t key_len, const char* typed,
@@ -206,13 +217,11 @@ void lookup(const char* key, uint32_t key_len, bool all_caps, bool cap) {
 
     char formed[128];
     uint32_t formed_len = 0;
-    uint32_t completions = 0;
     bool matched = false;
     dict.each([&](const DictEntry& entry) {
         if (!key_starts_with(entry.key, entry.key_len, key, key_len)) return;
         matched = true;
         if (entry.key_len > key_len && !g_completion) return;
-        if (entry.key_len > key_len && completions >= g_completion_limit) return;
         const bool exact = entry.key_len == key_len;
         copy_with_case(entry.text, entry.text_len, all_caps, cap, formed,
                        &formed_len);
@@ -223,7 +232,6 @@ void lookup(const char* key, uint32_t key_len, bool all_caps, bool cap) {
             static_cast<int32_t>(kLetterCost * extra);
         push_candidate(formed, formed_len, score,
                        exact ? "dict" : "completion", nullptr, 0);
-        if (!exact) ++completions;
     });
     if (matched || !g_corrections) return;
 
@@ -243,10 +251,18 @@ void lookup(const char* key, uint32_t key_len, bool all_caps, bool cap) {
     });
 }
 
+bool source_is(const Candidate& c, const char* expected) {
+    const uint32_t len = cstr_len(expected);
+    return c.source_len == len &&
+           Frame::equal(c.source, c.source_len, expected, len);
+}
+
 void sort_and_write(Writer& w) {
     sort_candidates(g_candidates, g_count);
     uint32_t written = 0;
+    uint32_t completions = 0;
     for (uint32_t i = 0; i < g_count; ++i) {
+        if (written >= g_max_candidates) break;
         bool duplicate = false;
         for (uint32_t j = 0; j < written; ++j) {
             if (g_candidates[j].text_len == g_candidates[i].text_len &&
@@ -257,6 +273,12 @@ void sort_and_write(Writer& w) {
             }
         }
         if (duplicate) continue;
+        /* The limit applies after ranking, to completions only: the typed
+         * text and exact dictionary hits are always kept. */
+        if (source_is(g_candidates[i], "completion")) {
+            if (completions >= g_completion_limit) continue;
+            ++completions;
+        }
         g_candidates[written++] = g_candidates[i];
     }
     write_candidates(w, g_candidates, written);

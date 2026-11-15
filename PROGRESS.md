@@ -650,3 +650,21 @@ parse 插件都没处理该事件，拼音缓冲留在会话 state 里。表现�
   的版本字段一并更新；宿主改回 `core.reset()`，去掉重建会话的绕过。MuMu 12
   复验：组合 `h` 切英文提交 `h`，英文 `nihao` 字面上屏，切回中文 `nihao`
   组合串无残留、候选首位「你好」。
+
+## 英文候选排序与词表规模（2026-11-15）
+
+Android 侧接入英文链后，宿主实测 `hel` 的候选里没有 `hello`：translate 在扫描
+词表时按顺序把匹配塞进最多 `max_candidates` 个槽位，先遇到哪条就留哪条。
+词典按 key 排序，于是 `held`/`helen`/`hellip` 之类先占满，频次排序形同虚设。
+
+- `push_candidate` 改为维持 top-N：槽位满时只有分数高于当前最差项才替换；
+  扫描不再被 `completion_limit` 截断，`completion_limit` 移到 `sort_and_write`
+  里排序之后生效，且只作用于补全（原码与精确词条永不截）。
+- 词表从 starter 90 行换成 `tools/english_dict` 生成的 36,345 条
+  （`data/english/english.dict`，758,967 字节）：源为 rime-wanxiang
+  `en.dict.yaml`（CC BY 4.0），键为小写 + 去撇号，text 保留原拼写，只收
+  单 token，频次 ≥ 50 或带大写/撇号。`dont` 因此能补出 `don't`。
+- `pime-english-translate` 1.0.1（manifest / CHANGELOG / 包内资产 /
+  `chains/english/latin.lock.yaml` 同步）。
+- 用例 18 条英文相关全部通过；Android 侧 MuMu 12 复验：
+  `hel` → `hel / help / held / helped / hell`，`dont` → `don't`。
