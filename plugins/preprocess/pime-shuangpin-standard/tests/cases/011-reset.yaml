@@ -1,0 +1,8 @@
+name: reset-drops-half
+event: { type: reset }
+state: { half: n }
+expect:
+  handled: false
+  state: {}
+  workspace: {}
+  commands: []

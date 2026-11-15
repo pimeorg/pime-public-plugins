@@ -240,6 +240,15 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
     const bool is_text = same(type, type_len, "text");
     const bool is_candidate = same(type, type_len, "candidate");
 
+    /* `reset` cancels the composition: drop the paging state and close the
+     * candidate bar. */
+    if (same(type, type_len, "reset")) {
+        Reply reply;
+        reply.handled = true;
+        reply.command = 2;
+        return respond(out, cap, out_len, reply);
+    }
+
     uint32_t page_size = g_page_size;
     uint64_t context_page = 0;
     if (frame.context.uint("page_size", &context_page) && context_page > 0)

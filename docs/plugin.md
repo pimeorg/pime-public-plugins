@@ -36,6 +36,9 @@ output = { state_out, workspace_delta[], handled, commands[] }
 ```
 
 - `event`：key / text / touch / candidate / surrounding / context / focus / secure / reset / timer / net.* / net.state / audio.* / audio.focus / audio.route / ml.* / permission。
+- `reset`：宿主取消当前组合（焦点丢失、粘贴前、显式复位）。持有组合缓冲的插件
+  必须清空自己的会话状态，并发 `composition("")` + `hide`；学习、模式等跨组合
+  状态不清。
 - `state`：插件私有字节，头部含 plugin version 与 `state_schema`；core 按会话保存并原样回传；默认上限 64KB，清单可调至 1MB。
 - `workspace`：同一次链调用内共享的有界键值区，默认 256KB；所有插件可读，写入自动加自身前缀 `plugin/<id>/`；`set` 先记入本次调用的 `workspace_delta`，插件成功即合并（下游可见），失败丢弃。
 - `workspace.set(k)` 写入 `plugin/<id>/k`；读自身可用短键，读其他插件用完整键 `plugin/<id>/k`。

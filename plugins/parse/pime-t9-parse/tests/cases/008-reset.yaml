@@ -1,0 +1,12 @@
+name: reset-clears-composition
+event: { type: reset }
+state: { buf: "44" }
+expect:
+  handled: true
+  state: { buf: "" }
+  workspace:
+    - { k: raw, v: "" }
+    - { k: input, v: "" }
+  commands:
+    - { type: set_composition, text: "", cursor: 0 }
+    - { type: hide_candidates }

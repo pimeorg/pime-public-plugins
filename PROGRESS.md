@@ -625,3 +625,28 @@ WeaveText 的 `refresh_wubi` / `Schema::Wubi86` 包含四项行为，本轮按�
   仍纠正。
 - 纠正胜出时不再把字面首选混进列表，一组候选字数保持一致。
 - 更新 029/030 用例，全仓 268 条通过；MuMu 复验 `nihhao` 全部为三字候选。
+
+## reset 事件与组合状态（用户追问：这是 plugin 的 bug）
+
+Android 宿主用 `pime_core_reset` 结束组合（切中/英、粘贴前、失焦）。core 只是
+向整条链派发一个 `reset` 事件，按约定由插件清空自己的会话状态；但随包的
+parse 插件都没处理该事件，拼音缓冲留在会话 state 里。表现为：组合 `h` 切到
+英文、再切回中文打 `nihao`，组合串变成 `hnihao`——旧的 `h` 复活。宿主的
+`closeSession()` + `openSession()` 能绕过，但根因在插件。
+
+- 五个 parse 插件（pinyin / english / wubi / cangjie / t9）在 `pime_process`
+  里识别 `reset`：以空缓冲调用 `respond`，state 清空并发
+  `set_composition("")` + `hide_candidates`。
+- `pime-shuangpin-standard` 丢弃半音节（`half`）；`pime-candidates-format`
+  清页码并发 `hide_candidates`。
+- `docs/plugin.md` 写明契约：持有组合缓冲的插件必须清空会话状态；学习、模式等
+  跨组合状态不清。
+- 版本：pinyin-parse 1.1.3、english-parse 1.0.1、wubi-parse 1.1.1、
+  cangjie-parse 1.0.1、t9-parse 1.0.1、shuangpin-standard 1.1.1、
+  candidates-format 1.3.2；`chains/pinyin` 两条链的 lock 同步。
+- 新增 7 条 reset 用例（每个插件一条）；全仓 **275** 条通过，
+  `check_plugins` 0 error，`chainc --check` 两条链通过。
+- Android 侧同步 `pinyin-parse 1.1.3` 与 `candidates-format 1.3.2`，链 CBOR
+  的版本字段一并更新；宿主改回 `core.reset()`，去掉重建会话的绕过。MuMu 12
+  复验：组合 `h` 切英文提交 `h`，英文 `nihao` 字面上屏，切回中文 `nihao`
+  组合串无残留、候选首位「你好」。

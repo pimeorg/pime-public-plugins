@@ -309,6 +309,10 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
     char half = 0;
     const bool has_half = load_half(frame, &half);
 
+    /* `reset` drops a half-typed syllable without consuming anything. */
+    if (frame.is_event("reset"))
+        return respond(out, cap, out_len, 0, false, nullptr, 0);
+
     const char* action = nullptr;
     uint32_t action_len = 0;
     span_text(frame.workspace_value("plugin/pime-keymap-default/action"), &action,

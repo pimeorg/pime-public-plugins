@@ -1,6 +1,6 @@
 description: 双拼四方案（小鹤/自然码/微软/搜狗）：两键合成音节
 id: pime-shuangpin-standard
-version: 1.1.0
+version: 1.1.1
 abi: { major: 1, minor: 0 }
 min_core: "1.0.0"
 state_schema: 1

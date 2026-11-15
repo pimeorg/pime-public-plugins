@@ -57,6 +57,7 @@ pime-core 1.0.0（ABI 1.0）。本机无 Android NDK，wasm 产物需在具备 N
 - [x] 新增/增强插件的 manifest、README、CHANGELOG、用例
 - [x] 产品链更新与 lock
 - [x] `check_plugins`、`chainc --check`、native 用例、conformance 全绿
+- [x] `reset` 契约：parse / shuangpin / format 清空组合状态，补 7 条用例
 - [x] 更新 README / PROGRESS / 能力矩阵
 - [x] 分批提交
 - [ ] CI 接入 NDK wasm32 工具链与真实包构建（已按用户要求撤回，见遗留）
@@ -64,7 +65,7 @@ pime-core 1.0.0（ABI 1.0）。本机无 Android NDK，wasm 产物需在具备 N
 ## 当前规模
 
 - 插件 **37** 个，产品链 **11** 条（含 1 条可选服务链）。
-- native 用例 **261** 条全部通过；`check_plugins` 0 error / 2 warning
+- native 用例 **275** 条全部通过；`check_plugins` 0 error / 2 warning
   （手写、语音模型权重未入库）。
 
 ## 遗留 / 已知限制

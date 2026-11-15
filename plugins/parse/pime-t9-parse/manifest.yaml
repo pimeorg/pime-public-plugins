@@ -1,6 +1,6 @@
 description: 九键/14 键：累积键码（1 为音节分隔）并写入 workspace
 id: pime-t9-parse
-version: 1.0.0
+version: 1.0.1
 abi: { major: 1, minor: 0 }
 min_core: "1.0.0"
 state_schema: 1

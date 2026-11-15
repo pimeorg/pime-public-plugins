@@ -255,6 +255,11 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
     const bool is_candidate =
         has_type && text_is(type, type_len, "candidate");
 
+    /* `reset` cancels the composition: drop the buffer and tell the host to
+     * finish the preedit and close the candidate bar. */
+    if (has_type && text_is(type, type_len, "reset"))
+        return respond(out, cap, out_len, buffer, 0, true, false, nullptr, 0);
+
     const char* action = nullptr;
     uint32_t action_len = 0;
     span_text(frame.workspace_value("plugin/pime-keymap-default/action"),

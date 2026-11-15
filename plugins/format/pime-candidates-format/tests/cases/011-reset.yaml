@@ -1,0 +1,8 @@
+name: reset-drops-page-and-candidates
+event: { type: reset }
+state: { page: 2 }
+expect:
+  handled: true
+  state: {}
+  commands:
+    - { type: hide_candidates }
