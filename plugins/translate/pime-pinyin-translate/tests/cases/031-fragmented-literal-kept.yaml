@@ -1,0 +1,13 @@
+# 字面读法是两个词的组合（不是单个词条覆盖），删字母的纠正要大幅胜出才允许；
+# 这里纠正只强一点，保留字面组合读法。
+name: fragmented-literal-is-kept
+event: { type: text, text: nihhaoo }
+workspace:
+  plugin/pime-pinyin-parse/raw: nihhaoo
+  plugin/pime-pinyin-parse/corrected: nihao
+expect:
+  handled: true
+  workspace:
+    - k: candidates
+      v:
+        - { text: 你很好喔, source: compose }

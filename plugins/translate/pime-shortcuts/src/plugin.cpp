@@ -229,8 +229,9 @@ void copy_existing(const Frame& frame, Item* items, uint32_t* count) {
         WorkspaceKey key = full_key(id, "candidates");
         ArrayView array = ArrayView::of(frame.workspace_value(key.text));
         if (!array.valid || array.count == 0) continue;
+        auto cursor = array.cursor();
         for (uint64_t i = 0; i < array.count && *count < kMaxItems; ++i) {
-            MapView item = MapView::of(array.at(i));
+            MapView item = cursor.map();
             const char* text = nullptr;
             uint32_t text_len = 0;
             if (!item.text("text", &text, &text_len)) continue;

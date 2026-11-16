@@ -39,14 +39,19 @@ namespace {
 constexpr uint32_t kScratchBytes = 16384;
 constexpr uint32_t kMaxInputBytes = 64;
 constexpr uint32_t kMaxSyllables = 8;
-constexpr uint32_t kMaxEntries = 32768;
-constexpr uint32_t kDictBytes = 1024 * 1024;
-constexpr uint32_t kMaxCandidates = 32;
+constexpr uint32_t kMaxEntries = 196608;
+constexpr uint32_t kDictBytes = 6 * 1024 * 1024;
+/* "全部" asks for every candidate the dictionary can offer. The beam below
+ * only keeps its best kBeam paths, so full-input dictionary matches are also
+ * recorded separately; this is the ceiling for that list (and for the
+ * translated output), not a display preference. */
+constexpr uint32_t kMaxCandidates = 640;
+constexpr uint32_t kMaxDirect = 640;
 constexpr uint32_t kBeam = 16;
 constexpr uint32_t kEdgesPerSpan = 24;
 constexpr uint32_t kPathBytes = 96;
-constexpr uint32_t kCollocationBytes = 512 * 1024;
-constexpr uint32_t kCollocationSlots = 32768;
+constexpr uint32_t kCollocationBytes = 2 * 1024 * 1024;
+constexpr uint32_t kCollocationSlots = 65536;
 
 /* Scoring is a small unigram model over the dictionary. Frequencies are
  * counts, so each word contributes log2(freq); subtracting a corpus-scale
@@ -70,7 +75,7 @@ uint32_t g_dict_len = 0;
 bool g_dict_loaded = false;
 bool g_fuzzy = true;
 bool g_english_passthrough = true;
-uint32_t g_max_candidates = 8;
+uint32_t g_max_candidates = 640;
 uint32_t g_collocation_weight = 500;
 
 /* Character collocations: adjacent-character log weight, hashed by
@@ -99,6 +104,16 @@ struct Entry {
 Entry g_entries[kMaxEntries];
 uint32_t g_entry_count = 0;
 uint32_t g_bucket_begin[28];
+
+/* Dictionary entries whose reading covers the whole raw input, best first.
+ * The beam's `kBeam` paths are the same kind of result for the best few; this
+ * list keeps going so the host's "全部" is more than sixteen candidates. */
+struct DirectMatch {
+    const Entry* entry;
+    int32_t score;
+};
+DirectMatch g_direct[kMaxDirect];
+uint32_t g_direct_count = 0;
 
 char g_input[kMaxInputBytes];
 uint32_t g_input_len = 0;
@@ -278,14 +293,24 @@ bool load_dict() {
     AssetHandle handle;
     if (!asset_open("pinyin.dict", &handle)) return false;
     uint32_t size = 0;
-    bool ok = asset_size(handle, &size) && size > 0 && size + 64 <= sizeof(g_dict);
-    if (ok) {
+    bool ok = asset_size(handle, &size) && size > 0 &&
+              size + 64 <= sizeof(g_dict);
+    /* The core caps one asset.read at 4 MB, while the expanded dictionary is
+     * larger than that. Read it in chunks into the same static buffer. */
+    constexpr uint32_t kAssetChunk = 1024 * 1024;
+    uint32_t offset = 0;
+    while (ok && offset < size) {
+        uint32_t chunk = size - offset;
+        if (chunk > kAssetChunk) chunk = kAssetChunk;
         uint32_t got = 0;
-        ok = asset_read(handle, 0, size, g_dict, sizeof(g_dict), &got) && got > 0;
-        if (ok) g_dict_len = got;
+        ok = asset_read(handle, offset, chunk, g_dict + offset,
+                        sizeof(g_dict) - offset, &got) &&
+             got == chunk;
+        if (ok) offset += got;
     }
     asset_close(handle);
     if (!ok) return false;
+    g_dict_len = size;
 
     Dict dict;
     dict.load(reinterpret_cast<const char*>(g_dict), g_dict_len);
@@ -442,14 +467,51 @@ void insert_edge(uint32_t position, uint32_t syllables, const Entry& entry,
     if (count < kEdgesPerSpan) ++count;
 }
 
+/* Keeps a full-input match in score order. Different readings of the same
+ * word collapse to one entry; when the list is full the lowest score falls
+ * off, so the tail stays deterministic instead of depending on dictionary
+ * order. */
+void record_direct(const Entry& entry, int32_t score) {
+    for (uint32_t i = 0; i < g_direct_count; ++i) {
+        const Entry& other = *g_direct[i].entry;
+        if (other.text_len == entry.text_len &&
+            Frame::equal(other.text, other.text_len, entry.text,
+                         entry.text_len)) {
+            if (score <= g_direct[i].score) return;
+            uint32_t slot = i;
+            while (slot > 0 && g_direct[slot - 1].score < score) {
+                g_direct[slot] = g_direct[slot - 1];
+                --slot;
+            }
+            g_direct[slot].entry = &entry;
+            g_direct[slot].score = score;
+            return;
+        }
+    }
+    if (g_direct_count == kMaxDirect &&
+        score <= g_direct[g_direct_count - 1].score)
+        return;
+    uint32_t slot = g_direct_count == kMaxDirect ? kMaxDirect - 1
+                                                  : g_direct_count;
+    while (slot > 0 && g_direct[slot - 1].score < score) {
+        g_direct[slot] = g_direct[slot - 1];
+        --slot;
+    }
+    g_direct[slot].entry = &entry;
+    g_direct[slot].score = score;
+    if (g_direct_count < kMaxDirect) ++g_direct_count;
+}
+
 void add_edge(uint32_t position, const Entry& entry, uint32_t next,
               int32_t cost) {
     int32_t score = static_cast<int32_t>(entry.score) - kContextLog - cost;
-    /* Cohesion grows with the number of raw letters the word covers. A word
+    /* Cohesion grows with the number of raw letters a word covers. A word
      * that consumes "zh" as one partial syllable is preferred over two words
      * that split it into z+h, while a three-syllable phrase still beats three
      * single characters. */
     score += kWordBonus * static_cast<int32_t>(next - position - 1);
+    if (position == 0 && next == g_input_len)
+        record_direct(entry, score);
     insert_edge(position, entry.syllables, entry, next, score,
                 first_codepoint(entry.text, entry.text_len),
                 last_codepoint(entry.text, entry.text_len));
@@ -531,6 +593,7 @@ void insert_path(uint32_t position, const Path& path, int32_t score) {
 }
 
 void compose() {
+    g_direct_count = 0;
     for (uint32_t i = 0; i <= kMaxInputBytes; ++i) g_beam_count[i] = 0;
     g_beam[0][0].len = 0;
     g_beam[0][0].score = 0;
@@ -646,14 +709,43 @@ uint32_t read_input(const Frame& frame) {
 
 /* Correcting a fragmented literal reading (你好好 for nihhao) changes the number
  * of characters, so it needs a much larger gain; a single lexicon entry that
- * already covers the whole input is protected (WeaveText's typo_margin rule). */
+ * already covers the whole input is protected (WeaveText's typo_margin rule).
+ *
+ * The expanded dictionary (150k words) makes rare phrases "cover" inputs that
+ * used to fall through to the fragment path. Only a word that the compact
+ * 16k dictionary would have shipped (weight above ~4889, log2 score 12200)
+ * gets the unconditional protection; a rarer whole-input match yields to a
+ * corrected spelling when the correction is at least as good after accounting
+ * for the letters the correction removes. */
 constexpr int32_t kCorrectionMargin = 6000;
+constexpr uint32_t kProtectMinEntryScore = 12200;
 
 struct Built {
     Candidate list[kMaxCandidates];
     uint32_t count = 0;
     uint32_t best = 0;
 };
+
+/* Two full candidate lists live at once (literal and corrected readings).
+ * Keeping them out of the call frame matters now that a list is 200 entries:
+ * the wasm stack is not sized for two of them plus the output copy. */
+Built g_literal;
+Built g_fixed;
+
+/* Log2 score of the dictionary entry that produced this whole-input
+ * candidate, or 0 when it did not come from a single entry. g_direct is built
+ * from the current input, so this must be called before composing the
+ * corrected reading replaces it. */
+uint32_t direct_entry_score(const Candidate& candidate) {
+    for (uint32_t i = 0; i < g_direct_count; ++i) {
+        const Entry& entry = *g_direct[i].entry;
+        if (entry.text_len == candidate.len &&
+            Frame::equal(entry.text, entry.text_len, candidate.text,
+                         candidate.len))
+            return entry.score;
+    }
+    return 0;
+}
 
 bool has_text(const Candidate* list, uint32_t count, const char* text,
               uint32_t len) {
@@ -698,6 +790,24 @@ void build_candidates(Built* out, bool allow_raw) {
         candidate.source = path.words > 1 ? "compose" : "dict";
         candidate.words = path.words;
         if (candidate.score > out->best) out->best = candidate.score;
+    }
+    /* The beam only keeps its best kBeam paths. Everything the beam dropped
+     * but the dictionary can actually spell for this whole input follows it,
+     * already in score order, so "全部" is not an arbitrary sixteen. */
+    for (uint32_t i = 0; i < g_direct_count && out->count < limit; ++i) {
+        const Entry& entry = *g_direct[i].entry;
+        if (entry.text_len >= kPathBytes) continue;
+        if (has_text(out->list, out->count, entry.text, entry.text_len))
+            continue;
+        int64_t score = static_cast<int64_t>(g_direct[i].score) + kScoreBase;
+        if (score < 0) score = 0;
+        Candidate& candidate = out->list[out->count++];
+        for (uint32_t k = 0; k < entry.text_len; ++k)
+            candidate.text[k] = entry.text[k];
+        candidate.len = entry.text_len;
+        candidate.score = static_cast<uint32_t>(score);
+        candidate.source = "dict";
+        candidate.words = 1;
     }
     for (uint32_t i = 1; i < out->count; ++i) {
         if (out->list[i].words > 1) {
@@ -747,7 +857,7 @@ PIME_EXPORT pime_status pime_init(const uint8_t* config, uint32_t len) {
     g_mixed_uppercase = true;
     g_fuzzy = true;
     g_english_passthrough = true;
-    g_max_candidates = 8;
+    g_max_candidates = 640;
     g_collocation_weight = 500;
     g_collocation_count = 0;
     g_collocations_loaded = false;
@@ -760,7 +870,8 @@ PIME_EXPORT pime_status pime_init(const uint8_t* config, uint32_t len) {
     MapView settings = MapView::of(root.get("settings"));
     if (settings.valid) {
         uint64_t value = 0;
-        if (settings.uint("max_candidates", &value) && value >= 1 && value <= 32)
+        if (settings.uint("max_candidates", &value) && value >= 1 &&
+            value <= kMaxCandidates)
             g_max_candidates = static_cast<uint32_t>(value);
         if (settings.uint("collocation_weight", &value) && value <= 2000)
             g_collocation_weight = static_cast<uint32_t>(value);
@@ -786,19 +897,27 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
     if (!load_dict()) return PIME_NOT_FOUND;
     if (!load_collocations()) return PIME_NOT_FOUND;
 
-    Candidate candidates[kMaxCandidates];
-    uint32_t count = 0;
-
-    Built literal;
+    Built& literal = g_literal;
+    literal.count = 0;
+    literal.best = 0;
     if (read_input(frame) > 0) {
         compose();
         build_candidates(&literal, true);
     }
+    /* The literal lattice (and g_direct with it) is about to be replaced by
+     * the corrected one; remember how long the literal input was and how
+     * strong its best whole-word match is. */
+    const uint32_t literal_len = g_input_len;
+    const uint32_t literal_word_score =
+        literal.count > 0 && literal.list[0].words == 1
+            ? direct_entry_score(literal.list[0]) : 0;
 
     /* Auto-correction is an alternative reading, not a rewrite: the literal
      * keys have their own lattice ("xxie" -> 谢谢), and the corrected spelling
      * only takes over when it is clearly better. */
-    Built fixed;
+    Built& fixed = g_fixed;
+    fixed.count = 0;
+    fixed.best = 0;
     char corrected[kMaxInputBytes];
     const uint32_t corrected_len = read_corrected(frame, corrected,
                                                   sizeof(corrected));
@@ -818,18 +937,26 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
         }
     }
 
-    /* A single lexicon entry already covers the whole input: it is deliberate,
-     * never delete letters to turn it into another word. */
+    /* A strong single entry covers the whole input: that is deliberate, never
+     * delete letters to turn it into another word. A rare whole-input phrase
+     * from the expanded dictionary does not get that veto; it is compared
+     * after adding back the per-letter word bonus the shorter corrected input
+     * could not earn, and only needs to break even. */
     const bool literal_whole_word =
         literal.count > 0 && literal.list[0].words == 1;
+    const bool strong_literal_word =
+        literal_whole_word && literal_word_score >= kProtectMinEntryScore;
+    const bool weak_literal_word = literal_whole_word && !strong_literal_word;
+    int64_t fixed_best = fixed.best;
+    if (weak_literal_word && corrected_len > 0 && literal_len > corrected_len)
+        fixed_best += static_cast<int64_t>(kWordBonus) *
+                      static_cast<int64_t>(literal_len - corrected_len);
     const bool use_corrected =
-        fixed.count > 0 && !literal_whole_word &&
+        fixed.count > 0 && !strong_literal_word &&
         (literal.count == 0 ||
-         static_cast<int32_t>(fixed.best) >
-             static_cast<int32_t>(literal.best) + kCorrectionMargin);
+         fixed_best > static_cast<int64_t>(literal.best) +
+             (weak_literal_word ? 0 : kCorrectionMargin));
     const Built& primary = use_corrected ? fixed : literal;
-    for (uint32_t i = 0; i < primary.count && count < kMaxCandidates; ++i)
-        candidates[count++] = primary.list[i];
 
     Writer w(out, cap);
     w.map(4);
@@ -838,20 +965,20 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
     w.key("workspace");
     w.map(1);
     w.key("candidates");
-    w.array(count);
-    for (uint32_t i = 0; i < count; ++i) {
+    w.array(primary.count);
+    for (uint32_t i = 0; i < primary.count; ++i) {
         w.map(4);
         w.key("text");
-        w.text(candidates[i].text, candidates[i].len);
+        w.text(primary.list[i].text, primary.list[i].len);
         w.key("score");
-        w.u64(candidates[i].score);
+        w.u64(primary.list[i].score);
         w.key("source");
-        w.text(candidates[i].source);
+        w.text(primary.list[i].source);
         w.key("words");
-        w.u64(candidates[i].words);
+        w.u64(primary.list[i].words);
     }
     w.key("handled");
-    w.boolean(count > 0);
+    w.boolean(primary.count > 0);
     w.key("commands");
     w.array(0);
 

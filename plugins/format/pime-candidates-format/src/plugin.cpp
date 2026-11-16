@@ -22,7 +22,9 @@ using namespace pimeplug;
 namespace {
 
 constexpr uint32_t kScratchBytes = 16384;
-constexpr uint32_t kMaxShown = 32;
+/* The host may ask for every candidate at once ("全部"); the page size it
+ * passes in context is clamped here. */
+constexpr uint32_t kMaxShown = 640;
 
 alignas(8) uint8_t g_scratch[kScratchBytes];
 
@@ -124,21 +126,21 @@ void write_items(Writer& w, const Reply& reply) {
     if (shown > kMaxShown) shown = kMaxShown;
 
     cmd_show_candidates_begin(w, shown);
+    auto cursor = reply.candidates.cursor();
+    for (uint32_t i = 0; i < start; ++i) cursor.next(nullptr);
     for (uint32_t i = 0; i < shown; ++i) {
-        const uint64_t index = start + i;
+        MapView item = cursor.map();
         const char* text = nullptr;
         uint32_t text_len = 0;
-        if (!candidate_text(reply.candidates, index, &text, &text_len)) {
+        if (!item.valid || !item.text("text", &text, &text_len)) {
             text = "";
             text_len = 0;
         }
         const char* comment = nullptr;
         uint32_t comment_len = 0;
         if (g_show_comments &&
-            !candidate_field(reply.candidates, index, "comment", &comment,
-                             &comment_len) &&
-            !candidate_field(reply.candidates, index, "pinyin", &comment,
-                             &comment_len)) {
+            !(item.valid && item.text("comment", &comment, &comment_len)) &&
+            !(item.valid && item.text("pinyin", &comment, &comment_len))) {
             comment = nullptr;
             comment_len = 0;
         }
@@ -211,7 +213,7 @@ PIME_EXPORT pime_status pime_init(const uint8_t* config, uint32_t len) {
     MapView settings = MapView::of(root.get("settings"));
     if (!settings.valid) return PIME_OK;
     uint64_t size = 0;
-    if (settings.uint("page_size", &size) && size >= 1 && size <= 9)
+    if (settings.uint("page_size", &size) && size >= 1 && size <= kMaxShown)
         g_page_size = static_cast<uint32_t>(size);
     bool value = true;
     if (settings.boolean("commit_on_enter", &value)) g_commit_on_enter = value;

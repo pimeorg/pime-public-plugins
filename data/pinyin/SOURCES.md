@@ -9,7 +9,8 @@
 - 数据：**rime-wanxiang**（雾凇拼音配置）的 `zi.dict.yaml`（单字）与
   `jichu.dict.yaml`（词语）。
 - 仓库：<https://github.com/amzxyz/rime_wanxiang>
-- 本仓库生成时使用的提交：`c7f27dece03feadb2e7ab5313d932d9674456a4e`
+- 本仓库生成时使用的提交：`6ab77371f1ba72154e74645965e53a287ce3cb39`
+  （`wanxiang` 分支，2026-11-15）
 - 许可证：**CC BY 4.0**（Attribution 4.0 International）。原始数据版权归
   rime-wanxiang 作者所有；本仓库只做格式转换与裁剪，并在本文件与插件 README
   中署名。
@@ -22,9 +23,13 @@
    413 音节表一致）。
 2. 只保留音节表内的读音；词语的音节数与汉字数不一致的条目丢弃。
 3. `(词, 读音)` 合并不同声调的重复行，取最大词频。
-4. 取词频最高的 4000 个单字读音与 16000 个词语，按首字母排序。
+4. 取词频最高的 40000 条单字读音与 150000 个词语，按首字母排序。
 5. 输出 `<空格分隔音节>\t<词>\t<词频>`，键形如 `wo shi`，便于翻译插件做
    音节级精确/前缀/简拼匹配，而无需在运行时重新分词。
+
+音节表从 `shared/cpp/include/pimeplug/pinyin.hpp` 的 `syllable_list()` 读取
+（413 个音节）；旧版工具从 parse 插件源码里找表，表搬走后会静默生成空词表，
+两个工具都已改为直接读共享头文件。
 
 生成命令（源文件不入库）：
 
@@ -32,12 +37,13 @@
 python -I tools/pinyin_dictgen \
     --zi /path/to/rime_wanxiang/dicts/zi.dict.yaml \
     --jichu /path/to/rime_wanxiang/dicts/jichu.dict.yaml \
+    --singles 40000 --words 150000 \
     --out data/pinyin/pinyin.dict
 ```
 
 ## 常用短语补充
 
-裁剪后的 20k 条词表会漏掉一批聊天里高频、但在通用语料里排名靠后的短语
+裁剪后的词表会漏掉一批聊天里高频、但在通用语料里排名靠后的短语
 （`晚安`、`生日快乐`、`天安门`、`女孩`、`绿色` 等）。这些词不写死在代码里，
 而是放在 `data/pinyin/extra.txt`，由 `tools/pinyin_merge` 合并：
 
@@ -64,7 +70,10 @@ python -I tools/pinyin_merge \
   以一个词的身份参与打分，避免被“高频单字 + 高频单字”拆散。
 
 这些是显式的数据覆盖，不是代码里的特例分支；换用带上下文 LM 的排序插件后
-可以撤销。合并是幂等的，当前产物 20,069 行 / 434 KB。然后同步到插件资产：
+可以撤销。合并是幂等的：在 181,616 条基础词表上新增 40 条、改写 78 条词频，
+当前产物 181,656 行 / 4,313,422 字节（约 4.1 MB）。词表超过 core 单次
+`asset.read` 的 4 MB 上限，翻译插件改为按 1 MB 分块读取（见插件 README）。
+然后同步到插件资产：
 
 ```sh
 cp data/pinyin/pinyin.dict \
@@ -72,4 +81,12 @@ cp data/pinyin/pinyin.dict \
 ```
 
 若需要更大词表，增大 `--singles` / `--words`，并同时提高插件的
-`kDictBytes` / `kMaxEntries`（`src/plugin.cpp`）与 manifest 的 `memory_mb`。
+`kDictBytes`（当前 6 MB）/ `kMaxEntries`（当前 196,608）与 manifest 的
+`memory_mb`（当前 32）。当前词表已用到 181,656 条 / 4.1 MB，离两个上限都还有
+余量。
+
+## 字对搭配表
+
+`collocations.tsv` 由 `tools/collocations/build.py` 从词表统计相邻汉字对，取
+前 40,000 对（约 520 KB），用于合成句的 bigram 打分。更换词表后一并重建并
+同步到插件 `assets/`。

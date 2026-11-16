@@ -31,7 +31,10 @@ using namespace pimeplug;
 namespace {
 
 constexpr uint32_t kScratchBytes = 16384;
-constexpr uint32_t kMaxCandidates = 32;
+/* "全部" may hand this plugin a few hundred candidates; the translate plugin
+ * produces up to 200, so keep the same technical ceiling here instead of
+ * cutting the tail back to 32. */
+constexpr uint32_t kMaxCandidates = 640;
 constexpr uint32_t kMaxRaw = 64;
 constexpr uint32_t kMaxKey = 128;
 constexpr uint64_t kUndoWindowMs = 5000;
@@ -44,7 +47,7 @@ uint32_t g_cohesion_boost = 1500;
 uint32_t g_learn_boost = 20000;
 uint32_t g_recent_boost = 4000;
 uint32_t g_profile_boost = 3000;
-uint32_t g_max_candidates = 16;
+uint32_t g_max_candidates = 640;
 uint32_t g_profile = 0; /* 0 general, 1 chat, 2 code, 3 formal */
 uint32_t g_page_size = 5;
 uint32_t g_user_boost = 8000;
@@ -105,8 +108,9 @@ uint32_t read_candidates(const Frame& frame, Candidate* out) {
     ArrayView array = ArrayView::of(frame.workspace_value(key.text));
     if (!array.valid) return 0;
     uint32_t count = 0;
+    auto cursor = array.cursor();
     for (uint64_t i = 0; i < array.count && count < kMaxCandidates; ++i) {
-        MapView item = MapView::of(array.at(i));
+        MapView item = cursor.map();
         if (!item.valid) continue;
         Candidate candidate{};
         if (!item.text("text", &candidate.text, &candidate.len)) continue;
@@ -761,7 +765,7 @@ PIME_EXPORT pime_status pime_init(const uint8_t* config, uint32_t len) {
     g_learn_boost = 20000;
     g_recent_boost = 4000;
     g_profile_boost = 3000;
-    g_max_candidates = 16;
+    g_max_candidates = 640;
     g_profile = 0;
     g_page_size = 5;
     g_user_boost = 8000;
@@ -782,9 +786,11 @@ PIME_EXPORT pime_status pime_init(const uint8_t* config, uint32_t len) {
         g_recent_boost = static_cast<uint32_t>(value);
     if (settings.uint("profile_boost", &value) && value <= 1000000)
         g_profile_boost = static_cast<uint32_t>(value);
-    if (settings.uint("max_candidates", &value) && value >= 1 && value <= 32)
+    if (settings.uint("max_candidates", &value) && value >= 1 &&
+        value <= kMaxCandidates)
         g_max_candidates = static_cast<uint32_t>(value);
-    if (settings.uint("page_size", &value) && value >= 1 && value <= 9)
+    if (settings.uint("page_size", &value) && value >= 1 &&
+        value <= kMaxCandidates)
         g_page_size = static_cast<uint32_t>(value);
     if (settings.uint("user_boost", &value) && value <= 1000000)
         g_user_boost = static_cast<uint32_t>(value);
@@ -832,7 +838,7 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
     span_text(frame.workspace_value("plugin/pime-keymap-default/action"), &action,
               &action_len);
 
-    Candidate candidates[kMaxCandidates];
+    static Candidate candidates[kMaxCandidates];
     uint32_t count = read_candidates(frame, candidates);
 
     if (!is_candidate && text_is(action, action_len, "backspace")) {
@@ -928,7 +934,7 @@ PIME_EXPORT void pime_shutdown(void) {
     g_learn_boost = 20000;
     g_recent_boost = 4000;
     g_profile_boost = 3000;
-    g_max_candidates = 16;
+    g_max_candidates = 640;
     g_profile = 0;
     g_page_size = 5;
     g_user_boost = 8000;

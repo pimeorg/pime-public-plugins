@@ -36,7 +36,8 @@ _HAN = re.compile(r"^[㐀-鿿豈-﫿]+$")
 
 def load_syllables(path: Path) -> set[str]:
     text = path.read_text(encoding="utf-8")
-    start = text.index("kSyllables[]")
+    marker = "syllable_list()" if "syllable_list()" in text else "kSyllables[]"
+    start = text.index(marker)
     begin = text.index('"', start)
     end = text.index(";", begin)
     body = "".join(re.findall(r'"([^"]*)"', text[begin:end]))
@@ -80,7 +81,7 @@ def main() -> int:
     parser.add_argument("--extra", required=True, type=Path)
     parser.add_argument("--out", required=True, type=Path)
     parser.add_argument("--syllable-source", type=Path,
-                        default=ROOT / "plugins/parse/pime-pinyin-parse/src/plugin.cpp")
+                        default=ROOT / "shared/cpp/include/pimeplug/pinyin.hpp")
     args = parser.parse_args()
 
     syllables = load_syllables(args.syllable_source)

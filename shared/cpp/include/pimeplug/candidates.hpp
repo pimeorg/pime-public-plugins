@@ -66,8 +66,9 @@ inline uint32_t read_candidates(const Frame& frame, const char* plugin_id,
         return 0;
     }
     uint32_t count = 0;
+    auto cursor = array.cursor();
     for (uint64_t i = 0; i < array.count && count < max; ++i) {
-        MapView item = MapView::of(array.at(i));
+        MapView item = cursor.map();
         if (!item.valid) continue;
         Candidate& c = out[count];
         const char* text = nullptr;

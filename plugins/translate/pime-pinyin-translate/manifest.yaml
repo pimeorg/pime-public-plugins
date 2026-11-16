@@ -1,6 +1,6 @@
 description: 全拼词典翻译：音节串查词典，产出候选与分数
 id: pime-pinyin-translate
-version: 1.2.2
+version: 1.4.0
 abi: { major: 1, minor: 0 }
 min_core: "1.0.0"
 state_schema: 1
@@ -19,12 +19,12 @@ limits:
   time_ms: 10
   state_kb: 32
   workspace_kb: 128
-  candidates_max: 32
+  candidates_max: 640
   scratch_bytes: 16384
   max_frame_bytes: 65536
 budget: { sync_us: 300, async_ms: 20 }
 settings:
-  - { key: max_candidates, type: int, default: 8, min: 1, max: 32 }
+  - { key: max_candidates, type: int, default: 640, min: 1, max: 640 }
   - { key: fuzzy, type: bool, default: true }
   - { key: collocation_weight, type: int, default: 500, min: 0, max: 2000 }
   - { key: english_passthrough, type: bool, default: true }

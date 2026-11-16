@@ -47,9 +47,15 @@ _HAN = re.compile(r"^[㐀-鿿豈-﫿]+$")
 
 
 def load_syllables(path: Path) -> set[str]:
-    """Read the syllable table out of the parse plugin source."""
+    """Read the syllable table out of the shared pinyin header.
+
+    The table used to live in the parse plugin as `kSyllables[]`; it moved to
+    `shared/cpp/include/pimeplug/pinyin.hpp` as `syllable_list()`. Accept both
+    so older checkouts and older tool invocations keep working.
+    """
     text = path.read_text(encoding="utf-8")
-    start = text.index("kSyllables[]")
+    marker = "syllable_list()" if "syllable_list()" in text else "kSyllables[]"
+    start = text.index(marker)
     begin = text.index('"', start)
     end = text.index(";", begin)
     body = "".join(re.findall(r'"([^"]*)"', text[begin:end]))
@@ -120,7 +126,7 @@ def main() -> int:
     parser.add_argument("--words", type=int, default=16000)
     parser.add_argument("--max-word-chars", type=int, default=6)
     parser.add_argument("--syllable-source", type=Path,
-                        default=ROOT / "plugins/parse/pime-pinyin-parse/src/plugin.cpp")
+                        default=ROOT / "shared/cpp/include/pimeplug/pinyin.hpp")
     args = parser.parse_args()
 
     syllables = load_syllables(args.syllable_source)

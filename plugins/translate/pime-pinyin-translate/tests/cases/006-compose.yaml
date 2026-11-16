@@ -3,9 +3,11 @@ event: { type: text, text: wsm }
 workspace:
   plugin/pime-pinyin-parse/raw: wsm
   plugin/pime-pinyin-parse/syllables: [w, s, m]
-# 词典有“为什么”整词；第二候选是走 lattice 合成的“我什么”，标记为次优整句。
+# 词典有“为什么”整词；扩展词表里也有“问什么/我什么”等三字词，
+# 因此第二候选不再固定是合成句。这里只锁定首位整词，并确认“我什么”可达；
+# 合成句的 source 断言由 014 承担。
 expect:
   handled: true
   workspace:
-    - { k: candidates, v: [{ text: 为什么, source: dict },
-                           { text: 我什么, source: sentence }] }
+    - { k: candidates, v: [{ text: 为什么, source: dict }] }
+  candidates_include: [我什么]

@@ -236,6 +236,33 @@ struct ArrayView {
         if (!value_span(p, end, &value)) return none;
         return value;
     }
+
+    /* Walks the array in one pass. `at()` rescans from the head for every
+     * index, which turns a loop over the whole array quadratic; candidate
+     * lists can hold hundreds of entries, so hot loops use this instead. */
+    struct Cursor {
+        const uint8_t* p = nullptr;
+        const uint8_t* end = nullptr;
+        uint64_t left = 0;
+
+        bool next(Span* out) {
+            if (left == 0) return false;
+            Span value;
+            if (!value_span(p, end, &value)) return false;
+            p = value.e;
+            --left;
+            if (out) *out = value;
+            return true;
+        }
+
+        MapView map() {
+            Span value;
+            if (!next(&value)) return MapView{};
+            return MapView::of(value);
+        }
+    };
+
+    Cursor cursor() const { return Cursor{body, end, valid ? count : 0}; }
 };
 
 /* Fixed-capacity writer. Overflow is sticky and reported by ok(). */
