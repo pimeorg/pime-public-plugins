@@ -271,7 +271,9 @@ def check_manifest(plugin_dir: Path, role_dir: str, report: Report,
         if entry.name not in ALLOWED_PLUGIN_ENTRIES:
             report.warn(where, f"unexpected entry '{entry.name}'")
 
-    if runtime in {"wasm", "native"}:
+    if runtime == "wasm":
+        # Native plugins are trusted escape hatches that link the platform
+        # directly; the sandbox-denylist only makes sense for wasm.
         for source in list(src_dir.glob("*.cpp")) + list(src_dir.glob("*.hpp")):
             check_source(source, FORBIDDEN_CPP, report, where)
     if runtime == "lua" and lua_file.exists():

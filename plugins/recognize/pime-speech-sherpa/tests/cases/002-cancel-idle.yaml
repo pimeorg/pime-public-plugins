@@ -1,0 +1,6 @@
+name: cancel-without-open-turn
+event: { type: voice, action: 2 }
+expect:
+  handled: true
+  commands:
+    - { type: set_composition, text: "", cursor: 0 }

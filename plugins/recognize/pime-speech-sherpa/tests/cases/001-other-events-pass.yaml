@@ -1,0 +1,5 @@
+name: other-events-pass-through
+event: { type: key, keycode: 65, modifiers: 0, action: 0 }
+expect:
+  handled: false
+  commands: []
