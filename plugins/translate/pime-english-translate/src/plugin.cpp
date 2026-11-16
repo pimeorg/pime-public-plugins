@@ -239,7 +239,8 @@ uint32_t edit_distance(const char* a, uint32_t a_len, const char* b,
     return prev[b_len];
 }
 
-void lookup(const char* key, uint32_t key_len, bool all_caps, bool cap) {
+void lookup(const char* key, uint32_t key_len, bool all_caps, bool cap,
+            bool suggestions) {
     Dict dict;
     dict.load(reinterpret_cast<const char*>(g_dict), g_dict_len);
 
@@ -261,7 +262,10 @@ void lookup(const char* key, uint32_t key_len, bool all_caps, bool cap) {
         push_candidate(formed, formed_len, score,
                        exact ? "dict" : "completion", nullptr, 0);
     });
-    if (matched || !g_corrections) return;
+    /* In a pinyin chain a spelling suggestion is worse than useless: `nih`
+     * is on its way to `nihao`, and edit-distance matches turn it into
+     * `big`/`air`. Mixed mode therefore only supplements real prefix hits. */
+    if (matched || !g_corrections || !suggestions) return;
 
     uint32_t found = 0;
     dict.each([&](const DictEntry& entry) {
@@ -473,11 +477,11 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
                 }
             }
             const bool capitalized = typed[0] >= 'A' && typed[0] <= 'Z';
-            lookup(key, key_len, all_caps, capitalized);
+            lookup(key, key_len, all_caps, capitalized, !chinese);
         }
         english_count = collect_sorted();
     }
-    const bool any = english_count > 0;
+    bool any = english_count > 0;
 
     Candidate upstream[kMaxUpstream] = {};
     Candidate merged[kMaxMerged] = {};
@@ -488,12 +492,15 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
             if (!same_text(g_candidates[i], typed, typed_len))
                 english_added = true;
         /* Only the raw duplicate: leave the Chinese view untouched so format
-         * keeps its usual list and rank's index mapping stays valid. */
+         * keeps its usual list and rank's index mapping stays valid. Nothing
+         * was supplemented, so the event is not handled either. */
         if (english_added) {
             const uint32_t chinese_count =
                 read_chinese(frame, upstream, kMaxUpstream);
             merged_count = merge_english(upstream, chinese_count, g_candidates,
                                          english_count, merged);
+        } else {
+            any = false;
         }
     }
     g_count = 0;

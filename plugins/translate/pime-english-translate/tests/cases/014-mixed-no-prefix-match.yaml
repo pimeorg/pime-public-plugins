@@ -1,0 +1,11 @@
+name: mixed-no-prefix-match-stays-chinese
+event: { type: text, text: zhongg }
+workspace:
+  plugin/pime-pinyin-parse/raw: zhongg
+  plugin/pime-pinyin-parse/complete: false
+  plugin/pime-pinyin-rank/candidates:
+    - { text: 中国, score: 500000, source: dict }
+# 末尾 `g` 只是下一个音节的声母；英文词表没有 zhongg 前缀时英文侧应保持沉默。
+expect:
+  handled: false
+  first_candidate: null

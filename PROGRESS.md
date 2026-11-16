@@ -697,3 +697,30 @@ Android 侧接入英文链后，宿主实测 `hel` 的候选里没有 `hello`：
 - 用例 281 条全过；新增/改造 010（`goo` → `goo good goods 够 工`，`Google`
   仍在列表）、011（纯拼音不混入）、012（`nh` 简拼不混入）、014（合并视图不学习）。
 - 全部链 lock 重新生成，`tests/conformance/run.py` ok。
+
+## 中文前缀误触发英文拼写建议（2026-11-16）
+
+用户反馈：中文状态下输入 `nih`，候选栏出现 `big / air / ah` 等无关英文，
+把「你好 / 你会 / 年后」挤到后面。
+
+### 根因
+
+- `pime-english-translate` 1.0.2 在中文链里只要 `complete=false` 就查英文词表，
+  并**回退到拼写建议**。`nih` 是 `ni` + 下一音节声母 `h`，英文词表没有 `nih`
+  前缀，于是 Damerau–Levenshtein 距离 ≤ 2 的建议（`big`、`air`、`ah`…）被当成
+  “英文补全”排到中文候选前面。`zhongg` 同理会冒出 `hong`。
+
+### 改动（`pime-english-translate 1.0.3`）
+
+- 中文链不再生成拼写建议：`lookup()` 增加 `suggestions` 参数，拼音上下文传
+  `false`，只有原码前缀真正命中（`goo`、`hel`、`dont`、`want`）才输出补全。
+- 英文侧只剩原码、没有实际新增时 `handled=false` 且输出空数组，中文视图保持原样。
+- 独立英文链（`english-parse` 上下文）仍保留拼写建议，`recieve → receive` 不变。
+- 新增用例 013（`nih` 不混入）、014（`zhongg` 不混入）；README/CHANGELOG 同步。
+
+### 验证
+
+- 用例 283 条全过；`check_plugins` 0 error、conformance ok。
+- MuMu 12（Android 15 / x86_64）：`nih` → 你好 / 你会 / 年后 / 你还 / 您好，
+  无英文；`goo` → goo/good/goods/够/工；`nihao` → 你好；英文链 `hel` →
+  hel/help/held/helped/hell。

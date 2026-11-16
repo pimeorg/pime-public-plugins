@@ -1,0 +1,12 @@
+name: mixed-incomplete-pinyin-prefix-stays-chinese
+event: { type: text, text: nih }
+workspace:
+  plugin/pime-pinyin-parse/raw: nih
+  plugin/pime-pinyin-parse/complete: false
+  plugin/pime-pinyin-rank/candidates:
+    - { text: 你好, score: 500000, source: dict }
+# `nih` 是 `nihao` 的途中输入，词表没有 nih 前缀；不能拿拼写建议
+# （big/air/ah）来冒充英文补全。
+expect:
+  handled: false
+  first_candidate: null
