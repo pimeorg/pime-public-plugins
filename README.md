@@ -105,3 +105,10 @@ WASM 插件已用 NDK 工具链产出真实 `.wasm`，并在 pime-core + WAMR �
 - 识别：手写字槽连写与纠正样本、语音端点检测/两遍识别/个人热词。
 
 进度见 [`PROGRESS.md`](PROGRESS.md)，任务见 [`TASK.md`](TASK.md)。
+
+## 许可证
+
+本仓库以 [Apache License 2.0](LICENSE) 授权，版权归 pime 贡献者所有。
+
+拼音词表数据基于 rime-wanxiang 生成，数据本身以 CC BY 4.0 授权，署名见
+[`data/pinyin/SOURCES.md`](data/pinyin/SOURCES.md)；插件包内随数据携带该声明。

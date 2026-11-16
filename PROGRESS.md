@@ -402,7 +402,7 @@ WeaveText 的 `refresh_wubi` / `Schema::Wubi86` 包含四项行为，本轮按�
   WeaveText 的 gram 模型。
 - 拼音词表为 20,069 条紧凑规模（基础词表 + `extra.txt` 补充）；五笔/仓颉仍是
   starter 规模。
-- 仓库许可证待定；拼音词表数据来源的 CC BY 4.0 署名见
+- 仓库以 Apache License 2.0 授权（见 `LICENSE`）；拼音词表数据来源的 CC BY 4.0 署名见
   `data/pinyin/SOURCES.md`。
 
 ## 用户学习、四档联想与模式记忆（2026-11-15）
