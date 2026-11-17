@@ -76,6 +76,10 @@ bool g_dict_loaded = false;
 bool g_fuzzy = true;
 bool g_english_passthrough = true;
 uint32_t g_max_candidates = 640;
+/* Host context override for this call only. The folded candidate strip only
+ * needs a screenful; asking the whole chain for 640 candidates on every key
+ * was most of the typing cost. Unset (0) keeps the configured limit. */
+uint32_t g_context_candidates = 0;
 uint32_t g_collocation_weight = 500;
 
 /* Character collocations: adjacent-character log weight, hashed by
@@ -97,6 +101,12 @@ struct Entry {
     uint32_t key_len;
     uint32_t text_len;
     uint32_t score;
+    /* First and last codepoint, decoded once at load. add_edge and the
+     * direct-match duplicate check run for every candidate dictionary entry
+     * on every keystroke; decoding UTF-8 there was a measurable slice of the
+     * wasm interpreter's time. */
+    uint32_t first_cp;
+    uint32_t last_cp;
     uint8_t syllables;
     uint8_t bucket;
 };
@@ -105,18 +115,48 @@ Entry g_entries[kMaxEntries];
 uint32_t g_entry_count = 0;
 uint32_t g_bucket_begin[28];
 
-/* Dictionary entries whose reading covers the whole raw input, best first.
- * The beam's `kBeam` paths are the same kind of result for the best few; this
- * list keeps going so the host's "全部" is more than sixteen candidates. */
+/* One-syllable entries per bucket, by descending score, built once at load.
+ * A single-letter input matches every one-syllable entry in its bucket (~2k
+ * for "s", ~3k for "y") at zero cost, so the fast path visits this index
+ * instead of walking the multi-syllable majority of the bucket. Descending
+ * score also keeps the collected pool in roughly sorted order. */
+constexpr uint32_t kMaxSingle = 32768;
+uint32_t g_single_idx[kMaxSingle];
+uint32_t g_single_begin[28];
+bool g_single_ready = false;
+
+/* Dictionary entries whose reading covers the whole raw input. The beam's
+ * `kBeam` paths are the same kind of result for the best few; this list keeps
+ * going so the host's "全部" is more than sixteen candidates.
+ *
+ * Matches arrive out of order (the dictionary is grouped by syllable reading,
+ * not by frequency), so they are collected into a pool and sorted once at the
+ * end of compose. Inserting each one into a sorted 640-slot list shifted
+ * hundreds of entries per keystroke for two-letter inputs. `seq` records
+ * insertion order so equal scores keep exactly the order the sorted insert
+ * gave them. */
 struct DirectMatch {
     const Entry* entry;
     int32_t score;
+    uint32_t seq;
 };
-DirectMatch g_direct[kMaxDirect];
-uint32_t g_direct_count = 0;
+constexpr uint32_t kDirectPool = 16384;
+DirectMatch g_direct[kDirectPool];      /* pool during compose, best first after */
+DirectMatch g_direct_merge[kDirectPool]; /* merge-sort scratch */
+uint32_t g_direct_count = 0;      /* usable prefix once compose finishes */
+uint32_t g_direct_pool = 0;
+uint32_t g_direct_seq = 0;
 
 char g_input[kMaxInputBytes];
 uint32_t g_input_len = 0;
+
+/* cover[i] is true when g_input[i..] can be split into one or more syllable
+ * prefixes. A complete lattice path must end at g_input_len, so every branch
+ * that would leave a suffix no syllable can start is dead on arrival. This is
+ * a necessary condition: it never removes a reachable candidate, but for
+ * inputs like "ni" it turns the whole first-letter bucket into a handful of
+ * entries instead of walking every 1-letter abbreviation path. */
+bool g_cover[kMaxInputBytes + 1];
 
 /* Mixed input: a trailing run of uppercase letters is kept verbatim and
  * appended to every pinyin candidate ("nihaoABC" -> 你好ABC). */
@@ -351,10 +391,52 @@ bool load_dict() {
         slot.text = e.text;
         slot.text_len = e.text_len;
         slot.score = log2_score(e.freq);
+        slot.first_cp = first_codepoint(e.text, e.text_len);
+        slot.last_cp = last_codepoint(e.text, e.text_len);
         slot.syllables = syllables;
         slot.bucket = bucket;
     });
     g_entry_count = total;
+
+    /* Collect the one-syllable entries and order each bucket by score. The
+     * dictionary is frequency-ordered, so this is a near-linear insertion
+     * sort; it is stable, which keeps tie order identical to the scan over
+     * dictionary order that it replaces. */
+    g_single_ready = false;
+    uint32_t single_total = 0;
+    uint32_t single_counts[27] = {};
+    for (uint32_t i = 0; i < g_entry_count; ++i)
+        if (g_entries[i].syllables == 1) ++single_counts[g_entries[i].bucket];
+    for (uint32_t c = 0; c < 27; ++c) single_total += single_counts[c];
+    if (single_total > kMaxSingle) return g_entry_count > 0;
+    uint32_t single_at = 0;
+    for (uint32_t c = 0; c < 27; ++c) {
+        g_single_begin[c] = single_at;
+        single_at += single_counts[c];
+    }
+    g_single_begin[27] = single_at;
+    uint32_t single_cursor[27];
+    for (uint32_t c = 0; c < 27; ++c) single_cursor[c] = g_single_begin[c];
+    for (uint32_t i = 0; i < g_entry_count; ++i) {
+        const Entry& entry = g_entries[i];
+        if (entry.syllables == 1)
+            g_single_idx[single_cursor[entry.bucket]++] = i;
+    }
+    for (uint32_t c = 0; c < 27; ++c) {
+        const uint32_t begin = g_single_begin[c];
+        const uint32_t end = g_single_begin[c + 1];
+        for (uint32_t i = begin + 1; i < end; ++i) {
+            const uint32_t index = g_single_idx[i];
+            const uint32_t score = g_entries[index].score;
+            uint32_t slot = i;
+            while (slot > begin && g_entries[g_single_idx[slot - 1]].score < score) {
+                g_single_idx[slot] = g_single_idx[slot - 1];
+                --slot;
+            }
+            g_single_idx[slot] = index;
+        }
+    }
+    g_single_ready = true;
     return g_entry_count > 0;
 }
 
@@ -414,6 +496,53 @@ uint32_t canonical(const char* text, uint32_t len, char* out) {
     return o;
 }
 
+/* Canonical initial of a syllable, matching what canonical() writes first:
+ * zh/ch/sh collapse to z/c/s, l becomes n. */
+char syllable_initial(const char* syllable, uint32_t len) {
+    if (len >= 2 && syllable[1] == 'h') {
+        if (syllable[0] == 'z') return 'z';
+        if (syllable[0] == 'c') return 'c';
+        if (syllable[0] == 's') return 's';
+    }
+    return syllable[0] == 'l' ? 'n' : syllable[0];
+}
+
+/* Length of canonical(text, len) without materializing it. */
+uint32_t canonical_len(const char* text, uint32_t len) {
+    uint32_t i = 0;
+    uint32_t out = 0;
+    if (len >= 2 && text[0] == 'z' && text[1] == 'h') {
+        out = 1; i = 2;
+    } else if (len >= 2 && text[0] == 'c' && text[1] == 'h') {
+        out = 1; i = 2;
+    } else if (len >= 2 && text[0] == 's' && text[1] == 'h') {
+        out = 1; i = 2;
+    } else {
+        out = 1; i = 1;
+    }
+    while (i < len) {
+        if (i + 4 <= len && text[i] == 'i' && text[i + 1] == 'a' &&
+            text[i + 2] == 'n' && text[i + 3] == 'g') {
+            out += 3; i += 4;
+        } else if (i + 4 <= len && text[i] == 'u' && text[i + 1] == 'a' &&
+                   text[i + 2] == 'n' && text[i + 3] == 'g') {
+            out += 3; i += 4;
+        } else if (i + 3 <= len && text[i] == 'a' && text[i + 1] == 'n' &&
+                   text[i + 2] == 'g') {
+            out += 2; i += 3;
+        } else if (i + 3 <= len && text[i] == 'e' && text[i + 1] == 'n' &&
+                   text[i + 2] == 'g') {
+            out += 2; i += 3;
+        } else if (i + 3 <= len && text[i] == 'i' && text[i + 1] == 'n' &&
+                   text[i + 2] == 'g') {
+            out += 2; i += 3;
+        } else {
+            out += 1; i += 1;
+        }
+    }
+    return out;
+}
+
 bool match_chunk(const char* chunk, uint32_t chunk_len,
                  const char* syllable, uint32_t syllable_len,
                  int32_t* cost) {
@@ -423,6 +552,18 @@ bool match_chunk(const char* chunk, uint32_t chunk_len,
         return true;
     }
     if (!g_fuzzy) return false;
+    /* One-letter chunks are by far the most common (initials and every
+     * letter of a full reading). Fuzzy equivalence for a single letter is
+     * exactly canonical initial equality, so this avoids building two
+     * canonical strings for every mismatching entry in the bucket. */
+    if (chunk_len == 1) {
+        char want = chunk[0] == 'l' ? 'n' : chunk[0];
+        if (want != syllable_initial(syllable, syllable_len)) return false;
+        *cost = kFuzzyCost +
+                static_cast<int32_t>(canonical_len(syllable, syllable_len) - 1) *
+                    kAbbrevCost;
+        return true;
+    }
     char left[16];
     char right[16];
     const uint32_t left_len = canonical(chunk, chunk_len, left);
@@ -439,6 +580,11 @@ void insert_edge(uint32_t position, uint32_t syllables, const Entry& entry,
                  uint32_t last_cp) {
     Edge* edges = g_edges[position][syllables];
     uint32_t& count = g_edge_count[position][syllables];
+    /* Sorted best-first and full: a score at or below the tail cannot enter,
+     * and any duplicate already in the list has at least that score, so the
+     * linear duplicate scan would reject it too. Buckets with thousands of
+     * entries spend most of their time here. */
+    if (count == kEdgesPerSpan && score <= edges[count - 1].score) return;
     for (uint32_t i = 0; i < count; ++i) {
         if (edges[i].next == next && edges[i].text == entry.text &&
             edges[i].text_len == entry.text_len) {
@@ -467,39 +613,98 @@ void insert_edge(uint32_t position, uint32_t syllables, const Entry& entry,
     if (count < kEdgesPerSpan) ++count;
 }
 
-/* Keeps a full-input match in score order. Different readings of the same
- * word collapse to one entry; when the list is full the lowest score falls
- * off, so the tail stays deterministic instead of depending on dictionary
- * order. */
+/* Text -> pool slot, so the duplicate check does not walk the whole list.
+ * The single-letter input "s" matches every one of the ~2000 one-syllable
+ * entries in its bucket, and a linear scan cost O(entries * list) inside the
+ * wasm interpreter. Slots name pool entries by index, so collection never
+ * moves anything. */
+constexpr uint32_t kDirectHash = 32768;
+uint16_t g_direct_hash[kDirectHash];
+
+uint32_t text_hash(const char* text, uint32_t len) {
+    uint32_t hash = 2166136261u;
+    for (uint32_t i = 0; i < len; ++i) {
+        hash ^= static_cast<uint8_t>(text[i]);
+        hash *= 16777619u;
+    }
+    return hash;
+}
+
+void reset_direct_hash() {
+    for (uint32_t i = 0; i < kDirectHash; ++i) g_direct_hash[i] = 0;
+}
+
+/* Collects a full-input match. Different readings of the same word collapse
+ * to one entry with the better score; ordering happens in finish_direct. */
 void record_direct(const Entry& entry, int32_t score) {
-    for (uint32_t i = 0; i < g_direct_count; ++i) {
-        const Entry& other = *g_direct[i].entry;
-        if (other.text_len == entry.text_len &&
-            Frame::equal(other.text, other.text_len, entry.text,
+    const uint32_t hash = text_hash(entry.text, entry.text_len);
+    uint32_t hole = hash & (kDirectHash - 1);
+    for (uint32_t probe = 0; probe < kDirectHash; ++probe) {
+        const uint32_t ref = g_direct_hash[hole];
+        if (!ref) break;
+        DirectMatch& match = g_direct[ref - 1];
+        if (match.entry->text_len == entry.text_len &&
+            match.entry->first_cp == entry.first_cp &&
+            Frame::equal(match.entry->text, match.entry->text_len, entry.text,
                          entry.text_len)) {
-            if (score <= g_direct[i].score) return;
-            uint32_t slot = i;
-            while (slot > 0 && g_direct[slot - 1].score < score) {
-                g_direct[slot] = g_direct[slot - 1];
-                --slot;
-            }
-            g_direct[slot].entry = &entry;
-            g_direct[slot].score = score;
+            if (score <= match.score) return;
+            match.entry = &entry;
+            match.score = score;
+            /* Later seq puts the improved reading after its equals, like the
+             * sorted insert did. */
+            match.seq = ++g_direct_seq;
             return;
         }
+        hole = (hole + 1) & (kDirectHash - 1);
     }
-    if (g_direct_count == kMaxDirect &&
-        score <= g_direct[g_direct_count - 1].score)
+    if (g_direct_pool == kDirectPool) return;
+    DirectMatch& match = g_direct[g_direct_pool];
+    match.entry = &entry;
+    match.score = score;
+    match.seq = ++g_direct_seq;
+    g_direct_hash[hole] = static_cast<uint16_t>(g_direct_pool + 1);
+    ++g_direct_pool;
+}
+
+/* Score descending, insertion order for equal scores. */
+bool direct_before(const DirectMatch& a, const DirectMatch& b) {
+    if (a.score != b.score) return a.score > b.score;
+    return a.seq < b.seq;
+}
+
+/* Bottom-up merge sort: O(n log n) regardless of input order, which matters
+ * because the pool is grouped by reading and nowhere near sorted. */
+void finish_direct() {
+    const uint32_t n = g_direct_pool;
+    if (n == 0) {
+        g_direct_count = 0;
         return;
-    uint32_t slot = g_direct_count == kMaxDirect ? kMaxDirect - 1
-                                                  : g_direct_count;
-    while (slot > 0 && g_direct[slot - 1].score < score) {
-        g_direct[slot] = g_direct[slot - 1];
-        --slot;
     }
-    g_direct[slot].entry = &entry;
-    g_direct[slot].score = score;
-    if (g_direct_count < kMaxDirect) ++g_direct_count;
+    DirectMatch* src = g_direct;
+    DirectMatch* dst = g_direct_merge;
+    for (uint32_t width = 1; width < n; width <<= 1) {
+        for (uint32_t lo = 0; lo < n; lo += width << 1) {
+            uint32_t mid = lo + width;
+            if (mid > n) mid = n;
+            uint32_t hi = lo + (width << 1);
+            if (hi > n) hi = n;
+            uint32_t a = lo;
+            uint32_t b = mid;
+            uint32_t out = lo;
+            while (a < mid && b < hi)
+                dst[out++] =
+                    direct_before(src[b], src[a]) ? src[b++] : src[a++];
+            while (a < mid) dst[out++] = src[a++];
+            while (b < hi) dst[out++] = src[b++];
+        }
+        DirectMatch* swap = src;
+        src = dst;
+        dst = swap;
+    }
+    if (src != g_direct) {
+        for (uint32_t i = 0; i < n; ++i) g_direct[i] = src[i];
+    }
+    g_direct_count = n < kMaxDirect ? n : kMaxDirect;
 }
 
 void add_edge(uint32_t position, const Entry& entry, uint32_t next,
@@ -513,8 +718,7 @@ void add_edge(uint32_t position, const Entry& entry, uint32_t next,
     if (position == 0 && next == g_input_len)
         record_direct(entry, score);
     insert_edge(position, entry.syllables, entry, next, score,
-                first_codepoint(entry.text, entry.text_len),
-                last_codepoint(entry.text, entry.text_len));
+                entry.first_cp, entry.last_cp);
 }
 
 /* Try every way this entry can cover the raw letters from `start`: each
@@ -540,18 +744,79 @@ void align(const Entry& entry, uint32_t start, uint32_t syllable,
         if (!match_chunk(g_input + pos, k, entry.key + key_pos, syllable_len,
                          &chunk_cost))
             continue;
+        /* The rest must still be coverable, or this edge can never reach the
+         * end of the input. */
+        if (!g_cover[pos + k]) continue;
         align(entry, start, syllable + 1, next_key, pos + k,
               cost + chunk_cost);
+    }
+}
+
+/* True when text[0..len) is a prefix of some syllable, honoring the same
+ * fuzzy equivalences match_chunk accepts. */
+bool fuzzy_syllable_prefix(const char* text, uint32_t len) {
+    if (is_syllable_prefix(text, len)) return true;
+    if (!g_fuzzy) return false;
+    char want[16];
+    const uint32_t want_len = canonical(text, len, want);
+    if (want_len == 0) return false;
+    const char* list = syllable_list();
+    uint32_t i = 0;
+    while (list[i]) {
+        while (list[i] == ' ') ++i;
+        const uint32_t start = i;
+        while (list[i] && list[i] != ' ') ++i;
+        const uint32_t syllable_len = i - start;
+        if (len > syllable_len) continue;
+        char right[16];
+        const uint32_t right_len = canonical(list + start, syllable_len, right);
+        if (want_len <= right_len &&
+            Frame::equal(want, want_len, right, want_len))
+            return true;
+    }
+    return false;
+}
+
+/* Suffix reachability for the current input. Cheap (input <= 64 letters) and
+ * computed once per compose; see the g_cover comment above. */
+void compute_cover() {
+    g_cover[g_input_len] = true;
+    for (int32_t i = static_cast<int32_t>(g_input_len) - 1; i >= 0; --i) {
+        bool ok = false;
+        uint32_t limit = g_input_len - static_cast<uint32_t>(i);
+        if (limit > 6) limit = 6;
+        for (uint32_t n = 1; n <= limit; ++n) {
+            if (!fuzzy_syllable_prefix(g_input + i, n)) continue;
+            const uint32_t next = static_cast<uint32_t>(i) + n;
+            if (next == g_input_len || g_cover[next]) {
+                ok = true;
+                break;
+            }
+        }
+        g_cover[i] = ok;
     }
 }
 
 void build_edges(uint32_t position) {
     for (uint32_t m = 0; m <= kMaxSyllables; ++m)
         g_edge_count[position][m] = 0;
+    if (!g_cover[position]) return;
     const uint8_t bucket = bucket_of(g_input[position]);
     const uint32_t begin = g_bucket_begin[bucket];
     const uint32_t end = g_bucket_begin[bucket + 1];
     const uint32_t remaining = g_input_len - position;
+
+    /* One-letter input matches every one-syllable entry of the bucket; the
+     * sorted index skips the multi-syllable majority of the bucket. Ordering
+     * no longer matters for early exit (the pool is unsorted), but visiting
+     * the frequent entries first keeps the later sort cheap to reason about
+     * and the pool bounded by what the bucket actually holds. */
+    if (g_single_ready && g_input_len == 1) {
+        const uint32_t single_end = g_single_begin[bucket + 1];
+        for (uint32_t i = g_single_begin[bucket]; i < single_end; ++i)
+            align(g_entries[g_single_idx[i]], position, 0, 0, position, 0);
+        return;
+    }
 
     for (uint32_t index = begin; index < end; ++index) {
         const Entry& entry = g_entries[index];
@@ -593,7 +858,11 @@ void insert_path(uint32_t position, const Path& path, int32_t score) {
 }
 
 void compose() {
+    compute_cover();
     g_direct_count = 0;
+    g_direct_pool = 0;
+    g_direct_seq = 0;
+    reset_direct_hash();
     for (uint32_t i = 0; i <= kMaxInputBytes; ++i) g_beam_count[i] = 0;
     g_beam[0][0].len = 0;
     g_beam[0][0].score = 0;
@@ -629,6 +898,7 @@ void compose() {
             }
         }
     }
+    finish_direct();
 }
 
 void append_letter(char c) {
@@ -775,8 +1045,9 @@ void build_candidates(Built* out, bool allow_raw) {
     const bool pure = all_syllables(g_input, g_input_len);
     const bool offer_raw = allow_raw && g_english_passthrough &&
                            (!pure || g_beam_count[g_input_len] == 0);
-    uint32_t limit =
-        g_max_candidates < kMaxCandidates ? g_max_candidates : kMaxCandidates;
+    const uint32_t wanted =
+        g_context_candidates ? g_context_candidates : g_max_candidates;
+    uint32_t limit = wanted < kMaxCandidates ? wanted : kMaxCandidates;
     if (offer_raw && limit > 1) --limit;
     for (uint32_t i = 0; i < g_beam_count[g_input_len] && out->count < limit;
          ++i) {
@@ -822,7 +1093,7 @@ void build_candidates(Built* out, bool allow_raw) {
                 out->list[i].text[out->list[i].len + k] = g_tail[k];
             out->list[i].len += g_tail_len;
         }
-        if (out->count >= g_max_candidates && out->count > 0) --out->count;
+        if (out->count >= limit && out->count > 0) --out->count;
         {
             Candidate& mixed = out->list[out->count++];
             for (uint32_t k = 0; k < g_mixed_raw_len; ++k)
@@ -833,7 +1104,7 @@ void build_candidates(Built* out, bool allow_raw) {
             mixed.words = 1;
         }
     }
-    if (offer_raw && g_tail_len == 0 && out->count < g_max_candidates) {
+    if (offer_raw && g_tail_len == 0 && out->count < limit) {
         Candidate& raw = out->list[out->count++];
         for (uint32_t k = 0; k < g_input_len; ++k) raw.text[k] = g_input[k];
         raw.len = g_input_len;
@@ -893,6 +1164,16 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
     if (!out_len) return PIME_INVALID;
     Frame frame;
     if (!frame.parse(in, in_len)) return PIME_CORRUPT;
+
+
+    g_context_candidates = 0;
+    uint64_t context_candidates = 0;
+    if (frame.context.uint("max_candidates", &context_candidates) &&
+        context_candidates >= 1)
+        g_context_candidates =
+            context_candidates > kMaxCandidates
+                ? kMaxCandidates
+                : static_cast<uint32_t>(context_candidates);
 
     if (!load_dict()) return PIME_NOT_FOUND;
     if (!load_collocations()) return PIME_NOT_FOUND;
