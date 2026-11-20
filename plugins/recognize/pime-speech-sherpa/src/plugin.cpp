@@ -469,10 +469,16 @@ bool capture_read(State& state, std::vector<uint8_t>* pcm) {
                        "capture read: " + std::to_string(status));
         return false;
     }
-    MapView map = MapView::of(Span{response, response + response_len});
+    /* Host replies are { status, result } envelopes (see pimeplug/host.hpp);
+     * the PCM block itself is inside "result". */
+    MapView envelope = MapView::of(Span{response, response + response_len});
+    uint64_t reply = 1;
+    if (!envelope.valid || !envelope.uint("status", &reply) || reply != 0)
+        return false;
+    MapView result = MapView::of(envelope.get("result"));
     const uint8_t* data = nullptr;
     uint32_t len = 0;
-    if (!span_bytes(map.get("data"), &data, &len) || len < 2) return false;
+    if (!span_bytes(result.get("data"), &data, &len) || len < 2) return false;
     pcm->assign(data, data + len);
     return true;
 }
@@ -515,8 +521,10 @@ void run_worker() {
                     static_cast<uint16_t>(pcm[i * 2]) |
                     (static_cast<uint16_t>(pcm[i * 2 + 1]) << 8));
             samples[i] = static_cast<float>(value) / 32768.0f;
-            energy += static_cast<uint64_t>(value) * static_cast<uint64_t>(
-                    value < 0 ? -value : value);
+            const uint64_t magnitude = value < 0
+                    ? static_cast<uint64_t>(-static_cast<int32_t>(value))
+                    : static_cast<uint64_t>(value);
+            energy += magnitude * magnitude;
         }
         if (count == 0) continue;
         samples_seen += count;
