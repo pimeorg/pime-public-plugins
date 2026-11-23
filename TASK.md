@@ -83,3 +83,5 @@ pime-core 1.0.0（ABI 1.0）。本机无 Android NDK，wasm 产物需在具备 N
 - 文本数据以仓库内可复现的小型资产为源；大词表、OpenCC、Unihan 形状表由
   `tools/` 生成或按 lock 拉取，不提交生成物
 - 语音/手写模型权重不提交，按 `models.lock` 拉取
+- [x] 云端 ASR 三插件（火山 / 腾讯 / 阿里百炼）作为 recognize Lua 插件入库
+- [x] `check_plugins` 支持 `compress.gzip`、`secret` 与 `pime.audio.*` 不误判

@@ -1,0 +1,6 @@
+# 非语音事件不由识别插件接管，按键继续走原链。
+name: key-event-not-handled
+event: { type: key, text: a }
+expect:
+  handled: false
+  commands: []

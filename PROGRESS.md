@@ -724,3 +724,40 @@ Android 侧接入英文链后，宿主实测 `hel` 的候选里没有 `hello`：
 - MuMu 12（Android 15 / x86_64）：`nih` → 你好 / 你会 / 年后 / 你还 / 您好，
   无英文；`goo` → goo/good/goods/够/工；`nihao` → 你好；英文链 `hel` →
   hel/help/held/helped/hell。
+
+## 云端语音识别插件（2026-11-23）
+
+按用户要求把三家官方 ASR 做成 `recognize` 的 Lua 插件，插件包的**权威来源放在
+本仓库**，pime-android 的 `assets/plugins/` 只放构建产物（与 18 个 WASM 包一致）：
+
+```text
+plugins/recognize/pime-asr-{volc,tencent,funasr}/
+├── manifest.yaml    runtime: lua, entry: plugin.lua, role: recognize
+├── plugin.lua       单文件，不 require；网络/音频/线程全走 pime.*
+├── CMakeLists.txt   pime_add_lua_plugin(...)（只做打包，不编译）
+├── README.md        事件表、协议、设置、能力
+├── CHANGELOG.md
+└── tests/cases/     事件契约（Lua 插件不在 native 模拟器里跑，见下）
+```
+
+| 插件 | 协议 | 关键能力 |
+|---|---|---|
+| `pime-asr-volc` | 火山 bigmodel_async：4 字节头 + 序号 + gzip(JSON/PCM) | `audio.capture net.wss thread compress.gzip random time log` |
+| `pime-asr-tencent` | 腾讯 V2：URL 内 HMAC-SHA1 签名、`{"code":0}` 握手、`{"type":"end"}` | `audio.capture net.wss thread crypto.* random time log` |
+| `pime-asr-funasr` | 阿里百炼 FunASR：`run-task → task-started → PCM → finish-task → result-generated` | `audio.capture net.wss thread time log` |
+
+- **声音事件**：`voice` 的 `action` 0 开始 / 1 结束 / 2 取消；开始时开采集、起
+  自有线程，结束发末包并等最终结果，取消断连且丢弃本轮文本。结果经
+  `pime.emit` 异步上屏，`sentence_end` / 末包决定提交时机。
+- **密钥缺失**：三家都先校验设置，缺密钥只记错误日志并返回，不发起连接。
+- **用例**：`tests/cases/` 描述事件契约（`voice` 开始返回 `handled: true`、
+  `commands: []`；非语音事件 `handled: false`），与 `pime-cloud-hotwords` 等
+  既有 Lua 插件一致——native 模拟器按 `runtime: wasm` 编译插件源码，不跑 Lua，
+  网络/音频路径由宿主（Android）联调覆盖。
+- **`check_plugins` 三处补强**：能力表加入 `compress.gzip`；设置类型加入
+  `secret`（密钥类设置此前会被判未知类型）；禁止词 `io.` 改为带前边界的
+  正则——原来 `"io." in text` 会把 `pime.audio.*` 里的 `audio.` 尾串误判成
+  禁用的 `io.`，实测三家插件全部命中，改后不再误报。
+- **构建**：`cmake --build build/native --target plugins_packages` 产出
+  `build/native/package/pime-plugin-pime-asr-*-1.0.0/`，与 Android 侧 assets
+  里的副本逐字节一致；`check_plugins` 0 error。

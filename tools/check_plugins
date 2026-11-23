@@ -36,6 +36,7 @@ CAPABILITIES = {
     "caps.query", "log", "metric", "net.http", "net.sse", "net.ws",
     "net.wss", "net.insecure", "random", "audio.pcm", "audio.opus",
     "audio.capture", "audio.playback", "ml.infer", "permission",
+    "compress.gzip",
 }
 
 PLUGIN_ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
@@ -119,7 +120,11 @@ def read_core_version(core_dir: Path) -> str:
 def check_source(path: Path, patterns: list[str], report: Report, where: str) -> None:
     text = path.read_text(encoding="utf-8", errors="replace")
     for pattern in patterns:
-        if pattern in text:
+        # "io." as a bare substring would match the tail of "audio."; require a
+        # standalone token so pime.audio.* stays legal.
+        regex = (r"(?<![A-Za-z0-9_])" + re.escape(pattern)
+                 if pattern == "io." else re.escape(pattern))
+        if re.search(regex, text):
             report.error(where, f"forbidden token '{pattern}' in {path.name}")
 
 
@@ -255,7 +260,7 @@ def check_manifest(plugin_dir: Path, role_dir: str, report: Report,
             report.error(where, "settings entries need a key")
             continue
         setting_keys.add(setting["key"])
-        if setting.get("type") not in {"bool", "int", "string", "enum"}:
+        if setting.get("type") not in {"bool", "int", "string", "enum", "secret"}:
             report.error(where, f"setting '{setting['key']}' has unknown type")
         if setting.get("type") == "enum" and not setting.get("values"):
             report.error(where, f"enum setting '{setting['key']}' needs values")

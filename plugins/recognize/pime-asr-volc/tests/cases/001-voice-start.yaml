@@ -1,0 +1,6 @@
+# Lua 插件不在 native 模拟器里执行；此用例描述事件契约，由宿主联调覆盖。
+name: voice-start-without-key
+event: { type: voice, action: 0 }
+expect:
+  handled: true
+  commands: []
