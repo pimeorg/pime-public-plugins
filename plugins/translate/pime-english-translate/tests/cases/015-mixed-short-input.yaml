@@ -1,0 +1,11 @@
+name: mixed-short-input-stays-chinese
+event: { type: text, text: go }
+workspace:
+  plugin/pime-pinyin-parse/raw: go
+  plugin/pime-pinyin-parse/complete: false
+  plugin/pime-pinyin-rank/candidates:
+    - { text: 个, score: 500000, source: dict }
+# 两字母既可能是简拼也可能是短英文词，不够阈值就不混入英文。
+expect:
+  handled: false
+  first_candidate: null

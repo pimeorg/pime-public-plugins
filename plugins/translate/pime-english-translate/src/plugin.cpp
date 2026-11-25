@@ -36,6 +36,11 @@ constexpr uint32_t kMaxMerged = 32;
  * and its two best completions answer "this is English"; more would push every
  * Chinese candidate off the first chain page. */
 constexpr uint32_t kMixedEnglishHead = 3;
+/* Shortest raw text that may bring English into a Chinese view. Two letters
+ * are still ambiguous between a pinyin abbreviation and a short English word
+ * (`go`, `ok`, `hi`), so they stay Chinese-only; from three letters on
+ * (`goo`, `hel`, `dont`) the input reads as a word worth completing. */
+constexpr uint32_t kMixedMinLength = 3;
 
 const char kParseId[] = "pime-english-parse";
 const char kPinyinParseId[] = "pime-pinyin-parse";
@@ -355,11 +360,13 @@ bool has_vowel(const char* text, uint32_t len) {
     return false;
 }
 
-/* A Chinese chain only offers English candidates for input that cannot be read
- * as complete pinyin and looks like a word (letters plus a vowel). Pure
- * abbreviations such as `nh`/`zsh` stay Chinese-only. */
+/* A Chinese chain only offers English candidates for input that is at least
+ * kMixedMinLength letters, cannot be read as complete pinyin and looks like a
+ * word (letters plus a vowel). Pure abbreviations such as `nh`/`zsh` stay
+ * Chinese-only. */
 bool mixed_eligible(const Frame& frame, const char* typed, uint32_t len) {
-    if (len < 2 || !ascii_word(typed, len) || !has_vowel(typed, len))
+    if (len < kMixedMinLength || !ascii_word(typed, len) ||
+        !has_vowel(typed, len))
         return false;
     return !pinyin_complete(frame);
 }
