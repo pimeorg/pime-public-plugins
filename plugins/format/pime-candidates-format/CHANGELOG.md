@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.1
+
+- 翻页键别名：keymap 把 `-`/`=` 与数字键盘 `-`/`+` 映射为 `pageup`/`pagedown`。
+- v 模式表达式里 `-`/`+`/`=` 仍是运算符：组合以 `v` 开头时这些键不翻页。
+
 ## 1.3.3
 
 - 候选来源顺序把 `pime-english-translate` 提到 `pime-hans-hant` 之前：

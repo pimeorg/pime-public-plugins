@@ -1,0 +1,7 @@
+name: minus-pages-up
+event: { type: key, keycode: 189, modifiers: 0, action: 0 }
+context: { locale: zh-CN, page_size: 5 }
+expect:
+  handled: false
+  workspace:
+    - { k: action, v: pageup }

@@ -17,8 +17,10 @@
 
 按键码：`Backspace=8 / Tab=9 / Enter=13 / Shift=16 / CapsLock=20 / Escape=27 /
 Space=32 / PageUp=33 / PageDown=34 / End=35 / Home=36 / Left=37 / Up=38 /
-Right=39 / Down=40 / Delete=46 / 0-9=48-57 / Backtick=192`
-（Windows virtual-key 与常用 IME 约定一致）。
+Right=39 / Down=40 / Delete=46 / 0-9=48-57 / Add=107 / Subtract=109 /
+OemPlus=187 / OemMinus=189 / Backtick=192`
+（Windows virtual-key 与常用 IME 约定一致）。`-`/`=`（含数字键盘）与
+PageUp/PageDown 一样翻页；v 模式表达式里它们是运算符，由 format 放行。
 
 修饰位：`1=Shift, 2=Ctrl, 4=Alt, 8=Meta`。
 

@@ -40,6 +40,10 @@ constexpr uint64_t kKeyDown = 40;
 constexpr uint64_t kKeyDelete = 46;
 constexpr uint64_t kKeyDigitFirst = 48;
 constexpr uint64_t kKeyDigitLast = 57;
+constexpr uint64_t kKeyAdd = 107;       /* numpad + */
+constexpr uint64_t kKeySubtract = 109;  /* numpad - */
+constexpr uint64_t kKeyOemPlus = 187;   /* = / + */
+constexpr uint64_t kKeyOemMinus = 189;  /* - / _ */
 constexpr uint64_t kKeyBacktick = 192;
 
 bool g_space_selects = true;
@@ -72,6 +76,12 @@ const char* candidate_action_for(uint64_t keycode) {
         case kKeyDown: return "down";
         case kKeyPageUp: return "pageup";
         case kKeyPageDown: return "pagedown";
+        /* Minus/plus page like PageUp/PageDown in the common desktop IMEs;
+         * the parse plugins keep them as text where they matter (v-mode). */
+        case kKeyOemMinus:
+        case kKeySubtract: return "pageup";
+        case kKeyOemPlus:
+        case kKeyAdd: return "pagedown";
         case kKeyHome: return "home";
         case kKeyEnd: return "end";
         default: return nullptr;

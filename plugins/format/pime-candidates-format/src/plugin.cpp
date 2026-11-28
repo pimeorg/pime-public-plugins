@@ -26,6 +26,13 @@ constexpr uint32_t kScratchBytes = 16384;
  * passes in context is clamped here. */
 constexpr uint32_t kMaxShown = 640;
 
+/* Paging keys that also carry text: in a v-mode expression they are
+ * operators, not paging. */
+constexpr uint64_t kKeyAdd = 107;
+constexpr uint64_t kKeySubtract = 109;
+constexpr uint64_t kKeyOemPlus = 187;
+constexpr uint64_t kKeyOemMinus = 189;
+
 alignas(8) uint8_t g_scratch[kScratchBytes];
 
 uint32_t g_page_size = 5;
@@ -275,8 +282,19 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
         return respond(out, cap, out_len, reply);
     }
 
+    const char* raw = nullptr;
+    uint32_t raw_len = 0;
+    const bool has_composition = raw_text(frame, &raw, &raw_len) && raw_len > 0;
+    const bool v_mode =
+        has_composition && (raw[0] == 'v' || raw[0] == 'V');
+    uint64_t keycode = 0;
+    frame.event.uint("keycode", &keycode);
+    const bool v_operator_key =
+        keycode == kKeyOemMinus || keycode == kKeyOemPlus ||
+        keycode == kKeySubtract || keycode == kKeyAdd;
+
     bool paging = false;
-    if (is_key) {
+    if (is_key && !(v_mode && v_operator_key)) {
         if (same(action, action_len, "pagedown") ||
             same(action, action_len, "down")) {
             if (page < last_page) ++page;
@@ -299,10 +317,6 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
                           same(action, action_len, "right");
     if ((is_key && !paging && !is_arrow) || is_text) reply.page = 0;
 
-    const char* raw = nullptr;
-    uint32_t raw_len = 0;
-    const bool has_composition = raw_text(frame, &raw, &raw_len) && raw_len > 0;
-
     bool commit = false;
     bool raw_fallback = false;
     uint64_t index = 0;
@@ -315,9 +329,6 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
     } else if (is_key && same(action, action_len, "digit")) {
         /* v-mode keeps digits literal: "v1234" is a number/expression, not a
          * candidate selection. The digit reached the parser as text. */
-        const bool v_mode =
-            has_composition && raw_len > 0 &&
-            (raw[0] == 'v' || raw[0] == 'V');
         uint64_t digit = 0;
         if (!v_mode &&
             span_uint(frame.workspace_value("plugin/pime-keymap-default/digit"),

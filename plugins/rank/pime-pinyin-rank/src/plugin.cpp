@@ -39,6 +39,12 @@ constexpr uint32_t kMaxRaw = 64;
 constexpr uint32_t kMaxKey = 128;
 constexpr uint64_t kUndoWindowMs = 5000;
 constexpr uint64_t kRecentWindowMs = 7ull * 24 * 3600 * 1000;
+/* Paging keys that also carry text: in a v-mode expression they are
+ * operators, not paging. */
+constexpr uint64_t kKeyAdd = 107;
+constexpr uint64_t kKeySubtract = 109;
+constexpr uint64_t kKeyOemPlus = 187;
+constexpr uint64_t kKeyOemMinus = 189;
 
 alignas(8) uint8_t g_scratch[kScratchBytes];
 
@@ -599,14 +605,16 @@ bool is_arrow_action(const char* action, uint32_t len) {
  * the same slot the user saw. */
 /* Returns the page that addresses the *displayed* list for this call (the
  * value space/digit must use), then applies format's reset rule so the next
- * composition starts on page 0. */
+ * composition starts on page 0. `v_operator_key` mirrors format: '-' and '+'
+ * are v-mode operators and must not page. */
 uint32_t update_page(LastPick* state, const char* action, uint32_t action_len,
-                     bool is_key, bool is_text, uint32_t total) {
+                     bool is_key, bool is_text, uint32_t total,
+                     bool v_operator_key) {
     const uint32_t page_size = g_page_size == 0 ? 1 : g_page_size;
     const uint32_t last = total == 0 ? 0 : (total - 1) / page_size;
     if (state->page > last) state->page = last;
     bool paging = false;
-    if (is_key) {
+    if (is_key && !v_operator_key) {
         if (text_is(action, action_len, "pagedown") ||
             text_is(action, action_len, "down")) {
             if (state->page < last) ++state->page;
@@ -874,8 +882,14 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
      * index/space mapping below does not address this array. */
     const bool preferred =
         has_preferred_candidates(frame) || looks_english(frame, raw, raw_len);
-    const uint32_t effective_page =
-        update_page(&pick, action, action_len, is_key, is_text, count);
+    uint64_t keycode = 0;
+    frame.event.uint("keycode", &keycode);
+    const bool v_mode = raw_len > 0 && (raw[0] == 'v' || raw[0] == 'V');
+    const bool v_operator_key =
+        v_mode && (keycode == kKeyOemMinus || keycode == kKeyOemPlus ||
+                   keycode == kKeySubtract || keycode == kKeyAdd);
+    const uint32_t effective_page = update_page(
+        &pick, action, action_len, is_key, is_text, count, v_operator_key);
 
     bool commit = false;
     uint64_t index = 0;

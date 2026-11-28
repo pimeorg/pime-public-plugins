@@ -1,0 +1,7 @@
+name: equals-pages-down
+event: { type: key, keycode: 187, modifiers: 0, action: 0 }
+context: { locale: zh-CN, page_size: 5 }
+expect:
+  handled: false
+  workspace:
+    - { k: action, v: pagedown }

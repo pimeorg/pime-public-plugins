@@ -9,11 +9,14 @@
 | `key` + `action=space` | 提交当前页第一个候选，发 `commit` |
 | `key` + `action=enter` | `commit_on_enter` 时提交第一个候选 |
 | `key` + `action=digit` | 选 `page * page_size + digit - 1` |
-| `key` + `action=pagedown/down` | 下一页（`end` 跳末页） |
-| `key` + `action=pageup/up` | 上一页（`home` 回首页） |
+| `key` + `action=pagedown/down` | 下一页（`end` 跳末页；keymap 的 `=`/`+` 也走这里） |
+| `key` + `action=pageup/up` | 上一页（`home` 回首页；keymap 的 `-` 也走这里） |
 | `key` + `action=escape` | `hide_candidates` |
 | `candidate {index}` | 提交第 `index` 个候选 |
 | 其他 | 只展示候选 |
+
+组合以 `v` 开头（v 模式表达式）时，`-`/`=`/`+` 是运算符而不是翻页键：
+`pageup`/`pagedown` 动作照常由 PageUp/PageDown 和方向键触发。
 
 候选按顺序从以下 workspace 键读取，取第一个非空数组：
 `plugin/pime-shape-translate/candidates`、`plugin/pime-shortcuts/candidates`、
