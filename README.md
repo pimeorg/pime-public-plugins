@@ -22,9 +22,9 @@ tests/                        最小宿主、一致性、端到端、预算
 preprocess / parse / translate / rank / format / recognize / learn / predict / service
 ```
 
-每个插件在 `manifest.yaml` 里除了 `role`，还用 `after` 声明**允许排在其前方的
-role**（`[]` 表示必须最先）；用户往现成方案包里加插件时，按它决定插入位置，
-`check_plugins` / `chainc` 会校验。
+每个插件在 `manifest.yaml` 里除了 `role`，还用 `after` / `before` 声明前后允许的
+role；需要严格顺序时直接写插件 id（硬约束）。用户往现成方案包里加插件时按它决定
+位置，`check_plugins` / `chainc` 会校验。
 
 “拼音 / 五笔 / 手写 / 语音”不是目录，而是 `chains/` 里的组合配方。
 例如 `chains/pinyin/default.yaml` 把 `pime-pinyin-parse`、`pime-pinyin-translate`、

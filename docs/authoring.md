@@ -125,6 +125,17 @@ platforms: [windows-x64, macos-arm64, linux-x64]
 
 一个插件只做一件事。需要“做一整套拼音”时，写多个插件并用 `chains/` 组合。
 
+role 白名单不够时，在 `after` / `before` 里直接写插件 id 表达严格顺序：
+
+```yaml
+# pime-pinyin-rank：必须在具体翻译器之后
+after: [preprocess, parse, translate, pime-pinyin-translate]
+# pime-candidates-format：候选收尾之后只放联想/学习/服务
+before: [learn, predict, service]
+```
+
+id 是硬约束：两者都在链中时，顺序必须符合；插件是否存在由 `requires` 负责。
+
 ## 5 能力最小化
 
 只声明真正用到的能力；未声明而调用会返回 `PIME_DENIED`。
@@ -204,7 +215,8 @@ pime_add_plugin(pime_pinyin_parse
 ## 9 检查清单
 
 - [ ] 目录 = `plugins/<role>/<id>`；`role` 与父目录一致。
-- [ ] `after` 是已知 role 且不重复；链顺序满足它（`check_plugins` / `chainc` 会查）。
+- [ ] `after` / `before` 的 token 是已知 role 或插件 id、不重复；严格顺序用 id 表达，
+      链顺序满足两个白名单（`check_plugins` / `chainc` 会查）。
 - [ ] `id` 全局唯一，符合 core 正则。
 - [ ] `runtime` 与入口文件一致；Lua 只有一个 `plugin.lua`。
 - [ ] `assets` / `models` 与文件精确一致；大文件有 lock。

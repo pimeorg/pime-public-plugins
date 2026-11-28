@@ -58,17 +58,19 @@ python tools/pack_schemes.py --packages build/wasm-ndk/package \
 
 ## 往方案包里加自己的插件
 
-每个插件的 `manifest.yaml` 都写了 `role` 和 `after`：
+每个插件的 `manifest.yaml` 都写了 `role` 和位置约束：
 
 ```yaml
 role: rank
-after: [preprocess, parse, translate]
+after: [preprocess, parse, translate, pime-pinyin-translate]
 ```
 
-`after` 是**允许排在这个插件前面的 role**。往 `chain.yaml` 里加条目时，把它
-插在前面的 role 全部属于 `after` 的位置；后面的插件是否接受它，由那些插件
-自己的 `after` 决定。`after: []` 表示必须最先；`format` / `learn` / `service`
-通常列出全部 role，位置基本自由。
+- `after` / `before` 的 role 是**白名单**：前面的 role 必须都在 `after`，后面的
+  role 必须都在 `before`。`after: []` 表示必须最先，`before: []` 表示必须最后。
+- 里面的**插件 id 是硬约束**：该插件如果在链中，就必须在声明的这一侧。
+  例如上面的 `pime-pinyin-rank` 必须排在 `pime-pinyin-translate` 之后；插件是否
+  存在由它自己的 `requires` 负责。
+- `format` / `learn` / `service` 通常列出全部 role 作为 `after`，位置基本自由。
 
 例如给拼音方案加一个自定义 `rank` 插件：
 

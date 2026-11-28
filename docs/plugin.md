@@ -532,9 +532,21 @@ Core 只认“有序插件链”。插件声明 `role`，生态约定：
 `preprocess`、`parse`、`translate`、`rank`、`format`、`recognize`、`learn`、`predict`、`service`。
 
 - 顺序由配置声明，不写死在 core。
-- 每个 manifest 用 `after` 声明**允许排在其前方的 role**。链里实际排在它前面的插件，
-  其 role 必须都在 `after` 中；`after: []` 表示必须最先。这样用户往现成方案包里
-  加插件时，看清单就知道能插在哪些插件之后、哪些之前。
+- `after` / `before` 是位置白名单：链里排在它前面的 role 必须在 `after` 中，排在
+  它后面的 role 必须在 `before` 中；`after: []` 表示必须最先，`before: []` 表示
+  必须最后，省略 `before` 表示后面不限。这样用户往现成方案包里加插件时，看清单
+  就知道能插在哪些插件之后、哪些之前。
+- 白名单里还可以直接写**插件 id**：这是硬约束，该插件若在链中，就必须在声明的
+  一侧。用于同 role 或跨 role、只能靠具体插件保证的严格顺序：
+
+  ```yaml
+  # pime-pinyin-rank 必须排在 pime-pinyin-translate 之后
+  after: [preprocess, parse, translate, pime-pinyin-translate]
+  # 候选收尾之后只允许联想/学习/服务
+  before: [learn, predict, service]
+  ```
+
+  插件是否存在由 `requires` 管；id 只约束“在链中时”的先后。
 - 同一 role 可挂多个插件；同名覆盖必须显式声明。要排在同 role 的其他插件之后，
   `after` 里也要写这个 role。
 - 拼音 = parse + translate + rank + format；parse 把音节写入 workspace，translate 读取，只在本次链调用有效。

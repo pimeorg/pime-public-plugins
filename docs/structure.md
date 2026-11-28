@@ -289,7 +289,8 @@ plugins/recognize/pime-handwriting-native/
 | 插件目录 | 必须等于 manifest `id` | `pime-pinyin-parse/` |
 | `id` | `^[a-z0-9][a-z0-9._-]{0,63}$`，以 `pime-` 开头 | `pime-pinyin-parse` |
 | `role` | 必须等于父目录名 | `role: parse` |
-| `after` | 已知 role 列表；链里排它前面的 role 必须都在其中；`[]` 表示最先 | `after: [preprocess]` |
+| `after` | role 白名单 + 插件 id 硬约束；`[]` 表示最先 | `after: [preprocess, pime-pinyin-parse]` |
+| `before` | 可选；后面的 role 白名单 + 插件 id 硬约束；`[]` 表示最后 | `before: [learn, predict, service]` |
 | 包目录 | `pime-plugin-<id>-<version>`（core 约定） | `pime-plugin-pime-pinyin-parse-1.0.0` |
 | 发布标签 | `<id>@<semver>` | `pime-pinyin-parse@1.0.0` |
 | alias | 默认 `id`；同 id 并行版本必须显式 | `pinyin-next` |
@@ -308,7 +309,7 @@ plugins/recognize/pime-handwriting-native/
 10. 包目录只含 core 允许的路径。
 11. 插件源码不含平台宏、第三方网络/加密/音频头。
 12. 链引用的 `(id, role)` 均存在。
-13. `after` 是已知 role 且不重复；链里排在插件前面的 role 都在它的 `after` 中。
+13. `after` / `before` 的 token 是已知 role 或插件 id 且不重复；链顺序满足两个白名单。
 
 ## 7 运行时选择
 

@@ -26,12 +26,15 @@
 | 内容 | 位置 |
 |---|---|
 | 41 个插件与模板新增 `after: [role...]`，`[]` 表示必须最先 | `plugins/*/*/manifest.yaml` |
-| 清单字段与链顺序校验；索引增加「可排在其前」列 | `tools/check_plugins` |
-| 编译链时校验位置，放错直接失败 | `tools/chainc` |
-| `after` 语义、插入方法与文档 | `plugins/README.md`、`docs/*.md`、`schemes/README.md` |
+| 对称的 `before` 白名单；`after`/`before` 中的插件 id 是硬顺序 | `plugins/*/*/manifest.yaml` |
+| 严格顺序：rank 在 translate 后、shape-parse 在 pinyin-parse 后、format 后限 learn/predict/service | 相关插件 manifest |
+| 清单字段、id 引用与链顺序校验；索引增加「可排在其前/后」 | `tools/check_plugins` |
+| 编译链时校验白名单与 id 硬约束，放错直接失败 | `tools/chainc` |
+| 语义、插入方法与文档 | `plugins/README.md`、`docs/*.md`、`schemes/README.md` |
 
-规则：链里排在插件前面的每个 role 都必须在该插件的 `after` 里；`format` /
-`learn` / `service` 这类收尾插件通常列全 role，表示位置自由。
+规则：role token 是白名单（前面的 role 必须在 `after`，后面的必须在 `before`）；
+插件 id token 是硬约束（两者都在链中时必须按声明先后）。插件是否存在由
+`requires` 负责；`format` / `learn` / `service` 这类收尾插件通常列全 role。
 
 ### 方案包（2026-11-28）
 

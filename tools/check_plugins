@@ -153,16 +153,26 @@ def check_manifest(plugin_dir: Path, role_dir: str, report: Report,
     if manifest.get("role") not in ROLES:
         report.error(where, f"unknown role '{manifest.get('role')}'")
 
-    after = manifest.get("after")
-    if not isinstance(after, list):
-        report.error(where, "after must be a list of roles (use [] for none)")
-        after = []
-    else:
-        for role in after:
-            if role not in ROLES:
-                report.error(where, f"unknown predecessor role '{role}'")
-        if len(set(after)) != len(after):
-            report.error(where, "after repeats a role")
+    def read_order(key: str, required: bool):
+        value = manifest.get(key)
+        if value is None:
+            if required:
+                report.error(where, f"{key} is required (use [] for none)")
+            return None
+        if not isinstance(value, list):
+            report.error(where, f"{key} must be a list of roles or plugin ids")
+            return []
+        for token in value:
+            if str(token) not in ROLES and not PLUGIN_ID_RE.match(str(token)):
+                report.error(where, f"{key} has unknown token '{token}'")
+            if str(token) == plugin_id:
+                report.error(where, f"{key} lists the plugin itself")
+        if len(set(value)) != len(value):
+            report.error(where, f"{key} repeats a token")
+        return [str(token) for token in value]
+
+    after = read_order("after", required=True) or []
+    before = read_order("before", required=False)
 
     version = parse_semver(manifest.get("version", ""))
     if not version:
@@ -302,28 +312,63 @@ def check_manifest(plugin_dir: Path, role_dir: str, report: Report,
         "version": str(manifest.get("version")),
         "runtime": runtime,
         "settings": setting_keys,
-        "after": [str(role) for role in after],
+        "after": after,
+        "before": before,
         "description": str(manifest.get("description", "")),
     }
 
 
+def check_refs(plugins: dict[str, dict], report: Report) -> None:
+    """Plugin ids named in after/before must exist."""
+    for plugin in plugins.values():
+        for token in plugin["after"] + (plugin["before"] or []):
+            if token not in ROLES and token not in plugins:
+                report.error(plugin["id"],
+                             f"order token '{token}' is neither a role nor a plugin")
+
+
 def check_order(entries: list, plugins: dict[str, dict], report: Report,
                 where: str) -> None:
-    """Every role already in front of a plugin must be in its manifest `after`."""
-    seen: set[str] = set()
-    for index, entry in enumerate(entries):
+    """Enforce the role allowlist and the strict plugin-id order."""
+    order = []
+    for entry in entries:
         if not isinstance(entry, dict):
             continue
         plugin = plugins.get(str(entry.get("id", "")))
-        if not plugin:
+        if plugin:
+            order.append(plugin)
+    position = {plugin["id"]: index for index, plugin in enumerate(order)}
+
+    for index, plugin in enumerate(order):
+        roles = {token for token in plugin["after"] if token in ROLES}
+        ids = {token for token in plugin["after"] if token not in ROLES}
+        for earlier in order[:index]:
+            if earlier["role"] not in roles and earlier["id"] not in ids:
+                report.error(where,
+                             f"'{plugin['id']}' cannot follow '{earlier['id']}' "
+                             f"({earlier['role']}); after is "
+                             f"[{', '.join(plugin['after'])}]")
+        for token in sorted(ids):
+            if position.get(token, -1) > index:
+                report.error(where,
+                             f"'{plugin['id']}' must follow '{token}', "
+                             f"but '{token}' is later")
+
+        if plugin["before"] is None:
             continue
-        allowed = set(plugin["after"])
-        for role in sorted(seen - allowed):
-            report.error(
-                where,
-                f"'{plugin['id']}' at {index} follows role '{role}', "
-                f"not allowed by its after: [{', '.join(plugin['after'])}]")
-        seen.add(plugin["role"])
+        roles = {token for token in plugin["before"] if token in ROLES}
+        ids = {token for token in plugin["before"] if token not in ROLES}
+        for later in order[index + 1:]:
+            if later["role"] not in roles and later["id"] not in ids:
+                report.error(where,
+                             f"'{plugin['id']}' cannot precede '{later['id']}' "
+                             f"({later['role']}); before is "
+                             f"[{', '.join(plugin['before'])}]")
+        for token in sorted(ids):
+            if position.get(token, index) < index:
+                report.error(where,
+                             f"'{plugin['id']}' must precede '{token}', "
+                             f"but '{token}' is earlier")
 
 
 def check_chains(root: Path, plugins: dict[str, dict], report: Report) -> None:
@@ -415,19 +460,30 @@ def write_index(root: Path, plugins: dict[str, dict]) -> None:
         "",
         "> 由 `python tools/check_plugins --write-index` 生成，不要手改。",
         "",
-        "| role | 可排在其前 | id | runtime | version | 说明 |",
-        "|---|---|---|---|---|---|",
+        "| role | 可排在其前 | 可排在其后 | id | runtime | version | 说明 |",
+        "|---|---|---|---|---|---|---|",
     ]
+    def describe(tokens: list[str]) -> str:
+        roles = [role for role in ROLES if role in tokens]
+        ids = [token for token in tokens if token not in ROLES]
+        parts = [f"`{role}`" for role in roles] + [f"`{token}`" for token in ids]
+        return ", ".join(parts)
+
     for plugin in sorted(plugins.values(), key=lambda item: (item["role"], item["id"])):
-        after = [role for role in ROLES if role in plugin["after"]]
-        if not after:
+        if not plugin["after"]:
             previous = "（必须最先）"
-        elif len(after) == len(ROLES):
+        elif {token for token in plugin["after"] if token in ROLES} == set(ROLES):
             previous = "任意"
         else:
-            previous = ", ".join(f"`{role}`" for role in after)
+            previous = describe(plugin["after"])
+        if plugin["before"] is None:
+            following = "任意"
+        elif not plugin["before"]:
+            following = "（必须最后）"
+        else:
+            following = describe(plugin["before"])
         lines.append(
-            f"| `{plugin['role']}` | {previous} | `{plugin['id']}` | "
+            f"| `{plugin['role']}` | {previous} | {following} | `{plugin['id']}` | "
             f"{plugin['runtime']} | {plugin['version']} | {plugin['description']} |"
         )
     (root / "plugins" / "README.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -473,6 +529,7 @@ def main() -> int:
                     continue
                 plugins[info["id"]] = info
 
+    check_refs(plugins, report)
     check_chains(root, plugins, report)
     if args.write_index and plugins:
         write_index(root, plugins)

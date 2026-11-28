@@ -90,7 +90,6 @@ def discover_plugins(root: Path) -> dict[str, dict]:
 
 def resolve_entries(chain: dict, plugins: dict[str, dict]) -> list[dict]:
     entries = []
-    seen_roles: set[str] = set()
     for entry in chain.get("plugins") or []:
         plugin_id = str(entry.get("id", ""))
         if plugin_id not in plugins:
@@ -110,20 +109,58 @@ def resolve_entries(chain: dict, plugins: dict[str, dict]) -> list[dict]:
             resolved["alias"] = str(entry["alias"])
         if entry.get("settings"):
             resolved["settings"] = dict(entry["settings"])
-
-        # A manifest may list the roles it accepts in front of it. Enforce it
-        # when present so a user-added plugin lands in a workable slot.
-        after = manifest.get("after")
-        if after is not None:
-            if not isinstance(after, list):
-                raise SystemExit(f"chainc: '{plugin_id}' after must be a list")
-            for role in sorted(seen_roles - set(after)):
-                raise SystemExit(
-                    f"chainc: '{plugin_id}' cannot follow role '{role}'; "
-                    f"its after is [{', '.join(str(role) for role in after)}]")
-        seen_roles.add(resolved["role"])
         entries.append(resolved)
     return entries
+
+
+def check_order(entries: list[dict], plugins: dict[str, dict]) -> None:
+    """Role tokens are an allowlist; plugin-id tokens are strict order."""
+    position = {entry["id"]: index for index, entry in enumerate(entries)}
+    for index, entry in enumerate(entries):
+        manifest = plugins[entry["id"]]
+        after = manifest.get("after") or []
+        if not isinstance(after, list):
+            raise SystemExit(f"chainc: '{entry['id']}' after must be a list")
+        for token in after:
+            if token not in ROLES and token not in plugins:
+                raise SystemExit(
+                    f"chainc: '{entry['id']}' after names unknown '{token}'")
+        roles = {token for token in after if token in ROLES}
+        ids = {token for token in after if token not in ROLES}
+        for earlier in entries[:index]:
+            if earlier["role"] not in roles and earlier["id"] not in ids:
+                raise SystemExit(
+                    f"chainc: '{entry['id']}' cannot follow '{earlier['id']}' "
+                    f"({earlier['role']}); after is "
+                    f"[{', '.join(str(token) for token in after)}]")
+        for token in sorted(ids):
+            if position.get(token, -1) > index:
+                raise SystemExit(
+                    f"chainc: '{entry['id']}' must follow '{token}', "
+                    f"but '{token}' is later")
+
+        before = manifest.get("before")
+        if before is None:
+            continue
+        if not isinstance(before, list):
+            raise SystemExit(f"chainc: '{entry['id']}' before must be a list")
+        for token in before:
+            if token not in ROLES and token not in plugins:
+                raise SystemExit(
+                    f"chainc: '{entry['id']}' before names unknown '{token}'")
+        roles = {token for token in before if token in ROLES}
+        ids = {token for token in before if token not in ROLES}
+        for later in entries[index + 1:]:
+            if later["role"] not in roles and later["id"] not in ids:
+                raise SystemExit(
+                    f"chainc: '{entry['id']}' cannot precede '{later['id']}' "
+                    f"({later['role']}); before is "
+                    f"[{', '.join(str(token) for token in before)}]")
+        for token in sorted(ids):
+            if position.get(token, index) < index:
+                raise SystemExit(
+                    f"chainc: '{entry['id']}' must precede '{token}', "
+                    f"but '{token}' is earlier")
 
 
 def core_config(entries: list[dict]) -> dict:
@@ -256,6 +293,7 @@ def main() -> int:
 
     plugins = discover_plugins(root)
     entries = resolve_entries(chain, plugins)
+    check_order(entries, plugins)
     packages_dir = Path(args.packages).resolve() if args.packages else root / "dist" / "packages"
 
     for entry in entries:

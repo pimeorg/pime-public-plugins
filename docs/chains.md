@@ -117,24 +117,42 @@ preprocess → parse → translate → rank → format → learn / predict → s
 - `learn` / `predict` 可以放在 `format` 之前或之后，但必须在链文件中明确；
   不要依赖未声明的隐式顺序。
 
-每个插件在 manifest 里用 `after` 声明允许排在其前方的 role，链顺序必须满足它：
+每个插件在 manifest 里用 `after` / `before` 声明位置：
 
 ```yaml
 # manifest.yaml
 role: translate
-after: [preprocess, parse]
+after: [preprocess, parse]   # 只允许这些 role 排在前面
+before: [rank, format]       # 只允许这些 role 排在后面
 ```
 
-```text
-preprocess → parse → translate   ✓ translate 前面只有 preprocess / parse
-preprocess → translate → parse   ✗ parse 前面出现了它的 after 里没有的 translate
-```
+- role 是**白名单**：链里实际在前面的 role 必须都在 `after` 中，实际在后面的 role
+  必须都在 `before` 中。`before` 省略表示后面不限。
+- `after: []` 表示必须最先（`pime-keymap-default`）；`before: []` 表示必须最后。
+- 白名单里写**插件 id** 是硬约束：该插件若在链中，就必须在声明的这一侧。
+  用来表达同 role 或跨 role、只能靠具体插件保证的顺序：
 
-- `after: []` 表示必须最先，适合 `pime-keymap-default` 这类总入口。
-- 用作收尾的 `format`、`learn`、`service` 可以列出全部 role，表示位置基本自由。
-- 用户往现成方案包里加插件时，把它插在前面的 role 全部属于 `after` 的位置；
-  后面的插件是否接受它，由那些插件自己的 `after` 决定。`chainc` 和
-  `check_plugins` 会一起校验。
+  ```yaml
+  # pime-pinyin-rank
+  after: [preprocess, parse, translate, pime-pinyin-translate]
+  # 中间件排在指定解析器之后
+  # pime-shape-parse
+  after: [preprocess, parse, pime-pinyin-parse]
+  ```
+
+- 插件是否存在由 `requires` 负责；id 只约束“两者都在链中时”的先后。
+- 示例：
+
+  ```text
+  preprocess → parse → translate                        ✓
+  preprocess → translate → parse                        ✗ parse 前面有 translate
+  translate → rank → format                             ✓
+  format → rank                                         ✗ format 的 before 不含 rank
+  pime-pinyin-rank 在 pime-pinyin-translate 之前          ✗ id 硬约束
+  ```
+
+- 用户往现成方案包里加插件时，把它插在前面的 role 全部属于 `after`、并且不会让
+  后面的 role 落在 `before` 之外的位置；`chainc` 和 `check_plugins` 会一起校验。
 
 ## 6 workspace 契约
 

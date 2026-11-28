@@ -9,8 +9,11 @@
 自己在现有方案包里添加插件。
 
 - [x] 41 个插件 manifest 与 `_template` 增加 `after: [role...]`（`[]` = 必须最先）
-- [x] `check_plugins` 校验 `after` 字段，并按链顺序检查前置 role；索引增加「可排在其前」
-- [x] `chainc` 编译链时校验 `after`，放错位置的条目直接失败
+- [x] 增加对称的 `before` 白名单；`after` / `before` 里写插件 id 表示硬顺序
+- [x] 具体插件补严格顺序：rank 在 translate 之后、shape-parse 在 pinyin-parse 之后、
+      format 之后只允许 learn / predict / service 等
+- [x] `check_plugins` 校验两个字段、id 引用与链顺序；索引增加「可排在其前/后」
+- [x] `chainc` 编译链时校验白名单与 id 硬约束，放错位置的条目直接失败
 - [x] 文档：README、`docs/plugin.md`、`docs/chains.md`、`docs/authoring.md`、
       `docs/structure.md`、`schemes/README.md`
 
