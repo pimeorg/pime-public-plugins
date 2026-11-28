@@ -7,6 +7,7 @@
 
 1. **定 role**：这个插件在链里做哪一件事？只能选一个：
    `preprocess / parse / translate / rank / format / recognize / learn / predict / service`。
+   再写 `after`：它允许排在这些 role 之后，方便用户在现成方案包里插入。
 2. **定 runtime**：同步链默认 WASM；低频控制/网络胶水用 Lua；native 只给可信逃生舱。
 3. **建目录**：`plugins/<role>/<plugin-id>/`，目录名就是 manifest `id`。
 4. **写清单 + 实现 + 用例**：按下面的模板；`assets` / `models` 精确列出。
@@ -48,6 +49,7 @@ state_schema: 1
 store_schema: 1
 runtime: wasm
 role: parse
+after: [preprocess]   # 允许排在本插件之前的 role；[] 表示必须最先
 platforms: [windows-x64, windows-arm64, macos-x64, macos-arm64,
             linux-x64, linux-arm64, android-arm64, android-x64, ios-arm64, ios-x64, harmony-arm64, harmony-x64]
 entry: pime_process
@@ -80,6 +82,7 @@ state_schema: 1
 store_schema: 1
 runtime: lua
 role: preprocess
+after: [preprocess]
 platforms: [windows-x64, windows-arm64, macos-x64, macos-arm64,
             linux-x64, linux-arm64, android-arm64, android-x64, ios-arm64, ios-x64, harmony-arm64, harmony-x64]
 entry: plugin.lua
@@ -108,17 +111,17 @@ platforms: [windows-x64, macos-arm64, linux-x64]
 
 ## 4 role 怎么选
 
-| role | 做的事 | 典型输入/输出 |
-|---|---|---|
-| `preprocess` | 键位、双拼、标点、组合键预处理 | key/text → workspace 或 commands |
-| `parse` | 把输入切成音节/码元/词法单元 | key/text → workspace |
-| `translate` | 音节/码元 → 候选文本 | workspace → workspace |
-| `rank` | 候选打分与排序 | workspace → workspace |
-| `format` | 生成组合文本、候选列表、命令 | workspace → commands |
-| `recognize` | 手写/语音识别 | touch/audio → ml/net → commands |
-| `learn` | 频率、用户词、纠错学习 | 事件/workspace → store/workspace |
-| `predict` | 上下文预测、下一词 | surrounding → commands |
-| `service` | 云同步、更新、用户词典服务 | 事件/net → store/commands |
+| role | 做的事 | 典型输入/输出 | 典型 `after` |
+|---|---|---|---|
+| `preprocess` | 键位、双拼、标点、组合键预处理 | key/text → workspace 或 commands | `[]`（总入口）或 `[preprocess]` |
+| `parse` | 把输入切成音节/码元/词法单元 | key/text → workspace | `[preprocess]`；链内第二个解析再加 `parse` |
+| `translate` | 音节/码元 → 候选文本 | workspace → workspace | `[preprocess, parse]`；追加到 rank 之后再加 `translate, rank` |
+| `rank` | 候选打分与排序 | workspace → workspace | `[preprocess, parse, translate]` |
+| `format` | 生成组合文本、候选列表、命令 | workspace → commands | 任意（列出全部 role） |
+| `recognize` | 手写/语音识别 | touch/audio → ml/net → commands | `[]` 或 `[preprocess]` |
+| `learn` | 频率、用户词、纠错学习 | 事件/workspace → store/workspace | 按实际前置的 role 列全 |
+| `predict` | 上下文预测、下一词 | surrounding → commands | 按实际前置的 role 列全 |
+| `service` | 云同步、更新、用户词典服务 | 事件/net → store/commands | 任意（列出全部 role） |
 
 一个插件只做一件事。需要“做一整套拼音”时，写多个插件并用 `chains/` 组合。
 
@@ -201,6 +204,7 @@ pime_add_plugin(pime_pinyin_parse
 ## 9 检查清单
 
 - [ ] 目录 = `plugins/<role>/<id>`；`role` 与父目录一致。
+- [ ] `after` 是已知 role 且不重复；链顺序满足它（`check_plugins` / `chainc` 会查）。
 - [ ] `id` 全局唯一，符合 core 正则。
 - [ ] `runtime` 与入口文件一致；Lua 只有一个 `plugin.lua`。
 - [ ] `assets` / `models` 与文件精确一致；大文件有 lock。

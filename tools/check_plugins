@@ -153,6 +153,17 @@ def check_manifest(plugin_dir: Path, role_dir: str, report: Report,
     if manifest.get("role") not in ROLES:
         report.error(where, f"unknown role '{manifest.get('role')}'")
 
+    after = manifest.get("after")
+    if not isinstance(after, list):
+        report.error(where, "after must be a list of roles (use [] for none)")
+        after = []
+    else:
+        for role in after:
+            if role not in ROLES:
+                report.error(where, f"unknown predecessor role '{role}'")
+        if len(set(after)) != len(after):
+            report.error(where, "after repeats a role")
+
     version = parse_semver(manifest.get("version", ""))
     if not version:
         report.error(where, f"version '{manifest.get('version')}' is not SemVer")
@@ -291,8 +302,28 @@ def check_manifest(plugin_dir: Path, role_dir: str, report: Report,
         "version": str(manifest.get("version")),
         "runtime": runtime,
         "settings": setting_keys,
+        "after": [str(role) for role in after],
         "description": str(manifest.get("description", "")),
     }
+
+
+def check_order(entries: list, plugins: dict[str, dict], report: Report,
+                where: str) -> None:
+    """Every role already in front of a plugin must be in its manifest `after`."""
+    seen: set[str] = set()
+    for index, entry in enumerate(entries):
+        if not isinstance(entry, dict):
+            continue
+        plugin = plugins.get(str(entry.get("id", "")))
+        if not plugin:
+            continue
+        allowed = set(plugin["after"])
+        for role in sorted(seen - allowed):
+            report.error(
+                where,
+                f"'{plugin['id']}' at {index} follows role '{role}', "
+                f"not allowed by its after: [{', '.join(plugin['after'])}]")
+        seen.add(plugin["role"])
 
 
 def check_chains(root: Path, plugins: dict[str, dict], report: Report) -> None:
@@ -349,6 +380,8 @@ def check_chains(root: Path, plugins: dict[str, dict], report: Report) -> None:
                     report.error(where, f"setting '{key}' is not declared by '{plugin_id}'")
             positions[plugin_id] = index
 
+        check_order(entries, plugins, report, where)
+
         for contract in chain.get("workspace") or []:
             if not isinstance(contract, dict):
                 report.error(where, "workspace entry is not a mapping")
@@ -382,13 +415,20 @@ def write_index(root: Path, plugins: dict[str, dict]) -> None:
         "",
         "> 由 `python tools/check_plugins --write-index` 生成，不要手改。",
         "",
-        "| role | id | runtime | version | 说明 |",
-        "|---|---|---|---|---|",
+        "| role | 可排在其前 | id | runtime | version | 说明 |",
+        "|---|---|---|---|---|---|",
     ]
     for plugin in sorted(plugins.values(), key=lambda item: (item["role"], item["id"])):
+        after = [role for role in ROLES if role in plugin["after"]]
+        if not after:
+            previous = "（必须最先）"
+        elif len(after) == len(ROLES):
+            previous = "任意"
+        else:
+            previous = ", ".join(f"`{role}`" for role in after)
         lines.append(
-            f"| `{plugin['role']}` | `{plugin['id']}` | {plugin['runtime']} | "
-            f"{plugin['version']} | {plugin['description']} |"
+            f"| `{plugin['role']}` | {previous} | `{plugin['id']}` | "
+            f"{plugin['runtime']} | {plugin['version']} | {plugin['description']} |"
         )
     (root / "plugins" / "README.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 

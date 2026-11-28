@@ -55,3 +55,38 @@ python tools/pack_schemes.py --packages build/wasm-ndk/package \
 默认安装的判定属于宿主：pime-win 只从 `dist/schemes/` 取 `pinyin` 和
 `english`，其余方案包由用户拷进 `%LOCALAPPDATA%\PIME\schemes\` 或在设置里
 导入。方案包以后随本仓库的 release 发布，现在只做本地组装。
+
+## 往方案包里加自己的插件
+
+每个插件的 `manifest.yaml` 都写了 `role` 和 `after`：
+
+```yaml
+role: rank
+after: [preprocess, parse, translate]
+```
+
+`after` 是**允许排在这个插件前面的 role**。往 `chain.yaml` 里加条目时，把它
+插在前面的 role 全部属于 `after` 的位置；后面的插件是否接受它，由那些插件
+自己的 `after` 决定。`after: []` 表示必须最先；`format` / `learn` / `service`
+通常列出全部 role，位置基本自由。
+
+例如给拼音方案加一个自定义 `rank` 插件：
+
+```yaml
+# schemes/win/pinyin/chain.yaml
+plugins:
+  - { id: pime-keymap-default, role: preprocess }
+  - { id: pime-pinyin-parse,   role: parse }
+  - { id: pime-shape-parse,    role: parse }
+  - { id: pime-pinyin-translate, role: translate }
+  - { id: pime-pinyin-rank,    role: rank }
+  - { id: my-rank,             role: rank }   # after: [preprocess, parse, translate, rank]
+  # ...
+```
+
+再把 `my-rank` 的插件包放进 `--packages`（或在 `scheme.yaml` 的 `plugins`
+里 pin 版本），重新跑 `pime_schemes`。`chainc` 会按 `after` 拒绝放错位置的
+条目，不会产出装起来顺序错误的包。
+
+已经装到 `%LOCALAPPDATA%\PIME\schemes\<id>\` 的包，把自己的插件包拷进它的
+`plugins/`，并按同样规则改用户链（宿主设置里的改动写在 `custom.cbor`）。

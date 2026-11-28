@@ -2,7 +2,19 @@
 
 > 开工前检查：上一轮遗留的 5 项中 4 项已落地；CI 按用户要求撤回，重新列为待办。
 
-## 本轮：方案包组装（Windows 宿主）
+## 本轮：插件前置 role 声明
+
+环境：Windows 11；Python 3.13 + PyYAML。
+需求：用户指出每个插件要写好 `role` 和**允许排在其前方的 role**，方便用户
+自己在现有方案包里添加插件。
+
+- [x] 41 个插件 manifest 与 `_template` 增加 `after: [role...]`（`[]` = 必须最先）
+- [x] `check_plugins` 校验 `after` 字段，并按链顺序检查前置 role；索引增加「可排在其前」
+- [x] `chainc` 编译链时校验 `after`，放错位置的条目直接失败
+- [x] 文档：README、`docs/plugin.md`、`docs/chains.md`、`docs/authoring.md`、
+      `docs/structure.md`、`schemes/README.md`
+
+## 上一轮：方案包组装（Windows 宿主）
 
 环境：Windows 11 + Visual Studio 2022 / NDK wasm32；Python 3.13 + PyYAML。
 需求：用户指出方案包（链 + 插件副本）应由插件仓库组织，最终随本仓库 release

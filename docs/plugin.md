@@ -437,6 +437,7 @@ state_schema: 3
 store_schema: 2
 runtime: wasm
 role: parse
+after: [preprocess]   # 允许排在本插件之前的 role；[] 表示必须最先
 platforms: [windows-x64, macos-arm64, ios-arm64, ios-x64, android-arm64, android-x64, harmony-arm64, harmony-x64]
 entry: pime_process
 capabilities: [input.read, output.emit, context.read, config.read, asset.read,
@@ -531,7 +532,11 @@ Core 只认“有序插件链”。插件声明 `role`，生态约定：
 `preprocess`、`parse`、`translate`、`rank`、`format`、`recognize`、`learn`、`predict`、`service`。
 
 - 顺序由配置声明，不写死在 core。
-- 同一 role 可挂多个插件；同名覆盖必须显式声明。
+- 每个 manifest 用 `after` 声明**允许排在其前方的 role**。链里实际排在它前面的插件，
+  其 role 必须都在 `after` 中；`after: []` 表示必须最先。这样用户往现成方案包里
+  加插件时，看清单就知道能插在哪些插件之后、哪些之前。
+- 同一 role 可挂多个插件；同名覆盖必须显式声明。要排在同 role 的其他插件之后，
+  `after` 里也要写这个 role。
 - 拼音 = parse + translate + rank + format；parse 把音节写入 workspace，translate 读取，只在本次链调用有效。
 - 标点、键位、双拼、五笔、混输都是同一条链上的不同组合。
 - 切换输入法 = 换插件链配置，构建新代。

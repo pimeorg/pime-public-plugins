@@ -90,6 +90,7 @@ def discover_plugins(root: Path) -> dict[str, dict]:
 
 def resolve_entries(chain: dict, plugins: dict[str, dict]) -> list[dict]:
     entries = []
+    seen_roles: set[str] = set()
     for entry in chain.get("plugins") or []:
         plugin_id = str(entry.get("id", ""))
         if plugin_id not in plugins:
@@ -109,6 +110,18 @@ def resolve_entries(chain: dict, plugins: dict[str, dict]) -> list[dict]:
             resolved["alias"] = str(entry["alias"])
         if entry.get("settings"):
             resolved["settings"] = dict(entry["settings"])
+
+        # A manifest may list the roles it accepts in front of it. Enforce it
+        # when present so a user-added plugin lands in a workable slot.
+        after = manifest.get("after")
+        if after is not None:
+            if not isinstance(after, list):
+                raise SystemExit(f"chainc: '{plugin_id}' after must be a list")
+            for role in sorted(seen_roles - set(after)):
+                raise SystemExit(
+                    f"chainc: '{plugin_id}' cannot follow role '{role}'; "
+                    f"its after is [{', '.join(str(role) for role in after)}]")
+        seen_roles.add(resolved["role"])
         entries.append(resolved)
     return entries
 

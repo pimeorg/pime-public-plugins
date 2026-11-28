@@ -70,7 +70,7 @@ workspace:
 | `core` | 否 | 要求的 core SemVer；与插件 `min_core` 一起校验 |
 | `plugins[]` | 是 | 有序插件列表；字段与 core 代构建配置一致 |
 | `plugins[].id` | 是 | 插件 id |
-| `plugins[].role` | 是 | 必须与插件 manifest 一致；同时决定链位置 |
+| `plugins[].role` | 是 | 必须与插件 manifest 一致；同时决定链位置；前置 role 受 manifest `after` 约束 |
 | `plugins[].version` | 否 | SemVer 约束；省略取满足条件的最高版本 |
 | `plugins[].alias` | 否 | 同 id 多版本并行时必须显式且唯一 |
 | `plugins[].settings` | 否 | 只能包含 manifest `settings` 声明过的键 |
@@ -116,6 +116,25 @@ preprocess → parse → translate → rank → format → learn / predict → s
 - 同一 role 可挂多个插件；同名/同功能覆盖必须显式写在链里。
 - `learn` / `predict` 可以放在 `format` 之前或之后，但必须在链文件中明确；
   不要依赖未声明的隐式顺序。
+
+每个插件在 manifest 里用 `after` 声明允许排在其前方的 role，链顺序必须满足它：
+
+```yaml
+# manifest.yaml
+role: translate
+after: [preprocess, parse]
+```
+
+```text
+preprocess → parse → translate   ✓ translate 前面只有 preprocess / parse
+preprocess → translate → parse   ✗ parse 前面出现了它的 after 里没有的 translate
+```
+
+- `after: []` 表示必须最先，适合 `pime-keymap-default` 这类总入口。
+- 用作收尾的 `format`、`learn`、`service` 可以列出全部 role，表示位置基本自由。
+- 用户往现成方案包里加插件时，把它插在前面的 role 全部属于 `after` 的位置；
+  后面的插件是否接受它，由那些插件自己的 `after` 决定。`chainc` 和
+  `check_plugins` 会一起校验。
 
 ## 6 workspace 契约
 
@@ -232,7 +251,7 @@ plugins:
 
 - [ ] 链 `id` 唯一；文件名与 `id` 一致。
 - [ ] 每个插件的 `id` / `role` 存在于 `plugins/`，且 role 与 manifest 一致。
-- [ ] 顺序符合约定；异步插件不阻塞同步链。
+- [ ] 顺序符合约定；每个插件的 `after` 覆盖了它前面的所有 role；异步插件不阻塞同步链。
 - [ ] `settings` 键都在插件 manifest 中声明。
 - [ ] 跨插件 workspace 键都有 `from` / `to` 声明，且消费者在生产者之后。
 - [ ] 锁文件存在，`code_hash` 与构建产物一致。
