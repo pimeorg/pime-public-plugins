@@ -1,0 +1,9 @@
+name: abbreviation-flag
+event: { type: text, text: benj }
+# 完整音节 ben + 下一个声母 j：两段式简拼。
+expect:
+  handled: true
+  workspace:
+    - { k: complete, v: false }
+    - { k: abbreviation, v: true }
+    - { k: syllables, v: [ben, j] }

@@ -1,0 +1,12 @@
+name: mixed-multi-syllable-stays-english
+event: { type: text, text: linux }
+workspace:
+  plugin/pime-pinyin-parse/raw: linux
+  plugin/pime-pinyin-parse/complete: false
+  plugin/pime-pinyin-parse/abbreviation: false
+  plugin/pime-pinyin-rank/candidates:
+    - { text: 理论性, score: 500000, source: dict }
+# linux 已经拼出多个音节，不是简拼：原码仍在英文视图最前面。
+expect:
+  handled: true
+  first_candidate: { text: linux, source: raw }

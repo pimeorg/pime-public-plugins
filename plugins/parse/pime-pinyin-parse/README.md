@@ -43,6 +43,7 @@
 | `plugin/pime-pinyin-parse/syllables` | array<text> | 原始输入的最大匹配切分，如 `["ni","hao"]` |
 | `plugin/pime-pinyin-parse/marks` | array<map> | 纠正标记 `{type, start, end}`，偏移相对 `input` |
 | `plugin/pime-pinyin-parse/complete` | bool | 原始字母串能否完整切成音节（`ni`/`nihao` 为 true，`goo`/`hel`/`nh` 为 false；v-mode 恒为 false） |
+| `plugin/pime-pinyin-parse/abbreviation` | bool | 两段式简拼：完整音节 + 下一个声母（`benj`、`key`、`zhongg`）；`linux`（li+nu+x）等多音节输入为 false |
 
 ### 纠正策略
 

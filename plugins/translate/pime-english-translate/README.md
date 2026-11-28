@@ -27,7 +27,8 @@
 | `plugin/pime-pinyin-parse/complete == true`（`ni`、`nihao`、`xian`） | 纯拼音：不查英文词表，输出空数组 |
 | 原码不足 3 个字符、含非字母/撇号、或没有元音（`go`、`ok`、`nh`、`zsh`） | 不混入英文；两字母还可能是简拼，阈值以上才算一个像样的英文词 |
 | 词表里没有以原码开头的词（`nih`、`zhongg`） | 不混入英文；`nih` 只差一个音节就是 `nihao`，不能拿 `big`/`air` 之类的拼写建议冒充补全 |
-| 其余（`goo`、`hel`、`dont`、`want`），且原码本身是词表里的词、或补全中有 freq ≥ 50 的常用词 | 生成英文候选：原码 + 两条补全在前，中文候选紧随其后，其余补全垫底 |
+| 其余（`goo`、`dont`、`pyth`），且原码本身是词表里的词、或补全中有 freq ≥ 50 的常用词 | 生成英文候选：原码 + 两条补全在前，中文候选紧随其后，其余补全垫底 |
+| `plugin/pime-pinyin-parse/abbreviation == true`（`benj`、`key`、`went`、`wom`） | 两段式简拼：中文候选始终在前，英文垫底；原码本身是英文词（`key`、`went`、`rug`）也一样 |
 | 有前缀命中但只有冷僻专名（`tij` → `Tijuana`，freq 7） | 英文证据不足：中文候选在前，原码和英文补全垫底；空格提交中文 |
 
 中文链里**不做拼写建议**，只做前缀补全；拼写建议只在独立英文链生效。
@@ -48,6 +49,7 @@ parse）以 `pime-pinyin-translate` 是否产出 `source=raw` 作为回退信号
 | `plugin/pime-english-parse/raw` | text | 英文链输入（原码） |
 | `plugin/pime-pinyin-parse/raw` | text | 中文链回退输入 |
 | `plugin/pime-pinyin-parse/complete` | bool | 纯拼音判定；缺失时走回退 |
+| `plugin/pime-pinyin-parse/abbreviation` | bool | 两段式简拼判定；缺失时按 false 处理 |
 | `plugin/pime-shape-translate/candidates` 等 | array<map> | 中文上游候选，按 format 的优先级取第一个非空 |
 | `plugin/pime-english-translate/candidates` | array<map> | 输出：`{text, score, source, ?comment}`；中文链里是“中文 + 英文”合并视图 |
 

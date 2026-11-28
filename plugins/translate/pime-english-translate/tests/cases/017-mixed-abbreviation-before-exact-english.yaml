@@ -1,0 +1,18 @@
+name: mixed-abbreviation-before-exact-english
+event: { type: text, text: key }
+workspace:
+  plugin/pime-pinyin-parse/raw: key
+  plugin/pime-pinyin-parse/complete: false
+  plugin/pime-pinyin-parse/abbreviation: true
+  plugin/pime-pinyin-rank/candidates:
+    - { text: 可以, score: 500000, source: dict }
+    - { text: 科研, score: 499000, source: dict }
+# key = ke + y，是“可以”的简拼；即使 key 本身是英文词，中文候选也在前。
+expect:
+  handled: true
+  workspace:
+    candidates:
+      - { text: 可以, source: dict }
+      - { text: 科研, source: dict }
+      - { text: key, source: raw }
+      - { text: keys, source: completion }

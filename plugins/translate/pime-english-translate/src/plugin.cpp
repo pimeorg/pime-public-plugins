@@ -357,6 +357,16 @@ bool pinyin_complete(const Frame& frame) {
     return true;
 }
 
+/* True when the pinyin parser reports the two-segment abbreviation shape
+ * (`benj`, `key`, `wom`): a complete syllable plus the next initial. Such
+ * input is on its way to a Chinese word, so English must not outrank it even
+ * when the typed text is an English word itself (`key`, `went`, `rug`). */
+bool pinyin_abbreviation(const Frame& frame) {
+    WorkspaceKey key = full_key(kPinyinParseId, "abbreviation");
+    bool value = false;
+    return span_bool(frame.workspace_value(key.text), &value) && value;
+}
+
 bool ascii_word(const char* text, uint32_t len) {
     for (uint32_t i = 0; i < len; ++i) {
         const char c = text[i];
@@ -519,11 +529,14 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
         if (english_added) {
             const uint32_t chinese_count =
                 read_chinese(frame, upstream, kMaxUpstream);
-            /* A word the dictionary actually has, or a completion people
-             * type, keeps the English head; a lone rare proper noun does
-             * not (`tij` -> Tijuana stays behind the Chinese list). */
+            /* A pinyin abbreviation (`benj`, `key`, `wom`) always keeps the
+             * Chinese head. Otherwise English wins with a dictionary word or
+             * a completion people type; a lone rare proper noun does not
+             * (`tij` -> Tijuana stays behind the Chinese list). */
             const bool strong =
-                g_exact_hit || g_best_completion_freq >= kMixedMinWordFrequency;
+                !pinyin_abbreviation(frame) &&
+                (g_exact_hit ||
+                 g_best_completion_freq >= kMixedMinWordFrequency);
             const uint32_t head = strong ? kMixedEnglishHead : 0;
             merged_count = merge_english(upstream, chinese_count, g_candidates,
                                          english_count, head, merged);

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.5
+
+- workspace 新增 `abbreviation`：两段式简拼（完整音节 + 下一个声母，如
+  `benj`、`key`、`zhongg`）为 true。中英混输据此让中文候选优先，`benj`
+  不再被 `Benjamin`、`key` 不再被 `key` 本身挤到前面；`linux`（li+nu+x）
+  这类已经拼出多个完整音节的输入仍算英文。
+
 ## 1.1.4
 
 - workspace 新增 `complete`：原始字母串是否完整切成音节，供中英混输判断

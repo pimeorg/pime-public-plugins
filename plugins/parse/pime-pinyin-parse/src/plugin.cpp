@@ -366,7 +366,7 @@ pime_status respond(uint8_t* out, uint32_t cap, uint32_t* out_len,
     w.text(original, commit_phase ? 0 : original_len);
 
     w.key("workspace");
-    w.map(6);
+    w.map(7);
     w.key("raw");
     w.text(buffer, len);
     w.key("input");
@@ -403,6 +403,16 @@ pime_status respond(uint8_t* out, uint32_t cap, uint32_t* out_len,
      * (real pinyin); v-mode digits and abbreviations are not pinyin either. */
     w.key("complete");
     w.boolean(plain && complete);
+
+    /* The classic abbreviation: one complete syllable plus the next
+     * syllable's initial (`benj`, `key`, `zhongg`). Longer inputs have
+     * already spelled another complete syllable (`linux` = li+nu+x), so
+     * they are not abbreviations. Mixed input keeps Chinese ahead of English
+     * for this shape. */
+    const bool abbreviation = plain && !complete && segment_count == 2 &&
+                              segments[0].type == 0;
+    w.key("abbreviation");
+    w.boolean(abbreviation);
 
     w.key("handled");
     w.boolean(handled);

@@ -1,0 +1,8 @@
+name: multi-syllable-not-abbreviation
+event: { type: text, text: linux }
+# linux 切出 lin + u + x 三段，已经拼出多个音节，不算简拼。
+expect:
+  handled: true
+  workspace:
+    - { k: complete, v: false }
+    - { k: abbreviation, v: false }
