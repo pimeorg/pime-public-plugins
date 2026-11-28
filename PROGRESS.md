@@ -1,6 +1,6 @@
 # pime-public-plugin 进度
 
-更新：2026-11-13（拼音能力增强）
+更新：2026-11-28（方案包组装）
 
 ## 环境与需求
 
@@ -17,6 +17,22 @@
 单向；平台隔离；WASM 插件不链接第三方；Lua 单文件。
 
 ## 已完成
+
+### 方案包（2026-11-28）
+
+用户在 Windows 环境下指出：方案包应由插件仓库组织，最终随本仓库 release
+发布；当前不发 release，先在仓库里产出本地组装产物，宿主从 `dist/schemes/`
+取包。
+
+| 内容 | 位置 |
+|---|---|
+| 方案包配方：`chain.yaml` + `scheme.yaml`（链 + 插件 id/version 清单） | `schemes/win/<id>/` |
+| 组装：chainc 编译链、拷贝插件副本，缺包直接失败 | `tools/pack_schemes.py` |
+| 构建目标：`pime_schemes` → `dist/schemes/<id>/` | `CMakeLists.txt` |
+| 格式、默认方案与构建命令 | `schemes/README.md` |
+
+Windows 默认方案为 `pinyin`、`english`；双拼四方案、五笔 86、仓颉作为可选包
+一起组装，由宿主决定装哪些。
 
 ### 结构（第一轮）
 

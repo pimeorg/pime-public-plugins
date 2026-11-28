@@ -35,5 +35,22 @@ if(PIME_BUILD_TESTS)
     add_subdirectory(tests)
 endif()
 
+# Scheme packages: a chain plus copies of the plugin packages it pins, so a
+# host can install one directory. The target is explicit because it needs the
+# plugin packages to be built first (they are, via plugins_packages).
+set(PIME_SCHEME_PLATFORM "win" CACHE STRING "scheme platform directory")
+find_package(Python3 COMPONENTS Interpreter QUIET)
+if(Python3_Interpreter_FOUND)
+    add_custom_target(pime_schemes
+        COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/pack_schemes.py"
+                --schemes "${CMAKE_CURRENT_SOURCE_DIR}/schemes/${PIME_SCHEME_PLATFORM}"
+                --packages "${CMAKE_BINARY_DIR}/package"
+                --out "${PIME_DIST_DIR}/schemes"
+        DEPENDS plugins_packages
+        COMMENT "Packing scheme packages into ${PIME_DIST_DIR}/schemes")
+else()
+    message(STATUS "pime-public-plugin: Python 3 not found; pime_schemes disabled")
+endif()
+
 message(STATUS "pime-public-plugin: core ${PIME_CORE_VERSION} (ABI ${PIME_ABI_MAJOR}.${PIME_ABI_MINOR})")
 message(STATUS "pime-public-plugin: ${PIME_PLUGIN_COUNT} plugin(s) selected, SDK ${PIME_SDK_DIR}")

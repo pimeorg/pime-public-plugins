@@ -1,0 +1,14 @@
+# 桌面方案包「english」的链配方。由 tools/pack_schemes.py 编译成
+# dist/schemes/english/english.cbor，和 scheme.yaml 里的插件副本一起组装成方案包。
+
+api: 1
+id: english-desktop
+description: 英文补全（桌面）
+core: ">=1.0.0"
+
+plugins:
+  - { id: pime-keymap-default, role: preprocess }
+  - { id: pime-english-parse, role: parse }
+  - { id: pime-english-translate, role: translate,
+      settings: { max_candidates: 12 } }
+  - { id: pime-candidates-format, role: format, settings: { page_size: 6 } }

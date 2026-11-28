@@ -9,6 +9,7 @@ pime 的公共插件仓库。插件是独立的 `input -> output` 数据处理�
 ```text
 plugins/<role>/<plugin-id>/   一个目录 = 一个插件 = 一个签名包
 chains/<product>/<variant>.yaml  产品 = 有序插件链
+schemes/<platform>/<id>/      方案包 = 链 + 插件副本，宿主可直接安装
 shared/                       构建期共享代码（进包，不产生运行时共享库）
 data/                         共享数据规范源（构建时复制进包）
 tools/                        目录/清单/链校验，链编译，资产拉取
@@ -24,6 +25,10 @@ preprocess / parse / translate / rank / format / recognize / learn / predict / s
 “拼音 / 五笔 / 手写 / 语音”不是目录，而是 `chains/` 里的组合配方。
 例如 `chains/pinyin/default.yaml` 把 `pime-pinyin-parse`、`pime-pinyin-translate`、
 `pime-pinyin-rank`、`pime-candidates-format` 串成一条产品链。
+
+`schemes/` 把链和它 pin 的插件副本组装成宿主可直接安装的方案包
+（`dist/schemes/<id>/`）；Windows 默认只装 `pinyin` 和 `english`，其余方案包
+由用户在设置里导入。见 [`schemes/README.md`](schemes/README.md)。
 
 详细规则见 [`docs/structure.md`](docs/structure.md)：
 
@@ -56,6 +61,13 @@ cmake --build build/wasm-ndk -j
 
 没有该工具链时 WASM 插件只参与用例模拟器（`tests/host/sim_main.cpp`），
 不产出 `.wasm`。
+
+插件包构建完成后组装方案包（链 + 插件副本）：
+
+```sh
+cmake --build build/wasm-ndk --target pime_schemes
+# 产物: dist/schemes/<id>/{scheme.yaml,<id>.cbor,plugins/}
+```
 
 单个插件可独立构建：
 

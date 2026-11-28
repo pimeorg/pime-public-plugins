@@ -2,7 +2,20 @@
 
 > 开工前检查：上一轮遗留的 5 项中 4 项已落地；CI 按用户要求撤回，重新列为待办。
 
-## 本轮：收尾 WeaveText 迁移的 5 项遗留
+## 本轮：方案包组装（Windows 宿主）
+
+环境：Windows 11 + Visual Studio 2022 / NDK wasm32；Python 3.13 + PyYAML。
+需求：用户指出方案包（链 + 插件副本）应由插件仓库组织，最终随本仓库 release
+发布；现在不发 release，先产出本地组装产物，Windows 宿主从 `dist/schemes` 取包。
+
+- [x] `schemes/win/<id>/`：`chain.yaml` + `scheme.yaml`（pinyin/english 默认；
+      双拼四方案、五笔 86、仓颉可选）
+- [x] `tools/pack_schemes.py`：chainc 编译链 + 拷插件副本；缺包直接失败
+- [x] `pime_schemes` 目标，产物 `dist/schemes/`
+- [x] 文档：`schemes/README.md`、README、`docs/structure.md`
+- [x] 宿主 pime-win 改为从 `../pime-public-plugin/dist/schemes` 取默认两包
+
+## 上一轮：收尾 WeaveText 迁移的 5 项遗留
 
 环境：Windows 11 + MinGW-w64（native 用例）、Python 3 + PyYAML（仓库校验）、
 pime-core 1.0.0（ABI 1.0）。本机无 Android NDK，wasm 产物需在具备 NDK 的环境验证。

@@ -1,0 +1,16 @@
+# 桌面方案包「wubi86」的链配方。由 tools/pack_schemes.py 编译成
+# dist/schemes/wubi86/wubi86.cbor，和 scheme.yaml 里的插件副本一起组装成方案包。
+
+api: 1
+id: wubi86
+description: 五笔 86（桌面）
+core: ">=1.0.0"
+
+plugins:
+  - { id: pime-keymap-default, role: preprocess }
+  - { id: pime-wubi-parse, role: parse }
+  - { id: pime-wubi-translate, role: translate,
+      settings: { max_candidates: 32 } }
+  - { id: pime-rank-default, role: rank,
+      settings: { max_candidates: 32 } }
+  - { id: pime-candidates-format, role: format, settings: { page_size: 6 } }

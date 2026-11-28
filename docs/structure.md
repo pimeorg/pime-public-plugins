@@ -127,6 +127,17 @@ pime-public-plugin/
 │   │   └── offline.yaml
 │   └── speech/
 │       └── online.yaml
+├── schemes/
+│   ├── README.md
+│   └── win/                          # 各平台方案包：chain.yaml + scheme.yaml
+│       ├── pinyin/                   # Windows 默认
+│       ├── english/                  # Windows 默认
+│       ├── shuangpin-xiaohe/
+│       ├── shuangpin-ziranma/
+│       ├── shuangpin-microsoft/
+│       ├── shuangpin-sogou/
+│       ├── wubi86/
+│       └── cangjie/
 ├── shared/
 │   ├── README.md
 │   ├── cpp/
@@ -152,6 +163,7 @@ pime-public-plugin/
 │   ├── check_plugins/                # 目录/清单/包布局/链引用校验
 │   ├── chainc/                       # chain YAML -> core CBOR 链配置
 │   ├── luabundle/                    # 多 Lua 源 -> 单 plugin.lua（可选）
+│   ├── pack_schemes.py               # 方案包组装：链编译 + 插件副本
 │   └── fetch_data/                   # 按 hash 拉取大资产/模型
 ├── tests/
 │   ├── README.md
@@ -178,6 +190,7 @@ pime-public-plugin/
 |---|---|---|
 | `plugins/<role>/<id>/` | 单个插件的源码、清单、资产、测试；构建出 `pime-plugin-<id>-<version>/` | 不放其他插件、不放产品链配置 |
 | `chains/` | 产品配方：有序插件列表、版本、settings、workspace 契约、锁定文件 | 不放插件源码 |
+| `schemes/<platform>/<id>/` | 方案包配方：链配方 + 插件 (id, version) 清单，组装成宿主可直接安装的目录 | 不放插件源码、不手拼包 |
 | `shared/` | 构建期共享的 CBOR/UTF-8/词典读取等代码 | 不产生运行时共享库 |
 | `data/` | 共享数据的规范源；构建时复制进各包 `assets/` | 不作为运行时数据目录 |
 | `tools/` | 仓库级校验、链编译、Lua 合并、资产拉取 | 不进入插件包 |
