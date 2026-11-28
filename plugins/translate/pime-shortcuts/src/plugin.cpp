@@ -61,8 +61,7 @@ void set_text(Item* item, const char* text, uint32_t len) {
     item->text_len = len;
 }
 
-void set_comment(Item* item, const char* text) {
-    const uint32_t len = cstr_len(text);
+void set_comment(Item* item, const char* text, uint32_t len) {
     const uint32_t n = len < sizeof(item->comment) ? len : sizeof(item->comment);
     for (uint32_t i = 0; i < n; ++i) item->comment[i] = text[i];
     item->comment_len = n;
@@ -94,7 +93,7 @@ void push(Item* items, uint32_t* count, const char* text, uint32_t text_len,
     if (has_text(items, *count, text, text_len)) return;
     Item& item = items[(*count)++];
     set_text(&item, text, text_len);
-    set_comment(&item, comment);
+    set_comment(&item, comment, cstr_len(comment));
     set_source(&item, source);
     item.score = score;
 }
@@ -246,8 +245,10 @@ void copy_existing(const Frame& frame, Item* items, uint32_t* count) {
                 set_source(&out, source, source_len);
             else
                 set_source(&out, "dict");
+            // `comment` is a span into the workspace, not a C string; copying
+            // by cstr_len() would run into the next CBOR field.
             if (item.text("comment", &comment, &comment_len))
-                set_comment(&out, comment);
+                set_comment(&out, comment, comment_len);
         }
         return;
     }

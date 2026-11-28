@@ -7,59 +7,59 @@ chain: default
 core: 1.0.0
 plugins:
 - id: pime-keymap-default
-  version: 1.2.0
-  code_hash: sha256:unbuilt
+  version: 1.3.0
+  code_hash: sha256:107da847c51d10f08d21f28014f6a920315ff80bf40f491bf93cb5ca4ee2763e
 - id: pime-pinyin-parse
-  version: 1.1.4
-  code_hash: sha256:unbuilt
+  version: 1.1.5
+  code_hash: sha256:ef0665bf423dfa0c0620ba8637d362a1716d43de8238790568187fa419e68484
 - id: pime-shape-parse
   version: 1.0.0
-  code_hash: sha256:unbuilt
+  code_hash: sha256:5112f51dbd31f46baeef89ed69b479252af3561e76c5c990bc9f5104180ad5d0
 - id: pime-pinyin-translate
-  version: 1.2.2
-  code_hash: sha256:unbuilt
+  version: 1.4.0
+  code_hash: sha256:d5ff28d303f418b43bb8e0340c23500151796e0cf59d38f920a53c5d6d9ef6c9
 - id: pime-pinyin-rank
-  version: 1.2.1
-  code_hash: sha256:unbuilt
+  version: 1.4.1
+  code_hash: sha256:b32dac9a449741f3102e10b86475fb5f3c1931b195a5e72af1b3b0fd0ecb50b5
 - id: pime-special-candidates
   version: 1.0.0
-  code_hash: sha256:unbuilt
+  code_hash: sha256:fe90f77519b8d121b76eb9f04331008e775b7e83989303ad145fdaff28b6adcc
 - id: pime-shortcuts
-  version: 1.0.0
-  code_hash: sha256:unbuilt
+  version: 1.0.1
+  code_hash: sha256:3bf5701fa7ee38b1e06d5962a716315ab6270c84e9deb8149ec8f81902dab979
 - id: pime-hans-hant
   version: 1.0.0
-  code_hash: sha256:unbuilt
+  code_hash: sha256:1d16f1aa36dfc6c93fe1154f88000db7b6ebaf8c9e08498f56537247281a1688
 - id: pime-shape-translate
   version: 1.0.0
-  code_hash: sha256:unbuilt
+  code_hash: sha256:6b3edeb76c1a1e85a26460f3a3a476c761d0dd4d7ad8480526866d592e324599
 - id: pime-emoji-suggest
   version: 1.0.0
-  code_hash: sha256:unbuilt
+  code_hash: sha256:9a4a58bc2a862c829b125d99fe011205011e4158704231c87a093aad6475074f
 - id: pime-clip-code
   version: 1.0.0
-  code_hash: sha256:unbuilt
+  code_hash: sha256:0e18319179fe1ddbbfc7922049e7edc68914d1b742b2b9489248710c86ee810d
 - id: pime-candidates-format
-  version: 1.3.3
-  code_hash: sha256:unbuilt
+  version: 1.5.1
+  code_hash: sha256:09ef783cca4b203ee60c43f9b442a460c8a43f632bb8a1e16807485584878fe6
 - id: pime-learn-user-dict
-  version: 1.0.0
-  code_hash: sha256:unbuilt
+  version: 1.0.1
+  code_hash: sha256:e898c48c4a62afef2b37e23e75a7cc9a6c5bff6ade987b7c922534a500372b3a
 - id: pime-predict-context
   version: 1.1.0
-  code_hash: sha256:unbuilt
+  code_hash: sha256:e857c6305bc1b626b10ac6a260cf0d3173a7e5d3388cbaa8b5d8d654331a4feb
 - id: pime-app-mode
   version: 1.0.0
-  code_hash: sha256:unbuilt
+  code_hash: sha256:4f46001943555cea18378617c33634c64c99dc126b1da74693f587a03993e65e
 - id: pime-learn-frequency
   version: 1.0.0
-  code_hash: sha256:unbuilt
+  code_hash: sha256:e91385d02409b0e95e7ddf6a9fd28de64df2e4dd19f9754719bc25dd24bd5251
 - id: pime-user-dict
   version: 1.0.0
-  code_hash: sha256:unbuilt
+  code_hash: sha256:0c507a7f5f16ab61687a58c38493e5348e0f9ccd288a244d1e5929d50edb518f
 - id: pime-dict-packs
   version: 1.0.0
-  code_hash: sha256:unbuilt
+  code_hash: sha256:cb92af372aa584464f4709102f8d4d4c2ecf9df4763bc0faa581297eb4131103
 - id: pime-personal-merge
   version: 1.0.0
-  code_hash: sha256:unbuilt
+  code_hash: sha256:e8028531b392ccba17cd16257194efd473a70ba375028ca099f552d1c5c7fa4e

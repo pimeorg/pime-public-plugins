@@ -138,6 +138,14 @@ bool copy_text(char* out, uint32_t* out_len, const char* text, uint32_t len) {
     return true;
 }
 
+/* Stored keys are "<prefix><word1>\x1f<word2>". A word never holds a control
+ * byte; keys written by older builds can, and those must not reach the strip. */
+bool clean_word(const char* word, uint32_t len) {
+    for (uint32_t i = 0; i < len; ++i)
+        if (static_cast<unsigned char>(word[i]) < 0x20) return false;
+    return true;
+}
+
 void append_text(char* out, uint32_t* out_len, const char* text, uint32_t len) {
     if (*out_len + len >= kMaxText) return;
     for (uint32_t i = 0; i < len; ++i) out[*out_len + i] = text[i];
@@ -496,10 +504,13 @@ void learned_for_raw(const char* raw, uint32_t raw_len, Item* items,
                                                  uint32_t key_len,
                                                  const char* value,
                                                  uint32_t value_len) {
-        if (key_len <= prefix_len + 1) return true;
+        // A longer reading that merely starts with `raw` also matches the
+        // prefix; only the exact reading has the separator right here.
+        if (key_len <= prefix_len + 1 || key[prefix_len] != '\x1f')
+            return true;
         const char* word = key + prefix_len + 1;
         const uint32_t word_len = key_len - prefix_len - 1;
-        if (word_len >= kMaxText) return true;
+        if (word_len >= kMaxText || !clean_word(word, word_len)) return true;
         Counter counter;
         parse_counter(value, value_len, &counter);
         const uint32_t score = decayed(counter.count, counter.day) * 1000u;
@@ -542,10 +553,13 @@ void bigram_next(const State& state, Item* items, uint32_t* count) {
                                                 uint32_t key_len,
                                                 const char* value,
                                                 uint32_t value_len) {
-        if (key_len <= prefix_len + 1) return true;
+        // Skip keys whose first word only starts with `last`: their separator
+        // sits deeper, and slicing here would yield half a word plus a 0x1f.
+        if (key_len <= prefix_len + 1 || key[prefix_len] != '\x1f')
+            return true;
         const char* word = key + prefix_len + 1;
         const uint32_t word_len = key_len - prefix_len - 1;
-        if (word_len >= kMaxText) return true;
+        if (word_len >= kMaxText || !clean_word(word, word_len)) return true;
         if (has_text(items, *count, word, word_len)) return true;
         Counter counter;
         parse_counter(value, value_len, &counter);

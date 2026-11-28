@@ -1,0 +1,15 @@
+name: merge-existing-comment-length
+event: { type: text, text: dz }
+workspace:
+  plugin/pime-pinyin-parse/raw: dz
+  plugin/pime-pinyin-rank/candidates:
+    - { text: 地, score: 900, source: dict, comment: 常用 }
+    - { text: 的, score: 800, source: dict, comment: 最近 }
+expect:
+  handled: false
+  workspace:
+    - k: candidates
+      v:
+        - { text: 地址, source: shortcut }
+        - { text: 地, source: dict, comment: 常用 }
+        - { text: 的, source: dict, comment: 最近 }

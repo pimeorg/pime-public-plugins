@@ -1,0 +1,42 @@
+name: bigram-next-skips-longer-first-word
+steps:
+  - event: { type: text, text: ni }
+    workspace:
+      plugin/pime-pinyin-parse/raw: ni
+      plugin/pime-candidates-format/committed: 你
+  - event: { type: text, text: hao }
+    workspace:
+      plugin/pime-pinyin-parse/raw: hao
+      plugin/pime-candidates-format/committed: 好
+  - event: { type: text, text: nimen }
+    workspace:
+      plugin/pime-pinyin-parse/raw: nimen
+      plugin/pime-candidates-format/committed: 你们
+  - event: { type: text, text: zaijian }
+    workspace:
+      plugin/pime-pinyin-parse/raw: zaijian
+      plugin/pime-candidates-format/committed: 再见
+  - event: { type: text, text: zaijian }
+    workspace:
+      plugin/pime-pinyin-parse/raw: zaijian
+      plugin/pime-candidates-format/committed: 再见
+  - event: { type: text, text: ni }
+    workspace:
+      plugin/pime-pinyin-parse/raw: ni
+      plugin/pime-candidates-format/committed: 你
+  # A key poisoned by an older build: the committed word itself holds the
+  # separator, so the extracted word must be dropped instead of shown.
+  - event: { type: text, text: huai }
+    workspace:
+      plugin/pime-pinyin-parse/raw: huai
+      plugin/pime-candidates-format/committed: "坏\u001F词"
+  - event: { type: text, text: ni }
+    workspace:
+      plugin/pime-pinyin-parse/raw: ni
+      plugin/pime-candidates-format/committed: 你
+    expect:
+      handled: false
+      workspace:
+        - k: next
+          v:
+            - { text: 好, source: user-bigram }
