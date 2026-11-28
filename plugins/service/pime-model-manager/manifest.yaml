@@ -7,7 +7,8 @@ state_schema: 1
 store_schema: 1
 runtime: wasm
 role: service
-after: [preprocess, parse, translate, rank, format, recognize, learn, predict, service]
+# 默认直接前驱；包管理器导入时据此定位，方案链记录里的 after 优先。
+after: pime-personal-merge
 platforms: [windows-x64, windows-arm64, macos-x64, macos-arm64,
             linux-x64, linux-arm64, android-arm64, android-x64, ios-arm64, ios-x64, harmony-arm64, harmony-x64]
 entry: pime_process

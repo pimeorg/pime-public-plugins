@@ -88,10 +88,23 @@ def discover_plugins(root: Path) -> dict[str, dict]:
     return plugins
 
 
-def resolve_entries(chain: dict, plugins: dict[str, dict]) -> list[dict]:
+def resolve_entries(chain: dict, plugins: dict[str, dict]) -> tuple[list[dict], list[dict]]:
+    """Return the enabled entries to compile and the full chain record.
+
+    The record keeps disabled tombstones so entries added later can still use a
+    deleted plugin as their `after` anchor.
+    """
     entries = []
+    record = []
     for entry in chain.get("plugins") or []:
         plugin_id = str(entry.get("id", ""))
+        after = entry.get("after")
+        record.append({
+            "id": plugin_id,
+            "after": str(after) if after is not None else None,
+        })
+        if entry.get("disabled"):
+            continue
         if plugin_id not in plugins:
             raise SystemExit(f"chainc: unknown plugin '{plugin_id}'")
         manifest = plugins[plugin_id]
@@ -110,57 +123,31 @@ def resolve_entries(chain: dict, plugins: dict[str, dict]) -> list[dict]:
         if entry.get("settings"):
             resolved["settings"] = dict(entry["settings"])
         entries.append(resolved)
-    return entries
+    return entries, record
 
 
-def check_order(entries: list[dict], plugins: dict[str, dict]) -> None:
-    """Role tokens are an allowlist; plugin-id tokens are strict order."""
-    position = {entry["id"]: index for index, entry in enumerate(entries)}
-    for index, entry in enumerate(entries):
-        manifest = plugins[entry["id"]]
-        after = manifest.get("after") or []
-        if not isinstance(after, list):
-            raise SystemExit(f"chainc: '{entry['id']}' after must be a list")
-        for token in after:
-            if token not in ROLES and token not in plugins:
-                raise SystemExit(
-                    f"chainc: '{entry['id']}' after names unknown '{token}'")
-        roles = {token for token in after if token in ROLES}
-        ids = {token for token in after if token not in ROLES}
-        for earlier in entries[:index]:
-            if earlier["role"] not in roles and earlier["id"] not in ids:
-                raise SystemExit(
-                    f"chainc: '{entry['id']}' cannot follow '{earlier['id']}' "
-                    f"({earlier['role']}); after is "
-                    f"[{', '.join(str(token) for token in after)}]")
-        for token in sorted(ids):
-            if position.get(token, -1) > index:
-                raise SystemExit(
-                    f"chainc: '{entry['id']}' must follow '{token}', "
-                    f"but '{token}' is later")
-
-        before = manifest.get("before")
-        if before is None:
+def check_links(record: list[dict]) -> None:
+    """Every `after` must name an earlier entry; the record order is the order."""
+    position = {}
+    for index, entry in enumerate(record):
+        plugin_id = entry["id"]
+        if not plugin_id:
+            raise SystemExit("chainc: plugin entry is missing id")
+        if plugin_id in position:
+            raise SystemExit(f"chainc: duplicate plugin '{plugin_id}' in chain")
+        position[plugin_id] = index
+    for index, entry in enumerate(record):
+        after = entry["after"]
+        if after is None:
             continue
-        if not isinstance(before, list):
-            raise SystemExit(f"chainc: '{entry['id']}' before must be a list")
-        for token in before:
-            if token not in ROLES and token not in plugins:
-                raise SystemExit(
-                    f"chainc: '{entry['id']}' before names unknown '{token}'")
-        roles = {token for token in before if token in ROLES}
-        ids = {token for token in before if token not in ROLES}
-        for later in entries[index + 1:]:
-            if later["role"] not in roles and later["id"] not in ids:
-                raise SystemExit(
-                    f"chainc: '{entry['id']}' cannot precede '{later['id']}' "
-                    f"({later['role']}); before is "
-                    f"[{', '.join(str(token) for token in before)}]")
-        for token in sorted(ids):
-            if position.get(token, index) < index:
-                raise SystemExit(
-                    f"chainc: '{entry['id']}' must precede '{token}', "
-                    f"but '{token}' is earlier")
+        if after == entry["id"]:
+            raise SystemExit(f"chainc: '{entry['id']}' lists itself as after")
+        if after not in position:
+            raise SystemExit(
+                f"chainc: '{entry['id']}' after names '{after}', which is not in the chain")
+        if position[after] >= index:
+            raise SystemExit(
+                f"chainc: '{entry['id']}' after '{after}' is not earlier in the chain")
 
 
 def core_config(entries: list[dict]) -> dict:
@@ -292,8 +279,8 @@ def main() -> int:
         sys.exit("chainc: api must be 1")
 
     plugins = discover_plugins(root)
-    entries = resolve_entries(chain, plugins)
-    check_order(entries, plugins)
+    entries, record = resolve_entries(chain, plugins)
+    check_links(record)
     packages_dir = Path(args.packages).resolve() if args.packages else root / "dist" / "packages"
 
     for entry in entries:

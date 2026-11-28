@@ -7,7 +7,8 @@
 
 1. **定 role**：这个插件在链里做哪一件事？只能选一个：
    `preprocess / parse / translate / rank / format / recognize / learn / predict / service`。
-   再写 `after`：它允许排在这些 role 之后，方便用户在现成方案包里插入。
+   再写一个默认直接前驱 `after: <plugin-id>`：包管理器导入本插件时插到它后面；
+   `after: null` 表示链头，省略则按 role 兜底。
 2. **定 runtime**：同步链默认 WASM；低频控制/网络胶水用 Lua；native 只给可信逃生舱。
 3. **建目录**：`plugins/<role>/<plugin-id>/`，目录名就是 manifest `id`。
 4. **写清单 + 实现 + 用例**：按下面的模板；`assets` / `models` 精确列出。
@@ -49,7 +50,8 @@ state_schema: 1
 store_schema: 1
 runtime: wasm
 role: parse
-after: [preprocess]   # 允许排在本插件之前的 role；[] 表示必须最先
+# 默认直接前驱；省略则按 role 兜底，after: null 表示链头。
+after: pime-keymap-default
 platforms: [windows-x64, windows-arm64, macos-x64, macos-arm64,
             linux-x64, linux-arm64, android-arm64, android-x64, ios-arm64, ios-x64, harmony-arm64, harmony-x64]
 entry: pime_process
@@ -82,7 +84,7 @@ state_schema: 1
 store_schema: 1
 runtime: lua
 role: preprocess
-after: [preprocess]
+after: pime-keymap-default
 platforms: [windows-x64, windows-arm64, macos-x64, macos-arm64,
             linux-x64, linux-arm64, android-arm64, android-x64, ios-arm64, ios-x64, harmony-arm64, harmony-x64]
 entry: plugin.lua
@@ -111,30 +113,23 @@ platforms: [windows-x64, macos-arm64, linux-x64]
 
 ## 4 role 怎么选
 
-| role | 做的事 | 典型输入/输出 | 典型 `after` |
+| role | 做的事 | 典型输入/输出 | 典型默认前驱 |
 |---|---|---|---|
-| `preprocess` | 键位、双拼、标点、组合键预处理 | key/text → workspace 或 commands | `[]`（总入口）或 `[preprocess]` |
-| `parse` | 把输入切成音节/码元/词法单元 | key/text → workspace | `[preprocess]`；链内第二个解析再加 `parse` |
-| `translate` | 音节/码元 → 候选文本 | workspace → workspace | `[preprocess, parse]`；追加到 rank 之后再加 `translate, rank` |
-| `rank` | 候选打分与排序 | workspace → workspace | `[preprocess, parse, translate]` |
-| `format` | 生成组合文本、候选列表、命令 | workspace → commands | 任意（列出全部 role） |
-| `recognize` | 手写/语音识别 | touch/audio → ml/net → commands | `[]` 或 `[preprocess]` |
-| `learn` | 频率、用户词、纠错学习 | 事件/workspace → store/workspace | 按实际前置的 role 列全 |
-| `predict` | 上下文预测、下一词 | surrounding → commands | 按实际前置的 role 列全 |
-| `service` | 云同步、更新、用户词典服务 | 事件/net → store/commands | 任意（列出全部 role） |
+| `preprocess` | 键位、双拼、标点、组合键预处理 | key/text → workspace 或 commands | `null`（总入口）或 `pime-keymap-default` |
+| `parse` | 把输入切成音节/码元/词法单元 | key/text → workspace | `pime-keymap-default` |
+| `translate` | 音节/码元 → 候选文本 | workspace → workspace | 对应的解析器，如 `pime-pinyin-parse` |
+| `rank` | 候选打分与排序 | workspace → workspace | 对应的翻译器，如 `pime-pinyin-translate` |
+| `format` | 生成组合文本、候选列表、命令 | workspace → commands | 候选链末端，如 `pime-clip-code` |
+| `recognize` | 手写/语音识别 | touch/audio → ml/net → commands | `null` 或 `pime-keymap-default` |
+| `learn` | 频率、用户词、纠错学习 | 事件/workspace → store/workspace | 实际前置插件，如 `pime-candidates-format` |
+| `predict` | 上下文预测、下一词 | surrounding → commands | 实际前置插件，如 `pime-learn-user-dict` |
+| `service` | 云同步、更新、用户词典服务 | 事件/net → store/commands | 实际前置插件，如 `pime-personal-merge` |
 
 一个插件只做一件事。需要“做一整套拼音”时，写多个插件并用 `chains/` 组合。
 
-role 白名单不够时，在 `after` / `before` 里直接写插件 id 表达严格顺序：
-
-```yaml
-# pime-pinyin-rank：必须在具体翻译器之后
-after: [preprocess, parse, translate, pime-pinyin-translate]
-# pime-candidates-format：候选收尾之后只放联想/学习/服务
-before: [learn, predict, service]
-```
-
-id 是硬约束：两者都在链中时，顺序必须符合；插件是否存在由 `requires` 负责。
+`after` 只写一个插件 id：默认直接排在谁后面。导入到方案时，包管理器把它插到该
+插件之后；该插件不在链里或没有 `after`，按 role 落到最后一条之后。加插件只写
+新条目，不改已有插件；链记录的数组是权威顺序。
 
 ## 5 能力最小化
 
@@ -215,8 +210,8 @@ pime_add_plugin(pime_pinyin_parse
 ## 9 检查清单
 
 - [ ] 目录 = `plugins/<role>/<id>`；`role` 与父目录一致。
-- [ ] `after` / `before` 的 token 是已知 role 或插件 id、不重复；严格顺序用 id 表达，
-      链顺序满足两个白名单（`check_plugins` / `chainc` 会查）。
+- [ ] `after` 是单个插件 id（`null` 表示链头）或省略；不能指向自身；指向的插件
+      必须存在（`check_plugins` 会查）。
 - [ ] `id` 全局唯一，符合 core 正则。
 - [ ] `runtime` 与入口文件一致；Lua 只有一个 `plugin.lua`。
 - [ ] `assets` / `models` 与文件精确一致；大文件有 lock。

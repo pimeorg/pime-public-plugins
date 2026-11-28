@@ -2,20 +2,20 @@
 
 > 开工前检查：上一轮遗留的 5 项中 4 项已落地；CI 按用户要求撤回，重新列为待办。
 
-## 本轮：插件前置 role 声明
+## 本轮：单前驱 + 方案链记录
 
 环境：Windows 11；Python 3.13 + PyYAML。
-需求：用户指出每个插件要写好 `role` 和**允许排在其前方的 role**，方便用户
-自己在现有方案包里添加插件。
+需求：插件顺序要能保证；加第 1 个、第 2 个插件都不能回头改已有插件；不需要
+排序 UI；删插件后记录仍然正确。
 
-- [x] 41 个插件 manifest 与 `_template` 增加 `after: [role...]`（`[]` = 必须最先）
-- [x] 增加对称的 `before` 白名单；`after` / `before` 里写插件 id 表示硬顺序
-- [x] 具体插件补严格顺序：rank 在 translate 之后、shape-parse 在 pinyin-parse 之后、
-      format 之后只允许 learn / predict / service 等
-- [x] `check_plugins` 校验两个字段、id 引用与链顺序；索引增加「可排在其前/后」
-- [x] `chainc` 编译链时校验白名单与 id 硬约束，放错位置的条目直接失败
+- [x] 41 个插件 manifest 与 `_template`：删除 `after` / `before` role 白名单，
+      改成单个默认前驱 `after: <plugin-id>`（`null` = 链头，省略 = role 兜底）
+- [x] 11 条产品链与 8 个 Windows 方案链：按现有顺序给每个条目补 `after`，行为零变化
+- [x] `chainc`：数组即执行顺序；跳过 `disabled` 墓碑；只校验锚点更早、存在、无环
+- [x] `check_plugins`：同步校验；索引展示 role 与默认前驱
+- [x] 新增 `tools/scheme_plugins.py add/remove`：只改目标条目，按前驱/role 兜底插入
 - [x] 文档：README、`docs/plugin.md`、`docs/chains.md`、`docs/authoring.md`、
-      `docs/structure.md`、`schemes/README.md`
+      `docs/structure.md`、`schemes/README.md`、`plugins/README.md`
 
 ## 上一轮：方案包组装（Windows 宿主）
 

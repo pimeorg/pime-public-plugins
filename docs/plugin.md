@@ -437,7 +437,9 @@ state_schema: 3
 store_schema: 2
 runtime: wasm
 role: parse
-after: [preprocess]   # 允许排在本插件之前的 role；[] 表示必须最先
+# 默认直接前驱：包管理器把本插件导入方案时插到它后面；
+# 省略则按 role 兜底，after: null 表示链头。
+after: pime-keymap-default
 platforms: [windows-x64, macos-arm64, ios-arm64, ios-x64, android-arm64, android-x64, harmony-arm64, harmony-x64]
 entry: pime_process
 capabilities: [input.read, output.emit, context.read, config.read, asset.read,
@@ -531,24 +533,15 @@ Core 只认“有序插件链”。插件声明 `role`，生态约定：
 
 `preprocess`、`parse`、`translate`、`rank`、`format`、`recognize`、`learn`、`predict`、`service`。
 
-- 顺序由配置声明，不写死在 core。
-- `after` / `before` 是位置白名单：链里排在它前面的 role 必须在 `after` 中，排在
-  它后面的 role 必须在 `before` 中；`after: []` 表示必须最先，`before: []` 表示
-  必须最后，省略 `before` 表示后面不限。这样用户往现成方案包里加插件时，看清单
-  就知道能插在哪些插件之后、哪些之前。
-- 白名单里还可以直接写**插件 id**：这是硬约束，该插件若在链中，就必须在声明的
-  一侧。用于同 role 或跨 role、只能靠具体插件保证的严格顺序：
-
-  ```yaml
-  # pime-pinyin-rank 必须排在 pime-pinyin-translate 之后
-  after: [preprocess, parse, translate, pime-pinyin-translate]
-  # 候选收尾之后只允许联想/学习/服务
-  before: [learn, predict, service]
-  ```
-
-  插件是否存在由 `requires` 管；id 只约束“在链中时”的先后。
-- 同一 role 可挂多个插件；同名覆盖必须显式声明。要排在同 role 的其他插件之后，
-  `after` 里也要写这个 role。
+- 顺序由方案链记录决定，不写死在 core。
+- 链记录的数组就是执行顺序；每个条目用 `after: <plugin-id>` 记录直接前驱。
+  加插件只写新条目：包管理器把它插到前驱之后；前驱不在链里或没声明时，按 role
+  落到该 role 的最后一条之后，再不行就放到链尾。
+- 插件 manifest 的 `after` 只是导入时的默认前驱，可省略或写 `after: null`
+  （链头）；方案链条目里的 `after` 优先。
+- 删除插件时链里保留 `disabled: true` 的墓碑，执行跳过，但顺序和后续插件的
+  锚点不变。
+- 同一 role 可挂多个插件；同名覆盖必须显式声明。
 - 拼音 = parse + translate + rank + format；parse 把音节写入 workspace，translate 读取，只在本次链调用有效。
 - 标点、键位、双拼、五笔、混输都是同一条链上的不同组合。
 - 切换输入法 = 换插件链配置，构建新代。

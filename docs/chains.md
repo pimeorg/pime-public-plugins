@@ -68,9 +68,11 @@ workspace:
 | `id` | 是 | 链唯一名；只用于仓库/发布，不发给 core |
 | `description` | 否 | 说明 |
 | `core` | 否 | 要求的 core SemVer；与插件 `min_core` 一起校验 |
-| `plugins[]` | 是 | 有序插件列表；字段与 core 代构建配置一致 |
+| `plugins[]` | 是 | 插件记录；数组顺序即执行顺序，条目可为墓碑 |
 | `plugins[].id` | 是 | 插件 id |
-| `plugins[].role` | 是 | 必须与插件 manifest 一致；同时决定链位置；前置 role 受 manifest `after` 约束 |
+| `plugins[].role` | 是 | 必须与插件 manifest 一致 |
+| `plugins[].after` | 否 | 直接前驱插件 id；由包管理器插入时写入，链头省略 |
+| `plugins[].disabled` | 否 | `true` 表示墓碑：不参与执行，但保留顺序和锚点 |
 | `plugins[].version` | 否 | SemVer 约束；省略取满足条件的最高版本 |
 | `plugins[].alias` | 否 | 同 id 多版本并行时必须显式且唯一 |
 | `plugins[].settings` | 否 | 只能包含 manifest `settings` 声明过的键 |
@@ -98,8 +100,8 @@ workspace:
 }
 ```
 
-- 数组顺序 = core 执行顺序。
-- `workspace`、`description`、`core` 等仓库字段不进入 CBOR。
+- 数组顺序 = core 执行顺序；`chainc` 跳过 `disabled: true` 的条目。
+- `after` / `disabled`、`workspace`、`description`、`core` 等仓库字段不进入 CBOR。
 - `chainc --lock` 生成 `*.lock.yaml`；`chainc --check` 校验锁与当前包一致。
 - 输出是确定性的（键排序、CBOR canonical），便于 diff 与复现。
 
@@ -111,48 +113,31 @@ core 不强制 role 顺序；生态约定：
 preprocess → parse → translate → rank → format → learn / predict → service
 ```
 
+- 链记录的 `plugins[]` 数组就是执行顺序，`chainc` 原样编译。
+- 每个条目用 `after: <plugin-id>` 记录它的**直接前驱**。加插件只写新条目：
+  包管理器把它插到前驱之后；前驱不存在或没有声明时，按 role 落到该 role 的
+  最后一条之后，再不行就放到链尾。
+- 插件 manifest 的 `after` 只是“导入时的默认前驱”，可省略；`after: null`
+  表示链头。方案链条目里的 `after` 优先于 manifest。
+- 删除插件时在链里保留条目并标 `disabled: true`（墓碑）：执行时跳过，但数组
+  顺序和其它条目的锚点不变；以后往它后面加插件仍可复用这个槽位。
 - 同步事件链只放同步插件；`recognize` / `service` 的异步结果经 `on_event` 回来，
   不阻塞同步链。
 - 同一 role 可挂多个插件；同名/同功能覆盖必须显式写在链里。
-- `learn` / `predict` 可以放在 `format` 之前或之后，但必须在链文件中明确；
-  不要依赖未声明的隐式顺序。
-
-每个插件在 manifest 里用 `after` / `before` 声明位置：
 
 ```yaml
-# manifest.yaml
-role: translate
-after: [preprocess, parse]   # 只允许这些 role 排在前面
-before: [rank, format]       # 只允许这些 role 排在后面
+# manifest.yaml：默认前驱，只影响“导入到别的方案”时的落点
+role: rank
+after: pime-pinyin-translate
 ```
 
-- role 是**白名单**：链里实际在前面的 role 必须都在 `after` 中，实际在后面的 role
-  必须都在 `before` 中。`before` 省略表示后面不限。
-- `after: []` 表示必须最先（`pime-keymap-default`）；`before: []` 表示必须最后。
-- 白名单里写**插件 id** 是硬约束：该插件若在链中，就必须在声明的这一侧。
-  用来表达同 role 或跨 role、只能靠具体插件保证的顺序：
-
-  ```yaml
-  # pime-pinyin-rank
-  after: [preprocess, parse, translate, pime-pinyin-translate]
-  # 中间件排在指定解析器之后
-  # pime-shape-parse
-  after: [preprocess, parse, pime-pinyin-parse]
-  ```
-
-- 插件是否存在由 `requires` 负责；id 只约束“两者都在链中时”的先后。
-- 示例：
-
-  ```text
-  preprocess → parse → translate                        ✓
-  preprocess → translate → parse                        ✗ parse 前面有 translate
-  translate → rank → format                             ✓
-  format → rank                                         ✗ format 的 before 不含 rank
-  pime-pinyin-rank 在 pime-pinyin-translate 之前          ✗ id 硬约束
-  ```
-
-- 用户往现成方案包里加插件时，把它插在前面的 role 全部属于 `after`、并且不会让
-  后面的 role 落在 `before` 之外的位置；`chainc` 和 `check_plugins` 会一起校验。
+```yaml
+# schemes/win/pinyin/chain.yaml：数组顺序是记录，after 是一致性锚点
+plugins:
+  - { id: pime-pinyin-translate, after: pime-shape-parse, role: translate }
+  - { id: pime-pinyin-rank,      after: pime-pinyin-translate, role: rank }
+  - { id: pime-special-candidates, after: pime-pinyin-rank, role: translate }
+```
 
 ## 6 workspace 契约
 
@@ -269,7 +254,7 @@ plugins:
 
 - [ ] 链 `id` 唯一；文件名与 `id` 一致。
 - [ ] 每个插件的 `id` / `role` 存在于 `plugins/`，且 role 与 manifest 一致。
-- [ ] 顺序符合约定；每个插件的 `after` 覆盖了它前面的所有 role；异步插件不阻塞同步链。
+- [ ] 每个条目的 `after` 指向数组中更早的插件（或墓碑）；异步插件不阻塞同步链。
 - [ ] `settings` 键都在插件 manifest 中声明。
 - [ ] 跨插件 workspace 键都有 `from` / `to` 声明，且消费者在生产者之后。
 - [ ] 锁文件存在，`code_hash` 与构建产物一致。

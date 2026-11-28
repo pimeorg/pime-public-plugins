@@ -13,7 +13,7 @@
 |---|---|
 | 一个包只能有一个 runtime、一个 role | `manifest.yaml` 单值字段；`validate_manifest` |
 | `role` 只能是 9 个值：`preprocess / parse / translate / rank / format / recognize / learn / predict / service` | `src/codec/manifest.cpp` `is_known_role` |
-| 代构建配置只认 `{plugins:[{id, version?, alias?, role, settings}]}`，数组顺序即链顺序 | `src/core/generation.cpp` `generation_build` |
+| 代构建配置只认 `{plugins:[{id, version?, alias?, role, settings}]}`，数组顺序即链顺序；仓库的链记录就是数组顺序，`after` 不发给 core | `src/core/generation.cpp` `generation_build` |
 | 包内只允许 `manifest.yaml`、`plugin.wasm` / `plugin.lua` / `plugin.dll` / `plugin.so` / `plugin.dylib`、`assets/**`、`models/**`、`SIGNATURE` | `src/host/package.cpp` `allowed_file` |
 | Lua 加载器移除 `require` / `dofile` / `loadfile` / `load` / `package`，只加载包根 `plugin.lua` | `src/host/lua/lua_instance.cpp` |
 | 同一 `(id, version)` 在同一平台/架构必须同 `code_hash`；换 runtime 就是另一个包 | `docs/plugin.md` §7.2 |
@@ -36,8 +36,8 @@
 1. **一个插件 = 一个目录 = 一个包 = 一个 `id` + SemVer。**
    目录就是构建、测试、签名、发布的最小边界；每个目录可独立构建。
 2. **一级目录 = core `role`（功能），二级目录 = 具体插件。**
-   core 只认 role，链顺序也由 role 组织；这样不会出现“一个输入法一个巨石插件”，
-   新增输入法只是在不同 role 下各加一个插件。
+   core 只认 role；具体顺序由方案链记录（数组 + 每个插件的直接前驱）决定。
+   这样不会出现“一个输入法一个巨石插件”，新增输入法只是在不同 role 下各加一个插件。
 3. **产品不是目录，是链。**
    “拼音 / 五笔 / 手写 / 语音”是 `chains/` 里的组合配方，不是 `plugins/` 下的大目录。
 4. **包自包含。**
@@ -289,8 +289,7 @@ plugins/recognize/pime-handwriting-native/
 | 插件目录 | 必须等于 manifest `id` | `pime-pinyin-parse/` |
 | `id` | `^[a-z0-9][a-z0-9._-]{0,63}$`，以 `pime-` 开头 | `pime-pinyin-parse` |
 | `role` | 必须等于父目录名 | `role: parse` |
-| `after` | role 白名单 + 插件 id 硬约束；`[]` 表示最先 | `after: [preprocess, pime-pinyin-parse]` |
-| `before` | 可选；后面的 role 白名单 + 插件 id 硬约束；`[]` 表示最后 | `before: [learn, predict, service]` |
+| `after` | 可选；单个默认直接前驱插件 id，`null` 表示链头，省略按 role 兜底 | `after: pime-pinyin-parse` |
 | 包目录 | `pime-plugin-<id>-<version>`（core 约定） | `pime-plugin-pime-pinyin-parse-1.0.0` |
 | 发布标签 | `<id>@<semver>` | `pime-pinyin-parse@1.0.0` |
 | alias | 默认 `id`；同 id 并行版本必须显式 | `pinyin-next` |
@@ -309,7 +308,8 @@ plugins/recognize/pime-handwriting-native/
 10. 包目录只含 core 允许的路径。
 11. 插件源码不含平台宏、第三方网络/加密/音频头。
 12. 链引用的 `(id, role)` 均存在。
-13. `after` / `before` 的 token 是已知 role 或插件 id 且不重复；链顺序满足两个白名单。
+13. `after` 是单个插件 id（或 `null`）且指向存在的插件；链条目的 `after` 指向
+    数组中更早的条目。
 
 ## 7 运行时选择
 
@@ -389,8 +389,9 @@ workspace:
   留在 YAML，用于校验和测试，不发给 core。
 - workspace 键由 core 自动加 `plugin/<id>/` 前缀；跨插件读取用完整键。
 - 链文件声明的 `from` / `to` 必须与实际读写的插件一致；`check_plugins` 校验。
-- 链顺序即 core 执行顺序；建议按 `preprocess → parse → translate → rank →
-  format → learn/predict → service` 排列，异步 service 放最后。
+- 链记录的数组即 core 执行顺序；条目用 `after` 记录直接前驱，删除时保留
+  `disabled` 墓碑；建议按 `preprocess → parse → translate → rank → format →
+  learn/predict → service` 排列，异步 service 放最后。
 - `*.lock.yaml` 固定 `(id, version, code_hash)` 与 core 版本；发布与回滚以锁为准。
 
 ## 11 构建、打包、签名

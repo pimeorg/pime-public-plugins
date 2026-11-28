@@ -58,37 +58,23 @@ python tools/pack_schemes.py --packages build/wasm-ndk/package \
 
 ## 往方案包里加自己的插件
 
-每个插件的 `manifest.yaml` 都写了 `role` 和位置约束：
+顺序由方案链记录保存，不靠插件的封闭清单：
 
-```yaml
-role: rank
-after: [preprocess, parse, translate, pime-pinyin-translate]
-```
+- 方案链的 `plugins[]` 数组就是执行顺序。
+- 每个条目用 `after: <plugin-id>` 记录直接前驱；插件 manifest 里的 `after`
+  只是导入时的默认前驱。
+- 加插件只写**新条目**，不改已有插件和已有条目：
 
-- `after` / `before` 的 role 是**白名单**：前面的 role 必须都在 `after`，后面的
-  role 必须都在 `before`。`after: []` 表示必须最先，`before: []` 表示必须最后。
-- 里面的**插件 id 是硬约束**：该插件如果在链中，就必须在声明的这一侧。
-  例如上面的 `pime-pinyin-rank` 必须排在 `pime-pinyin-translate` 之后；插件是否
-  存在由它自己的 `requires` 负责。
-- `format` / `learn` / `service` 通常列出全部 role 作为 `after`，位置基本自由。
+  ```sh
+  python tools/scheme_plugins.py add pinyin my-rank
+  ```
 
-例如给拼音方案加一个自定义 `rank` 插件：
-
-```yaml
-# schemes/win/pinyin/chain.yaml
-plugins:
-  - { id: pime-keymap-default, role: preprocess }
-  - { id: pime-pinyin-parse,   role: parse }
-  - { id: pime-shape-parse,    role: parse }
-  - { id: pime-pinyin-translate, role: translate }
-  - { id: pime-pinyin-rank,    role: rank }
-  - { id: my-rank,             role: rank }   # after: [preprocess, parse, translate, rank]
-  # ...
-```
-
-再把 `my-rank` 的插件包放进 `--packages`（或在 `scheme.yaml` 的 `plugins`
-里 pin 版本），重新跑 `pime_schemes`。`chainc` 会按 `after` 拒绝放错位置的
-条目，不会产出装起来顺序错误的包。
+  包管理器把 `my-rank` 插到它 `after` 指向的插件之后（manifest 没写或指向的
+  插件不在链里时，落到同 role 的最后一条之后，再不行放到链尾）。
+- 删除用 `remove`：条目保留为 `disabled: true` 墓碑，执行时跳过，但顺序和
+  其它条目的锚点不变。
+- 插件包放进 `--packages`（或在 `scheme.yaml` 的 `plugins` 里 pin 版本），
+  重新跑 `pime_schemes` 即可。
 
 已经装到 `%LOCALAPPDATA%\PIME\schemes\<id>\` 的包，把自己的插件包拷进它的
-`plugins/`，并按同样规则改用户链（宿主设置里的改动写在 `custom.cbor`）。
+`plugins/`，宿主用同样的规则把条目插入 `custom.cbor`；不需要排序 UI。

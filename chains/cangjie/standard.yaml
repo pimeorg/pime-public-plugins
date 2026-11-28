@@ -5,11 +5,11 @@ core: ">=1.0.0"
 
 plugins:
   - { id: pime-keymap-default, role: preprocess }
-  - { id: pime-cangjie-parse, role: parse }
-  - { id: pime-cangjie-translate, role: translate }
-  - { id: pime-rank-default, role: rank }
-  - { id: pime-candidates-format, role: format }
-  - { id: pime-learn-frequency, role: learn }
+  - { id: pime-cangjie-parse, after: pime-keymap-default, role: parse }
+  - { id: pime-cangjie-translate, after: pime-cangjie-parse, role: translate }
+  - { id: pime-rank-default, after: pime-cangjie-translate, role: rank }
+  - { id: pime-candidates-format, after: pime-rank-default, role: format }
+  - { id: pime-learn-frequency, after: pime-candidates-format, role: learn }
 
 workspace:
   - { key: plugin/pime-keymap-default/action,

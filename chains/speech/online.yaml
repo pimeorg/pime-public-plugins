@@ -5,8 +5,8 @@ core: ">=1.0.0"
 
 plugins:
   - { id: pime-speech-ncnn, role: recognize }
-  - { id: pime-candidates-format, role: format }
-  - { id: pime-learn-frequency, role: learn }
+  - { id: pime-candidates-format, after: pime-speech-ncnn, role: format }
+  - { id: pime-learn-frequency, after: pime-candidates-format, role: learn }
 
 workspace:
   - { key: plugin/pime-speech-ncnn/candidates,

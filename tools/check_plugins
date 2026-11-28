@@ -153,26 +153,19 @@ def check_manifest(plugin_dir: Path, role_dir: str, report: Report,
     if manifest.get("role") not in ROLES:
         report.error(where, f"unknown role '{manifest.get('role')}'")
 
-    def read_order(key: str, required: bool):
-        value = manifest.get(key)
-        if value is None:
-            if required:
-                report.error(where, f"{key} is required (use [] for none)")
-            return None
-        if not isinstance(value, list):
-            report.error(where, f"{key} must be a list of roles or plugin ids")
-            return []
-        for token in value:
-            if str(token) not in ROLES and not PLUGIN_ID_RE.match(str(token)):
-                report.error(where, f"{key} has unknown token '{token}'")
-            if str(token) == plugin_id:
-                report.error(where, f"{key} lists the plugin itself")
-        if len(set(value)) != len(value):
-            report.error(where, f"{key} repeats a token")
-        return [str(token) for token in value]
-
-    after = read_order("after", required=True) or []
-    before = read_order("before", required=False)
+    # `after` is one default predecessor id (or null for "must be first").
+    # Absent means the package manager falls back to the last plugin of the role.
+    after_set = "after" in manifest
+    after = manifest.get("after")
+    if after is not None:
+        if not isinstance(after, str):
+            report.error(where, "after must be a single plugin id or null")
+            after = None
+        else:
+            if not PLUGIN_ID_RE.match(after):
+                report.error(where, f"after '{after}' is not a plugin id")
+            if after == plugin_id:
+                report.error(where, "after lists the plugin itself")
 
     version = parse_semver(manifest.get("version", ""))
     if not version:
@@ -313,62 +306,56 @@ def check_manifest(plugin_dir: Path, role_dir: str, report: Report,
         "runtime": runtime,
         "settings": setting_keys,
         "after": after,
-        "before": before,
+        "after_set": after_set,
         "description": str(manifest.get("description", "")),
     }
 
 
 def check_refs(plugins: dict[str, dict], report: Report) -> None:
-    """Plugin ids named in after/before must exist."""
+    """The default predecessor must name a plugin that exists."""
     for plugin in plugins.values():
-        for token in plugin["after"] + (plugin["before"] or []):
-            if token not in ROLES and token not in plugins:
-                report.error(plugin["id"],
-                             f"order token '{token}' is neither a role nor a plugin")
+        after = plugin["after"]
+        if after is not None and after not in plugins:
+            report.error(plugin["id"], f"after names unknown plugin '{after}'")
 
 
-def check_order(entries: list, plugins: dict[str, dict], report: Report,
-                where: str) -> None:
-    """Enforce the role allowlist and the strict plugin-id order."""
-    order = []
+def check_links(entries: list, report: Report, where: str) -> list[dict]:
+    """Every `after` must name an earlier entry; the array order is the record."""
+    record = []
     for entry in entries:
         if not isinstance(entry, dict):
+            report.error(where, "plugin entry is not a mapping")
             continue
-        plugin = plugins.get(str(entry.get("id", "")))
-        if plugin:
-            order.append(plugin)
-    position = {plugin["id"]: index for index, plugin in enumerate(order)}
-
-    for index, plugin in enumerate(order):
-        roles = {token for token in plugin["after"] if token in ROLES}
-        ids = {token for token in plugin["after"] if token not in ROLES}
-        for earlier in order[:index]:
-            if earlier["role"] not in roles and earlier["id"] not in ids:
-                report.error(where,
-                             f"'{plugin['id']}' cannot follow '{earlier['id']}' "
-                             f"({earlier['role']}); after is "
-                             f"[{', '.join(plugin['after'])}]")
-        for token in sorted(ids):
-            if position.get(token, -1) > index:
-                report.error(where,
-                             f"'{plugin['id']}' must follow '{token}', "
-                             f"but '{token}' is later")
-
-        if plugin["before"] is None:
+        after = entry.get("after")
+        record.append({
+            "id": str(entry.get("id", "")),
+            "after": str(after) if after is not None else None,
+            "disabled": bool(entry.get("disabled")),
+        })
+    position = {}
+    for index, entry in enumerate(record):
+        plugin_id = entry["id"]
+        if not plugin_id:
+            report.error(where, "plugin entry is missing id")
             continue
-        roles = {token for token in plugin["before"] if token in ROLES}
-        ids = {token for token in plugin["before"] if token not in ROLES}
-        for later in order[index + 1:]:
-            if later["role"] not in roles and later["id"] not in ids:
-                report.error(where,
-                             f"'{plugin['id']}' cannot precede '{later['id']}' "
-                             f"({later['role']}); before is "
-                             f"[{', '.join(plugin['before'])}]")
-        for token in sorted(ids):
-            if position.get(token, index) < index:
-                report.error(where,
-                             f"'{plugin['id']}' must precede '{token}', "
-                             f"but '{token}' is earlier")
+        if plugin_id in position:
+            report.error(where, f"duplicate plugin '{plugin_id}' in chain")
+            continue
+        position[plugin_id] = index
+    for index, entry in enumerate(record):
+        after = entry["after"]
+        if after is None:
+            continue
+        if after == entry["id"]:
+            report.error(where, f"'{entry['id']}' lists itself as after")
+        elif after not in position:
+            report.error(where,
+                         f"'{entry['id']}' after names '{after}', "
+                         f"which is not in the chain")
+        elif position[after] >= index:
+            report.error(where,
+                         f"'{entry['id']}' after '{after}' is not earlier in the chain")
+    return record
 
 
 def check_chains(root: Path, plugins: dict[str, dict], report: Report) -> None:
@@ -406,13 +393,13 @@ def check_chains(root: Path, plugins: dict[str, dict], report: Report) -> None:
         if not entries:
             report.error(where, "plugins must be non-empty")
             continue
-        positions: dict[str, int] = {}
-        previous = -1
-        for index, entry in enumerate(entries):
+        for entry in entries:
             if not isinstance(entry, dict):
                 report.error(where, "plugin entry is not a mapping")
                 continue
             plugin_id = str(entry.get("id", ""))
+            if entry.get("disabled"):
+                continue
             role = str(entry.get("role", ""))
             if plugin_id not in plugins:
                 report.error(where, f"unknown plugin '{plugin_id}'")
@@ -423,9 +410,10 @@ def check_chains(root: Path, plugins: dict[str, dict], report: Report) -> None:
             for key in (entry.get("settings") or {}):
                 if key not in plugin["settings"]:
                     report.error(where, f"setting '{key}' is not declared by '{plugin_id}'")
-            positions[plugin_id] = index
 
-        check_order(entries, plugins, report, where)
+        record = check_links(entries, report, where)
+        positions = {entry["id"]: index for index, entry in enumerate(record)
+                     if not entry["disabled"]}
 
         for contract in chain.get("workspace") or []:
             if not isinstance(contract, dict):
@@ -451,7 +439,6 @@ def check_chains(root: Path, plugins: dict[str, dict], report: Report) -> None:
             producer_readme = plugins[producer]["dir"] / "README.md"
             if key not in producer_readme.read_text(encoding="utf-8"):
                 report.error(where, f"{producer} README does not declare write of {key}")
-        previous = previous  # keep loop shape explicit
 
 
 def write_index(root: Path, plugins: dict[str, dict]) -> None:
@@ -460,30 +447,21 @@ def write_index(root: Path, plugins: dict[str, dict]) -> None:
         "",
         "> 由 `python tools/check_plugins --write-index` 生成，不要手改。",
         "",
-        "| role | 可排在其前 | 可排在其后 | id | runtime | version | 说明 |",
-        "|---|---|---|---|---|---|---|",
+        "执行顺序以方案链记录为准。「前驱」只是导入插件时的默认落点；"
+        "前驱不存在或未声明时，按 role 落到该 role 的最后一条之后。",
+        "",
+        "| role | 前驱 | id | runtime | version | 说明 |",
+        "|---|---|---|---|---|---|",
     ]
-    def describe(tokens: list[str]) -> str:
-        roles = [role for role in ROLES if role in tokens]
-        ids = [token for token in tokens if token not in ROLES]
-        parts = [f"`{role}`" for role in roles] + [f"`{token}`" for token in ids]
-        return ", ".join(parts)
-
     for plugin in sorted(plugins.values(), key=lambda item: (item["role"], item["id"])):
-        if not plugin["after"]:
-            previous = "（必须最先）"
-        elif {token for token in plugin["after"] if token in ROLES} == set(ROLES):
-            previous = "任意"
+        if plugin["after"] is not None:
+            previous = f"`{plugin['after']}`"
+        elif plugin["after_set"]:
+            previous = "链头"
         else:
-            previous = describe(plugin["after"])
-        if plugin["before"] is None:
-            following = "任意"
-        elif not plugin["before"]:
-            following = "（必须最后）"
-        else:
-            following = describe(plugin["before"])
+            previous = "—"
         lines.append(
-            f"| `{plugin['role']}` | {previous} | {following} | `{plugin['id']}` | "
+            f"| `{plugin['role']}` | {previous} | `{plugin['id']}` | "
             f"{plugin['runtime']} | {plugin['version']} | {plugin['description']} |"
         )
     (root / "plugins" / "README.md").write_text("\n".join(lines) + "\n", encoding="utf-8")

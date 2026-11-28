@@ -8,7 +8,6 @@ store_schema: 1
 runtime: native
 trusted: true
 role: recognize
-after: [preprocess]
 platforms: [android-arm64, android-x64, windows-x64]
 entry: pime_process
 capabilities: [audio.capture, audio.pcm, asset.read, log]

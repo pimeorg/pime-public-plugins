@@ -5,9 +5,9 @@ core: ">=1.0.0"
 
 plugins:
   - { id: pime-dict-packs, role: service }
-  - { id: pime-personal-merge, role: service }
-  - { id: pime-model-manager, role: service }
-  - { id: pime-cloud-hotwords, role: service }
-  - { id: pime-translate-online, role: service }
+  - { id: pime-personal-merge, after: pime-dict-packs, role: service }
+  - { id: pime-model-manager, after: pime-personal-merge, role: service }
+  - { id: pime-cloud-hotwords, after: pime-model-manager, role: service }
+  - { id: pime-translate-online, after: pime-cloud-hotwords, role: service }
 
 workspace: []

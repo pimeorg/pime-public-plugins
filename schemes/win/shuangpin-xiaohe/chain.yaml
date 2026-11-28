@@ -8,26 +8,26 @@ core: ">=1.0.0"
 
 plugins:
   - { id: pime-keymap-default, role: preprocess }
-  - { id: pime-shuangpin-standard, role: preprocess,
+  - { id: pime-shuangpin-standard, after: pime-keymap-default, role: preprocess,
       settings: { scheme: xiaohe } }
-  - { id: pime-pinyin-parse, role: parse }
-  - { id: pime-shape-parse, role: parse }
-  - { id: pime-pinyin-translate, role: translate,
+  - { id: pime-pinyin-parse, after: pime-shuangpin-standard, role: parse }
+  - { id: pime-shape-parse, after: pime-pinyin-parse, role: parse }
+  - { id: pime-pinyin-translate, after: pime-shape-parse, role: translate,
       settings: { max_candidates: 64 } }
-  - { id: pime-pinyin-rank, role: rank,
+  - { id: pime-pinyin-rank, after: pime-pinyin-translate, role: rank,
       settings: { page_size: 6, max_candidates: 64, decay_days: 0 } }
-  - { id: pime-special-candidates, role: translate }
-  - { id: pime-shortcuts, role: translate }
-  - { id: pime-hans-hant, role: translate }
-  - { id: pime-shape-translate, role: translate }
-  - { id: pime-english-translate, role: translate,
+  - { id: pime-special-candidates, after: pime-pinyin-rank, role: translate }
+  - { id: pime-shortcuts, after: pime-special-candidates, role: translate }
+  - { id: pime-hans-hant, after: pime-shortcuts, role: translate }
+  - { id: pime-shape-translate, after: pime-hans-hant, role: translate }
+  - { id: pime-english-translate, after: pime-shape-translate, role: translate,
       settings: { max_candidates: 12 } }
-  - { id: pime-emoji-suggest, role: predict }
-  - { id: pime-clip-code, role: predict }
-  - { id: pime-candidates-format, role: format, settings: { page_size: 6 } }
-  - { id: pime-learn-user-dict, role: learn }
-  - { id: pime-predict-context, role: predict }
-  - { id: pime-app-mode, role: learn }
-  - { id: pime-dict-packs, role: service }
-  - { id: pime-personal-merge, role: service }
-  - { id: pime-model-manager, role: service }
+  - { id: pime-emoji-suggest, after: pime-english-translate, role: predict }
+  - { id: pime-clip-code, after: pime-emoji-suggest, role: predict }
+  - { id: pime-candidates-format, after: pime-clip-code, role: format, settings: { page_size: 6 } }
+  - { id: pime-learn-user-dict, after: pime-candidates-format, role: learn }
+  - { id: pime-predict-context, after: pime-learn-user-dict, role: predict }
+  - { id: pime-app-mode, after: pime-predict-context, role: learn }
+  - { id: pime-dict-packs, after: pime-app-mode, role: service }
+  - { id: pime-personal-merge, after: pime-dict-packs, role: service }
+  - { id: pime-model-manager, after: pime-personal-merge, role: service }

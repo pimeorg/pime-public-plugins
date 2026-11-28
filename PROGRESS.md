@@ -1,6 +1,6 @@
 # pime-public-plugin 进度
 
-更新：2026-11-28（插件前置 role 声明）
+更新：2026-11-28（单前驱 + 方案链记录）
 
 ## 环境与需求
 
@@ -18,23 +18,23 @@
 
 ## 已完成
 
-### 插件前置 role（2026-11-28）
+### 单前驱 + 方案链记录（2026-11-28）
 
-用户指出：每个插件要写好 `role` 和允许排在其前方的 role，方便用户自己在现有
-方案包里添加插件。
+用户要求顺序必须被保证，但加第 1 个、第 2 个插件都不能回头改已有插件；不需要
+排序 UI；删插件后记录仍然正确。封闭白名单做不到这一点，于是改成：
 
 | 内容 | 位置 |
 |---|---|
-| 41 个插件与模板新增 `after: [role...]`，`[]` 表示必须最先 | `plugins/*/*/manifest.yaml` |
-| 对称的 `before` 白名单；`after`/`before` 中的插件 id 是硬顺序 | `plugins/*/*/manifest.yaml` |
-| 严格顺序：rank 在 translate 后、shape-parse 在 pinyin-parse 后、format 后限 learn/predict/service | 相关插件 manifest |
-| 清单字段、id 引用与链顺序校验；索引增加「可排在其前/后」 | `tools/check_plugins` |
-| 编译链时校验白名单与 id 硬约束，放错直接失败 | `tools/chainc` |
+| 41 个插件与模板：删除 role 白名单，改为单个默认前驱 `after: <id>`（`null` = 链头） | `plugins/*/*/manifest.yaml` |
+| 11 条产品链 + 8 个 Windows 方案链：每个条目记录直接前驱，行为零变化 | `chains/*/*.yaml`、`schemes/win/*/chain.yaml` |
+| 数组即执行顺序；跳过 `disabled` 墓碑；只校验锚点更早/存在/无环 | `tools/chainc` |
+| 清单与链校验、索引改为 role + 默认前驱 | `tools/check_plugins` |
+| `add` / `remove`：只改目标条目，前驱不存在时按 role 落到最后一条之后 | `tools/scheme_plugins.py` |
 | 语义、插入方法与文档 | `plugins/README.md`、`docs/*.md`、`schemes/README.md` |
 
-规则：role token 是白名单（前面的 role 必须在 `after`，后面的必须在 `before`）；
-插件 id token 是硬约束（两者都在链中时必须按声明先后）。插件是否存在由
-`requires` 负责；`format` / `learn` / `service` 这类收尾插件通常列全 role。
+规则：方案链的数组是权威顺序；每个条目的 `after` 是直接前驱。加插件只写新条目，
+包管理器插到前驱之后；前驱不在链里或未声明时按 role 兜底。删除保留 `disabled`
+墓碑，所以其它条目的顺序和锚点不受影响。
 
 ### 方案包（2026-11-28）
 

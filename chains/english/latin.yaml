@@ -5,10 +5,10 @@ core: ">=1.0.0"
 
 plugins:
   - { id: pime-keymap-default, role: preprocess }
-  - { id: pime-english-parse, role: parse }
-  - { id: pime-english-translate, role: translate }
-  - { id: pime-candidates-format, role: format }
-  - { id: pime-learn-frequency, role: learn }
+  - { id: pime-english-parse, after: pime-keymap-default, role: parse }
+  - { id: pime-english-translate, after: pime-english-parse, role: translate }
+  - { id: pime-candidates-format, after: pime-english-translate, role: format }
+  - { id: pime-learn-frequency, after: pime-candidates-format, role: learn }
 
 workspace:
   - { key: plugin/pime-keymap-default/action,

@@ -7,7 +7,8 @@ state_schema: 1
 store_schema: 1
 runtime: wasm
 role: translate
-after: [preprocess, parse, pime-cangjie-parse]
+# 默认直接前驱；包管理器导入时据此定位，方案链记录里的 after 优先。
+after: pime-cangjie-parse
 platforms: [windows-x64, windows-arm64, macos-x64, macos-arm64,
             linux-x64, linux-arm64, android-arm64, android-x64, ios-arm64, ios-x64, harmony-arm64, harmony-x64]
 entry: pime_process

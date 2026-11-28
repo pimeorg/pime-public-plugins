@@ -7,7 +7,6 @@ state_schema: 1
 store_schema: 1
 runtime: lua
 role: recognize
-after: [preprocess]
 platforms: [android-arm64, android-x64, windows-x64, macos-arm64, linux-x64]
 entry: plugin.lua
 capabilities: [audio.capture, net.wss, thread, time, log]

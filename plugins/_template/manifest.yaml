@@ -7,8 +7,9 @@ state_schema: 1
 store_schema: 1
 runtime: wasm
 role: parse
-# 允许排在本插件之前的 role；[] 表示必须最先。链顺序必须满足它。
-after: [preprocess]
+# 默认直接前驱（一个插件 id）：包管理器导入本插件时插到它后面。
+# 省略则由包管理器按 role 兜底；必须是链头时写 after: null。
+# after: pime-keymap-default
 platforms: [windows-x64, windows-arm64, macos-x64, macos-arm64,
             linux-x64, linux-arm64, android-arm64, android-x64, ios-arm64, ios-x64, harmony-arm64, harmony-x64]
 entry: pime_process
