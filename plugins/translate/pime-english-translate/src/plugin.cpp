@@ -41,6 +41,12 @@ constexpr uint32_t kMixedEnglishHead = 3;
  * (`go`, `ok`, `hi`), so they stay Chinese-only; from three letters on
  * (`goo`, `hel`, `dont`) the input reads as a word worth completing. */
 constexpr uint32_t kMixedMinLength = 3;
+/* English must earn the head of a Chinese view. A lone rare proper noun
+ * (`tij` -> Tijuana, freq 7) is not evidence the user meant English, so it
+ * follows the Chinese candidates instead of pushing the raw text ahead of
+ * them. 50 is the dictionary's own floor for lowercase words, i.e. the line
+ * between "a word people type" and "a name that shares a prefix". */
+constexpr uint32_t kMixedMinWordFrequency = 50;
 
 const char kParseId[] = "pime-english-parse";
 const char kPinyinParseId[] = "pime-pinyin-parse";
@@ -64,6 +70,10 @@ bool g_corrections = true;
 
 Candidate g_candidates[kMaxCandidates];
 uint32_t g_count = 0;
+/* Evidence gathered by lookup() for the mixed view: the typed text itself
+ * being a dictionary word, or the most frequent completion it prefixes. */
+bool g_exact_hit = false;
+uint32_t g_best_completion_freq = 0;
 
 bool load_dict() {
     if (g_dict_loaded) return g_dict_len > 0;
@@ -249,6 +259,8 @@ void lookup(const char* key, uint32_t key_len, bool all_caps, bool cap,
     Dict dict;
     dict.load(reinterpret_cast<const char*>(g_dict), g_dict_len);
 
+    g_exact_hit = false;
+    g_best_completion_freq = 0;
     char formed[128];
     uint32_t formed_len = 0;
     bool matched = false;
@@ -257,6 +269,10 @@ void lookup(const char* key, uint32_t key_len, bool all_caps, bool cap,
         matched = true;
         if (entry.key_len > key_len && !g_completion) return;
         const bool exact = entry.key_len == key_len;
+        if (exact)
+            g_exact_hit = true;
+        else if (entry.freq > g_best_completion_freq)
+            g_best_completion_freq = entry.freq;
         copy_with_case(entry.text, entry.text_len, all_caps, cap, formed,
                        &formed_len);
         const uint32_t extra = entry.key_len - key_len;
@@ -388,15 +404,14 @@ bool same_text(const Candidate& c, const char* text, uint32_t len) {
 
 /* The raw text and its best completions come first (the input is clearly
  * English), then the Chinese list so nothing is lost, then any remaining
- * English completions so they stay reachable by paging. Duplicates are dropped
+ * English completions so they stay reachable by paging. `head` is 0 when the
+ * English evidence is too weak to outrank Chinese. Duplicates are dropped
  * wherever they appear. */
 uint32_t merge_english(const Candidate* chinese, uint32_t chinese_count,
                        const Candidate* english, uint32_t english_count,
-                       Candidate* out) {
+                       uint32_t head, Candidate* out) {
     uint32_t written = 0;
-    const uint32_t head = english_count < kMixedEnglishHead
-                              ? english_count
-                              : kMixedEnglishHead;
+    if (head > english_count) head = english_count;
     for (uint32_t i = 0; i < head && written < kMaxMerged; ++i)
         out[written++] = english[i];
     for (uint32_t i = 0; i < chinese_count && written < kMaxMerged; ++i) {
@@ -504,8 +519,14 @@ PIME_EXPORT pime_status pime_process(const uint8_t* in, uint32_t in_len,
         if (english_added) {
             const uint32_t chinese_count =
                 read_chinese(frame, upstream, kMaxUpstream);
+            /* A word the dictionary actually has, or a completion people
+             * type, keeps the English head; a lone rare proper noun does
+             * not (`tij` -> Tijuana stays behind the Chinese list). */
+            const bool strong =
+                g_exact_hit || g_best_completion_freq >= kMixedMinWordFrequency;
+            const uint32_t head = strong ? kMixedEnglishHead : 0;
             merged_count = merge_english(upstream, chinese_count, g_candidates,
-                                         english_count, merged);
+                                         english_count, head, merged);
         } else {
             any = false;
         }

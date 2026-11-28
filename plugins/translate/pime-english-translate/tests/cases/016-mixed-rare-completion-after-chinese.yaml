@@ -1,0 +1,18 @@
+name: mixed-rare-completion-follows-chinese
+event: { type: text, text: tij }
+workspace:
+  plugin/pime-pinyin-parse/raw: tij
+  plugin/pime-pinyin-parse/complete: false
+  plugin/pime-pinyin-rank/candidates:
+    - { text: 条件, score: 500000, source: dict }
+    - { text: 体积, score: 499000, source: dict }
+# 词表里只有 Tijuana（freq 7）以 tij 开头，冷僻专名不足以说明用户在打英文：
+# 中文候选在前，原码和英文补全垫底，空格仍然提交中文。
+expect:
+  handled: true
+  workspace:
+    candidates:
+      - { text: 条件, source: dict }
+      - { text: 体积, source: dict }
+      - { text: tij, source: raw }
+      - { text: Tijuana, source: completion }
